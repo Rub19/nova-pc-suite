@@ -16,7 +16,7 @@
 - [x] Demande de fermeture normale confirmée, identité et propriétaire contrôlés, aucun arrêt forcé.
 - [x] Recherche/tri RAM, mémoire privée et nom ; filtre des applications gérables.
 - [x] Recherche et filtres d’état au démarrage, compteurs et commandes intégrées.
-- [ ] Compilation, tests et publication de l’installateur 0.2.1.
+- [x] Compilation locale, 15 tests d’interface, 14 tests Rust, tests PowerShell et publication de l’installateur 0.2.1.
 
 - [x] Initialiser Tauri + React + TypeScript.
 - [x] Design Nova, navigation, thèmes et dashboard.
