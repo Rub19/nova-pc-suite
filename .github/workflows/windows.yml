@@ -30,6 +30,7 @@ jobs:
       - run: powershell -NoProfile -File tests/apps-tests.ps1
       - run: powershell -NoProfile -File tests/automation-tests.ps1
       - run: powershell -NoProfile -File tests/health-tests.ps1
+      - run: powershell -NoProfile -File tests/hardware-tests.ps1
       - run: cargo test --manifest-path src-tauri/Cargo.toml --release --locked
       - run: npm run tauri:build -- --ci
       - run: powershell -NoProfile -File scripts/test-installer.ps1

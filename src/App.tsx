@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import Workbench from "./Workbench";
+import AboutPC from "./AboutPC";
 import { MemoryGuardian, NetworkTools } from "./HealthTools";
 import {
   Activity,
@@ -50,6 +52,7 @@ import {
 
 const nav = [
   { id: "overview", label: "Vue d’ensemble", icon: LayoutDashboard },
+  { id: "about-pc", label: "À propos de ce PC", icon: Cpu },
   { id: "drivers", label: "Pilotes & mises à jour", icon: Download },
   { id: "optimize", label: "Optimisation", icon: Zap },
   { id: "measurements", label: "Avant / après", icon: Activity },
@@ -152,6 +155,24 @@ export default function App() {
   }
   useEffect(() => {
     void run("snapshot");
+  }, []);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen<string>("nova:navigate", ({ payload }) => {
+      if (!disposed && nav.some((item) => item.id === payload))
+        changePage(payload);
+    })
+      .then((stop) => {
+        if (disposed) stop();
+        else unlisten = stop;
+      })
+      .catch(() => {});
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
   }, []);
   async function settingsOpen(target: string) {
     try {
@@ -280,7 +301,7 @@ export default function App() {
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.2.2</span>
+              Nova <span className="version">v0.2.3</span>
             </span>
             <button
               aria-label={
@@ -1161,6 +1182,7 @@ export default function App() {
           )}
           {page === "network" && <NetworkTools />}
           <MemoryGuardian visible={page === "memory"} />
+          <AboutPC visible={page === "about-pc"} />
           {page === "optimize" && <Workbench section="maintenance" />}
           {page === "startup" && <Workbench section="startup-manage" />}
           {[

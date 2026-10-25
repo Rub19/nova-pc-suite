@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 preview — 2026-10-25
+
+- Onglet « À propos de ce PC », 12 rubriques matérielles/système, recherche et rapport texte copiable/exportable.
+- Inventaire CIM limité aux propriétés utiles, indisponibilités partielles explicites et résultat détaillé exclu de l’historique.
+- Icône Nova dans la zone de notification, menu gauche/droit, navigation et masquage de la fenêtre.
+- Statut de la surveillance RAM et suspension depuis le menu ; test simulé du cycle automatique complet.
+
 ## 0.2.2 preview — 2026-10-25
 
 - Analyse et optimisation confirmée du volume système via Windows, selon le support, sans défragmentation forcée.

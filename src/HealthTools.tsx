@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Activity, ShieldCheck, Wifi, MemoryStick } from "lucide-react";
 import {
   memoryDecision,
@@ -216,6 +217,31 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
     lastTrim = useRef(0),
     dialog = useRef<HTMLDialogElement>(null),
     session = useRef(0);
+  useEffect(() => {
+    void invoke("set_tray_memory_status", { active: auto }).catch(() => {});
+  }, [auto]);
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen("nova:memory-stop", () => {
+      if (disposed) return;
+      session.current++;
+      setAuto(false);
+      pressure.current = 0;
+      setNotice(
+        "Surveillance automatique suspendue depuis la zone de notification.",
+      );
+    })
+      .then((stop) => {
+        if (disposed) stop();
+        else unlisten = stop;
+      })
+      .catch(() => {});
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
   useEffect(() => {
     if (pending) dialog.current?.showModal();
     else dialog.current?.close();

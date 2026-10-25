@@ -18,6 +18,7 @@ use tauri::Manager;
 
 struct OperationLock(Arc<Mutex<()>>);
 mod cleanup;
+mod tray;
 mod winpaths;
 fn local_data_root() -> Result<std::path::PathBuf, String> {
     winpaths::local_data()
@@ -80,6 +81,7 @@ fn extended_policy(module: &str, action: &str) -> Option<bool> {
         ("network", "network-audit" | "network-probe" | "network-connections") => Some(false),
         ("memory", "memory-snapshot") => Some(false),
         ("memory", "memory-trim" | "process-close") => Some(true),
+        ("hardware", "hardware-info") => Some(false),
         _ => None,
     }
 }
@@ -105,6 +107,7 @@ fn append_event_dir(dir: &std::path::Path, action: &str, result: &Result<Value, 
         // Persist bounded operation results, not request payloads or AI chats.
         if let Ok(value) = result {
             if action != "memory-snapshot"
+                && action != "hardware-info"
                 && action != "network-connections"
                 && value.to_string().len() < 100_000
             {
@@ -199,6 +202,7 @@ async fn extended_action(
                 "automation" => include_str!("../scripts/automation.ps1"),
                 "network" => include_str!("../scripts/network.ps1"),
                 "memory" => include_str!("../scripts/memory.ps1"),
+                "hardware" => include_str!("../scripts/hardware.ps1"),
                 _ => return Err("Module inconnu".into()),
             };
             let encoded_payload = STANDARD.encode(payload.to_string().as_bytes());
@@ -516,6 +520,13 @@ fn main() {
         return;
     }
     tauri::Builder::default()
+        .setup(|app| {
+            // A missing tray must not prevent diagnostics from starting.
+            if let Err(error) = tray::setup(app) {
+                eprintln!("Icône Nova indisponible : {error}");
+            }
+            Ok(())
+        })
         .manage(OperationLock(Arc::new(Mutex::new(()))))
         .invoke_handler(tauri::generate_handler![
             system_action,
@@ -523,7 +534,8 @@ fn main() {
             elevate,
             open_settings,
             ask_local_ai,
-            extended_action
+            extended_action,
+            tray::set_tray_memory_status
         ])
         .run(tauri::generate_context!())
         .expect("Impossible de démarrer Nova");
@@ -589,6 +601,8 @@ mod tests {
     }
     #[test]
     fn extended_allowlist_cannot_accept_an_unconfirmed_unknown_operation() {
+        assert_eq!(extended_policy("hardware", "hardware-info"), Some(false));
+        assert_eq!(extended_policy("hardware", "hardware-write"), None);
         for action in [
             "storage-analyze",
             "boot-slowdowns",

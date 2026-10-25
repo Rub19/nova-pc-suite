@@ -4,10 +4,10 @@ Application Windows 10/11 x64 de diagnostic, pilotes et maintenance. Interface f
 
 ## Télécharger
 
-[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.2 preview**, maintenance étendue et thème sombre graphite.
+[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.3 preview**, maintenance étendue et thème sombre graphite.
 
-- `Nova-PC-Suite-0.2.2-setup.exe` : véritable installateur avec désinstallation Windows.
-- `Nova-PC-Suite-0.2.2.exe` : exécutable autonome, WebView2 requis.
+- `Nova-PC-Suite-0.2.3-setup.exe` : véritable installateur avec désinstallation Windows.
+- `Nova-PC-Suite-0.2.3.exe` : exécutable autonome, WebView2 requis.
 - `SHA256SUMS.txt` : empreintes de contrôle.
 
 Binaires non signés Authenticode : Windows peut afficher un avertissement d’éditeur inconnu. La preview doit encore être validée sur plusieurs PC et VM Windows 10 avant une version stable.
@@ -26,6 +26,13 @@ Binaires non signés Authenticode : Windows peut afficher un avertissement d’�
 - Accès aux outils de nettoyage, démarrage et sécurité Windows.
 - Recommandations locales ; IA optionnelle via Ollama avec le premier modèle installé sur le PC.
 - Historique local des 100 dernières opérations et export JSON ; recherche et pagination des tableaux.
+
+### Nouveautés 0.2.3
+
+- **À propos de ce PC** : 12 rubriques de composants et système, unités lisibles, recherche, copie et export texte. Inventaire en lecture seule, données manquantes explicites, sans numéros de série, clés produit ou adresses IP/MAC. Certains capteurs et la VRAM dédiée ne sont pas mesurés.
+- **Zone de notification** : icône Nova avec menu sur clic gauche/droit, accès aux écrans, statut RAM, suspension de la surveillance et masquage de la fenêtre. Quitter Nova arrête les futurs cycles de surveillance. La fermeture normale continue de quitter l’application.
+- Les accès rapides ne lancent aucune optimisation directement. Windows gère le placement de l’icône. Pas d’ajout automatique de Nova au démarrage.
+- Voir [validation et limites](docs/VALIDATION-0.2.3.md).
 
 ### Nouveautés 0.2.2
 

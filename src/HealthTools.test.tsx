@@ -3,9 +3,11 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
 import { MemoryGuardian } from "./HealthTools";
-const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 let host: HTMLDivElement, root: Root;
+let stopFromTray: () => void;
 async function click(label: string) {
   const b = [...host.querySelectorAll("button")].find(
     (b) => b.textContent === label,
@@ -14,6 +16,10 @@ async function click(label: string) {
   await act(async () => b.click());
 }
 beforeEach(async () => {
+  mocks.listen.mockImplementation(async (_event, handler) => {
+    stopFromTray = handler;
+    return () => {};
+  });
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
@@ -48,6 +54,65 @@ beforeEach(async () => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  vi.useRealTimers();
+});
+it("automatically trims only approved targets under sustained pressure and can pause from the tray", async () => {
+  vi.useFakeTimers();
+  const sample = {
+    usedPercent: 95,
+    freeBytes: 100,
+    pageReadsPerSecond: 1,
+    items: [
+      {
+        pid: 42,
+        started: "123",
+        name: "Fixture",
+        manageable: true,
+        workingSetBytes: 300 * 1024 ** 2,
+        privateBytes: 400 * 1024 ** 2,
+      },
+    ],
+  };
+  mocks.invoke.mockImplementation(async (command, args) =>
+    command === "set_tray_memory_status"
+      ? {}
+      : { ok: true, data: args.action === "memory-snapshot" ? sample : {} },
+  );
+  await click("Mesurer la mémoire");
+  const label = [...host.querySelectorAll("label")].find((l) =>
+    l.textContent?.includes("Fixture"),
+  )!;
+  await act(async () =>
+    (label.querySelector("input") as HTMLInputElement).click(),
+  );
+  await click("Activer la surveillance automatique");
+  await click("Confirmer");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60000);
+  });
+  const trims = mocks.invoke.mock.calls.filter(
+    ([command, args]) =>
+      command === "extended_action" && args.action === "memory-trim",
+  );
+  expect(trims).toHaveLength(1);
+  expect(trims[0][1]).toMatchObject({
+    payload: { pid: 42, started: "123" },
+    confirmed: true,
+  });
+  expect(
+    mocks.invoke.mock.calls.some(
+      ([, args]) => args?.action === "process-close",
+    ),
+  ).toBe(false);
+  await act(async () => stopFromTray());
+  const count = mocks.invoke.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(600000);
+  });
+  expect(mocks.invoke.mock.calls).toHaveLength(count);
+  expect(host.textContent).toContain(
+    "suspendue depuis la zone de notification",
+  );
 });
 it("never requests closure on measurement, opening a dialog, or cancel", async () => {
   await click("Fermer");
