@@ -24,6 +24,7 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm test
       - run: npm run build
+      - run: powershell -NoProfile -File tests/embedded-script-tests.ps1
       - run: powershell -NoProfile -File tests/system-tests.ps1
       - run: powershell -NoProfile -File tests/backend-safety-tests.ps1
       - run: powershell -NoProfile -File tests/optimize-tests.ps1

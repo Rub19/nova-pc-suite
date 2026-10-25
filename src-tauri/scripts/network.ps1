@@ -21,7 +21,7 @@ try {
             $cache=@{}; foreach($proc in Get-Process){$cache[[uint32]$proc.Id]=$proc.ProcessName}
             $connections=@(Get-NetTCPConnection -ErrorAction Stop|Select-Object -First 1000|ForEach-Object{@{process=$cache[[uint32]$_.OwningProcess];pid=$_.OwningProcess;localAddress=$_.LocalAddress;localPort=$_.LocalPort;remoteAddress=$_.RemoteAddress;remotePort=$_.RemotePort;state=[string]$_.State}})
             $listeners=@($connections|Where-Object{$_.state -eq 'Listen' -and $_.localAddress -in @('0.0.0.0','::')})
-            $data=@{items=$connections;listenersAllInterfaces=$listeners;interpretation='Un port en écoute ou une adresse inconnue n’est pas une preuve de fuite. Les débits par application ne sont pas mesurés par cet inventaire.';limit=1000}
+            $data=@{items=$connections;listenersAllInterfaces=$listeners;interpretation="Un port en écoute ou une adresse inconnue n'est pas une preuve de fuite. Les débits par application ne sont pas mesurés par cet inventaire.";limit=1000}
         }
         'network-probe' {
             # Fixed destinations only; no scanning or user-controlled target.

@@ -35,7 +35,7 @@ try {
                 if($application.HasExited -or $application.StartTime.ToUniversalTime().Ticks.ToString() -ne [string]$payload.started){throw 'MemoryTargetUnavailable'}
                 if(-not $application.CloseMainWindow()){throw 'ProcessHasNoClosableWindow'}
                 $exited=$application.WaitForExit(1500)
-                @{ok=$true;data=@{targetPid=$payload.pid;closeRequested=$true;exited=$exited;status=$(if($exited){'closed'}else{'awaiting-application'});limitation='La fermeture peut demander un enregistrement ou être refusée par l’application. Aucun arrêt forcé.'}}|ConvertTo-Json -Depth 5 -Compress
+                @{ok=$true;data=@{targetPid=$payload.pid;closeRequested=$true;exited=$exited;status=$(if($exited){'closed'}else{'awaiting-application'});limitation="La fermeture peut demander un enregistrement ou être refusée par l'application. Aucun arrêt forcé."}}|ConvertTo-Json -Depth 5 -Compress
                 return
             }finally{$application.Dispose()}
         }
@@ -63,7 +63,7 @@ public static class NovaMemory {
             if(-not [NovaMemory]::EmptyWorkingSet($handle)){throw 'MemoryTrimFailed'}
         }finally{[void][NovaMemory]::CloseHandle($handle)}
         $after=Memory-Sample
-        $data=@{before=$before;after=$after;targetPid=$payload.pid;trimRequested=$true;limitation='Réduction du working set, pas de la mémoire privée allouée. Les pages peuvent revenir en RAM et provoquer des défauts de page ; ce n’est pas une correction de fuite mémoire.'}
+        $data=@{before=$before;after=$after;targetPid=$payload.pid;trimRequested=$true;limitation="Réduction du working set, pas de la mémoire privée allouée. Les pages peuvent revenir en RAM et provoquer des défauts de page ; ce n'est pas une correction de fuite mémoire."}
     }
     @{ok=$true;data=$data}|ConvertTo-Json -Depth 10 -Compress
 }catch{$code=$_.Exception.Message;if($code -notin @('InvalidMemoryTarget','MemoryTargetUnavailable','ForegroundApplicationSkipped','MemoryTrimFailed','ProcessHasNoClosableWindow')){$code='MemoryDiagnosticUnavailable'};@{ok=$false;data=$null;error=$code}|ConvertTo-Json -Compress}

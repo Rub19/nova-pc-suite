@@ -281,6 +281,33 @@ fn encoded(script: &str) -> String {
             .collect::<Vec<u8>>(),
     )
 }
+fn windows_response(bytes: &[u8], stderr: &[u8], success: bool) -> Result<Value, String> {
+    let parsed = std::str::from_utf8(bytes).ok().and_then(|text| {
+        serde_json::from_str::<Value>(text.trim().trim_start_matches('\u{feff}')).ok()
+    });
+    if let Some(value) = parsed {
+        if value.get("ok").and_then(Value::as_bool).is_some() && success {
+            return Ok(value);
+        }
+    }
+    // Classify failures without exposing diagnostic payloads or raw stderr.
+    let diagnostic = String::from_utf8_lossy(stderr);
+    if [
+        "ParserError",
+        "ParseException",
+        "UnexpectedToken",
+        "TerminatorExpectedAtEndOfString",
+    ]
+    .iter()
+    .any(|token| diagnostic.contains(token))
+    {
+        return Err("Erreur interne dans un script de Nova. Installez la version corrigée. Référence : WindowsScriptSyntax.".into());
+    }
+    if !success {
+        return Err("La commande Windows a échoué avant de fournir son résultat. Référence : WindowsProcessFailed.".into());
+    }
+    Err("Le diagnostic a renvoyé une réponse vide ou illisible. Réessayez puis vérifiez la version de Nova. Référence : WindowsResponseInvalid.".into())
+}
 fn powershell(script: &str, seconds: u64) -> Result<Value, String> {
     let win = std::env::var_os("SystemRoot").ok_or("Windows est requis.")?;
     let exe = std::path::PathBuf::from(win).join("System32/WindowsPowerShell/v1.0/powershell.exe");
@@ -319,13 +346,12 @@ fn powershell(script: &str, seconds: u64) -> Result<Value, String> {
         b
     });
     let start = Instant::now();
-    loop {
-        if child
+    let status = loop {
+        if let Some(status) = child
             .try_wait()
             .map_err(|_| "État du processus indisponible")?
-            .is_some()
         {
-            break;
+            break status;
         }
         if seconds > 0 && start.elapsed() > Duration::from_secs(seconds) {
             let _ = child.kill();
@@ -336,14 +362,14 @@ fn powershell(script: &str, seconds: u64) -> Result<Value, String> {
             );
         }
         thread::sleep(Duration::from_millis(100));
-    }
+    };
     let bytes = stdout.join().map_err(|_| "Lecture interrompue")?;
     writer
         .join()
         .map_err(|_| "Transmission interrompue")?
         .map_err(|_| "Transmission interrompue")?;
-    let _ = stderr.join();
-    serde_json::from_slice(&bytes).map_err(|_| "Windows n’a pas retourné de résultat valide. Consultez les permissions de cette opération.".into())
+    let diagnostic = stderr.join().map_err(|_| "Lecture interrompue")?;
+    windows_response(&bytes, &diagnostic, status.success())
 }
 
 #[tauri::command]
@@ -579,6 +605,73 @@ mod tests {
         assert!(valid_id("12345678-abcd-1234-abcd-123456789012"));
         for id in ["", "';cmd", "12345678-abcd-1234-abcd-12345678901'"] {
             assert!(!valid_id(id));
+        }
+    }
+    #[test]
+    fn windows_responses_preserve_utf8_and_report_internal_failures_without_blame() {
+        assert_eq!(
+            windows_response(
+                "\u{feff}{\"ok\":true,\"data\":\"mémoire\"}".as_bytes(),
+                b"",
+                true
+            )
+            .unwrap()["data"],
+            "mémoire"
+        );
+        assert!(
+            windows_response(b"", b"#< CLIXML ParserError SECRET", false)
+                .unwrap_err()
+                .contains("WindowsScriptSyntax")
+        );
+        assert!(!windows_response(b"", b"ParserError SECRET", false)
+            .unwrap_err()
+            .contains("SECRET"));
+        assert!(windows_response(b"garbage", b"", true)
+            .unwrap_err()
+            .contains("WindowsResponseInvalid"));
+        assert!(windows_response(b"null", b"", true).is_err());
+        assert!(windows_response(b"", b"", false)
+            .unwrap_err()
+            .contains("WindowsProcessFailed"));
+        assert_eq!(
+            windows_response(
+                b"{\"ok\":false,\"error\":\"AdministratorRequired\"}",
+                b"",
+                true
+            )
+            .unwrap()["error"],
+            "AdministratorRequired"
+        );
+    }
+    #[test]
+    fn all_embedded_scripts_parse_as_utf8_before_execution() {
+        for (name, source) in [
+            ("system", include_str!("../scripts/system.ps1")),
+            ("hardware", include_str!("../scripts/hardware.ps1")),
+            ("memory", include_str!("../scripts/memory.ps1")),
+            ("network", include_str!("../scripts/network.ps1")),
+            ("optimize", include_str!("../scripts/optimize.ps1")),
+            ("apps", include_str!("../scripts/apps.ps1")),
+            ("automation", include_str!("../scripts/automation.ps1")),
+            ("scheduled", include_str!("../scripts/scheduled.ps1")),
+        ] {
+            let code = STANDARD.encode(source.as_bytes());
+            let script = format!("$code=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{code}'));$tokens=$null;$errors=$null;[void][Management.Automation.Language.Parser]::ParseInput($code,[ref]$tokens,[ref]$errors);@{{ok=($errors.Count -eq 0);data=@{{errorCount=$errors.Count}}}}|ConvertTo-Json -Compress");
+            let value = powershell(&script, 30).unwrap();
+            assert_eq!(value["ok"], true, "UTF-8 parser rejected module {name}");
+        }
+    }
+    #[test]
+    fn embedded_read_only_modules_use_real_application_transport() {
+        for (action, source) in [
+            ("hardware-info", include_str!("../scripts/hardware.ps1")),
+            ("memory-snapshot", include_str!("../scripts/memory.ps1")),
+            ("network-audit", include_str!("../scripts/network.ps1")),
+        ] {
+            let script = format!("& {{\n{source}\n}} -Action '{action}' -PayloadBase64 'e30='");
+            let value = powershell(&script, 120).unwrap();
+            assert_eq!(value["ok"], true, "read-only module {action}");
+            assert!(value["data"].is_object());
         }
     }
     #[test]
