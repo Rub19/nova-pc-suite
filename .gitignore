@@ -14,3 +14,7 @@ target/
 .vscode/
 Thumbs.db
 Desktop.ini
+.npm-cache/
+outputs/
+work/
+src-tauri/gen/
