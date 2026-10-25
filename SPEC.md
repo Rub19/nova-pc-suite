@@ -54,7 +54,7 @@ Le produit doit privilégier la confiance : aucune modification sensible n’est
 - Tauri 2 pour l’application native et le packaging Windows.
 - React + TypeScript + Vite pour l’interface.
 - Rust pour les opérations système, avec commandes allowlistées et paramètres typés.
-- `sysinfo` pour les métriques de base ; APIs Windows ou commandes système fixes uniquement pour les données qui ne sont pas disponibles autrement.
+- CIM/WMI et Windows Update Agent via un contrôleur PowerShell 5.1 embarqué, transporté par stdin UTF-8 depuis Rust ; commandes et paramètres allowlistés.
 - Vitest/Testing Library pour la logique et les composants ; tests d’intégration Tauri ciblés ; Playwright plus tard pour les flux critiques.
 - Installeur NSIS via Tauri, cible Windows 10/11 x64 en premier.
 
@@ -146,7 +146,6 @@ tasks/                  # plan et tâches actives
 
 ## Questions ouvertes
 
-- Le dépôt GitHub doit-il être public ou privé ?
-- Faut-il cibler uniquement Windows 11 ou aussi Windows 10 ?
-- Souhaites-tu une IA locale uniquement, ou autorises-tu un fournisseur cloud après consentement ?
-- Quel nom de marque définitif préfères-tu si « Nova » n’est qu’un nom de travail ?
+- Décisions utilisateur confirmées : dépôt public, Windows 10 et 11, véritable installateur.
+- Nom retenu : Nova PC Suite. IA locale optionnelle Ollama ; aucun fournisseur cloud intégré.
+- Version initiale livrée en preview ; fonctions futures distinctes de la liste disponible dans README.
