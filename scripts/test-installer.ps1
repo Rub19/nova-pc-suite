@@ -31,7 +31,8 @@ if ((Test-Path -LiteralPath $targetPath) -and -not $ResumeOwnedTest) { throw 'Te
 $existing = @(Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq 'Nova PC Suite' })
 if ($existing.Count -gt 0 -and -not $ResumeOwnedTest) { throw 'Nova is already installed; refusing to disturb that installation.' }
 if ($ResumeOwnedTest -and @($existing | Where-Object { $_.InstallLocation -and ([IO.Path]::GetFullPath($_.InstallLocation.Trim('"')).TrimEnd('\') -ne $targetPath.TrimEnd('\')) }).Count -gt 0) { throw 'Unrelated Nova installation found' }
-$installer = Join-Path $projectRoot 'src-tauri/target/release/bundle/nsis/Nova PC Suite_0.1.0_x64-setup.exe'
+$version = (Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'package.json') | ConvertFrom-Json).version
+$installer = Join-Path $projectRoot "src-tauri/target/release/bundle/nsis/Nova PC Suite_${version}_x64-setup.exe"
 if (-not $ResumeOwnedTest) {
     $install = Start-Process -FilePath $installer -ArgumentList @('/S', ('/D=' + $targetPath)) -WindowStyle Hidden -PassThru
     $install.WaitForExit()

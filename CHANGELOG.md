@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 preview — 2026-10-25
+
+- Thème sombre graphite par défaut, avec conservation du choix clair/sombre.
+- Couleurs adaptées pour alertes, badges, icônes, dialogues, indicateurs et boutons.
+- Contrastes renforcés et bordures plus discrètes en mode sombre.
+
 ## 0.1.0 preview — 2026-10-25
 
 - Application Windows 10/11 x64 avec icône Nova et installateur.

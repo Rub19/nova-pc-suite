@@ -30,8 +30,9 @@
 }
 :root {
   font-family: Inter, "Segoe UI Variable", "Segoe UI", sans-serif;
-  color: #20262f;
-  background: #f6f7f9;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
   font-synthesis: none;
   font-size: 14px;
   --bg: #f6f7f9;
@@ -44,19 +45,44 @@
   --green: #218765;
   --hover: #f2f4f7;
   --sidebar: #fbfcfd;
+  --accent-line: #dce7f8;
+  --amber-bg: #fdf2dd;
+  --amber-text: #966519;
+  --green-bg: #e9f5ee;
+  --green-text: #26734f;
+  --error-bg: #fff0ec;
+  --error-text: #a7422c;
+  --hero-bg: linear-gradient(110deg, var(--surface), var(--blue-soft));
+  --button-bg: #3269ea;
+  --button-hover: #245bd7;
+  --button-text: #fff;
+  --backdrop: #15202e66;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #15181d;
-  --surface: #1e2229;
-  --text: #e6eaf0;
-  --muted: #a4adb9;
-  --line: #303640;
-  --blue: #83a8ff;
-  --blue-soft: #263650;
-  --green: #72c5a6;
-  --hover: #292e37;
-  --sidebar: #191d23;
+  --bg: #131518;
+  --surface: #1b1e23;
+  --text: #edf0f4;
+  --muted: #a4acb8;
+  --line: #30353d;
+  --blue: #98baff;
+  --blue-soft: #232f43;
+  --green: #8bd1af;
+  --hover: #262b32;
+  --sidebar: #17191d;
+  --accent-line: #34465f;
+  --amber-bg: #352d21;
+  --amber-text: #e8c17d;
+  --green-bg: #20352d;
+  --green-text: #91d5b2;
+  --error-bg: #382724;
+  --error-text: #f2b0a2;
+  --hero-bg: linear-gradient(115deg, #20252e, #1c232e);
+  --button-bg: #a4c2ff;
+  --button-hover: #bbd1ff;
+  --button-text: #142440;
+  --backdrop: #07090cc9;
+  scrollbar-color: #414956 var(--bg);
 }
 * {
   box-sizing: border-box;
@@ -383,12 +409,12 @@ main {
   min-height: 38px;
 }
 .primary {
-  background: #3269ea;
-  color: #fff;
-  box-shadow: 0 2px 3px #3269ea14;
+  background: var(--button-bg);
+  color: var(--button-text);
+  box-shadow: none;
 }
 .primary:hover {
-  background: #245bd7;
+  background: var(--button-hover);
 }
 .secondary {
   background: var(--surface);
@@ -398,9 +424,9 @@ main {
   background: var(--hover);
 }
 .hero {
-  border: 1px solid #dce7f8;
+  border: 1px solid var(--accent-line);
   border-radius: 11px;
-  background: linear-gradient(110deg, var(--surface), var(--blue-soft));
+  background: var(--hero-bg);
   padding: 29px;
   display: flex;
   align-items: center;
@@ -416,7 +442,7 @@ main {
 .hero-icon {
   height: 64px;
   width: 64px;
-  border: 1px solid #d4e4ff;
+  border: 1px solid var(--accent-line);
   background: var(--surface);
   color: var(--blue);
   border-radius: 17px;
@@ -579,12 +605,12 @@ progress::-webkit-progress-value {
   color: var(--blue);
 }
 .amber {
-  background: #fdf2dd;
-  color: #c9952f;
+  background: var(--amber-bg);
+  color: var(--amber-text);
 }
 .green {
-  background: #e9f5ee;
-  color: #3c986a;
+  background: var(--green-bg);
+  color: var(--green-text);
 }
 .feature h3 {
   margin-bottom: 10px;
@@ -924,7 +950,7 @@ tbody tr:hover {
 }
 .running {
   padding: 16px 18px;
-  border: 1px solid #dce7f8;
+  border: 1px solid var(--accent-line);
   background: var(--blue-soft);
   border-radius: 8px;
   display: flex;
@@ -948,7 +974,7 @@ tbody tr:hover {
 .live-pill {
   font-size: 8px;
   letter-spacing: 1px;
-  border: 1px solid #bcd1fa;
+  border: 1px solid var(--accent-line);
   padding: 5px 8px;
   border-radius: 4px;
 }
@@ -966,12 +992,12 @@ tbody tr:hover {
   flex: 1;
 }
 .error {
-  background: #fff0ec;
-  color: #a7422c;
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 .success {
-  background: #eaf6f0;
-  color: #26734f;
+  background: var(--green-bg);
+  color: var(--green-text);
 }
 .assistant-intro {
   padding: 25px 0 35px;
@@ -1057,12 +1083,12 @@ tbody tr:hover {
   border-radius: 7px;
 }
 .ok {
-  background: #eaf6f0;
-  color: #26734f;
+  background: var(--green-bg);
+  color: var(--green-text);
 }
 .failed {
-  background: #fff0ec;
-  color: #a7422c;
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 dialog {
   border: 1px solid var(--line);
@@ -1075,7 +1101,7 @@ dialog {
   box-shadow: 0 25px 100px #0003;
 }
 dialog::backdrop {
-  background: #15202e66;
+  background: var(--backdrop);
   backdrop-filter: blur(3px);
 }
 dialog h2 {

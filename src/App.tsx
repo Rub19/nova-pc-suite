@@ -81,7 +81,7 @@ export default function App() {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [dark, setDark] = useState(
-    localStorage.getItem("nova-theme") === "dark",
+    localStorage.getItem("nova-theme") !== "light",
   );
   const [lastScan, setLastScan] = useState<Date | null>(null);
   const [question, setQuestion] = useState("");
@@ -264,7 +264,7 @@ export default function App() {
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.1.0</span>
+              Nova <span className="version">v0.1.1</span>
             </span>
             <button
               aria-label={
