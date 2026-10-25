@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+target/
+.tauri/
+.env
+.env.*
+!.env.example
+*.log
+*.pdb
+*.msi
+*.nsis.zip
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
