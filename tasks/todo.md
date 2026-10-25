@@ -6,7 +6,8 @@
 - [x] Inventaire matériel local et exclusion des identifiants non nécessaires.
 - [x] Menu gauche/droit dans la zone de notification, navigation, statut RAM, suspension et masquage.
 - [x] 21 tests frontend et 15 tests Rust ; tests matériels simulés et lecture réelle sans mutation.
-- [ ] Compilation et publication de l’installateur 0.2.3.
+- [x] Compilation et publication de l’installateur 0.2.3.
+- [x] Vérification RAM native sur processus isolé sans fenêtre, resté actif après réduction du working set.
 
 ## 0.2.2 — stockage, démarrage et énergie
 
