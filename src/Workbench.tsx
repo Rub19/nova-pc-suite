@@ -24,6 +24,53 @@ type Entry = {
 };
 const catalog: Entry[] = [
   {
+    action: "storage-analyze",
+    label: "Analyser l’optimisation du disque",
+    category: "Stockage",
+    admin: true,
+    description:
+      "Analyser le volume système NTFS avec Windows. Affiche les statistiques sans lancer d’optimisation.",
+  },
+  {
+    action: "storage-optimize",
+    label: "Optimiser le disque avec Windows",
+    category: "Stockage",
+    admin: true,
+    changes: true,
+    description:
+      "Optimiser le volume système NTFS en laissant Windows choisir l’opération adaptée au support. Peut durer longtemps et solliciter le disque ; à utiliser après l’analyse.",
+  },
+  {
+    action: "boot-slowdowns",
+    label: "Repérer les lenteurs au démarrage",
+    category: "Diagnostic",
+    description:
+      "Lire jusqu’à 30 événements Windows des 7 derniers jours concernant les applications, pilotes et services au démarrage. Aucun élément désactivé automatiquement.",
+  },
+  {
+    action: "power-requests",
+    label: "Qui empêche la veille ?",
+    category: "Énergie",
+    admin: true,
+    description:
+      "Afficher les demandes des applications et pilotes qui maintiennent le PC ou l’écran éveillé. Utile pour comprendre la consommation au repos.",
+  },
+  {
+    action: "sleep-states",
+    label: "Vérifier les modes de veille",
+    category: "Énergie",
+    description:
+      "Afficher les états de veille disponibles et les raisons Windows de leur indisponibilité.",
+  },
+  {
+    action: "wake-sources",
+    label: "Comprendre les réveils du PC",
+    category: "Énergie",
+    admin: true,
+    description:
+      "Afficher la dernière source de réveil et les minuteurs actifs, sans changer les périphériques ni les tâches planifiées.",
+  },
+  {
     action: "opti-audit",
     label: "Audit de maintenance",
     description:
@@ -194,6 +241,50 @@ function Result({ data, action }: { data: unknown; action: string }) {
     <>
       {typeof raw.output === "string" && (
         <pre className="wb-output">{raw.output}</pre>
+      )}
+      {action === "boot-slowdowns" && (
+        <div>
+          <p>{display(raw.interpretation)}</p>
+          {list(data).length ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Élément signalé</th>
+                    <th>Type</th>
+                    <th>Durée</th>
+                    <th>Dégradation</th>
+                    <th>Date UTC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list(data).map((item, i) => (
+                    <tr key={i}>
+                      <td>{display(item.name)}</td>
+                      <td>
+                        {(
+                          {
+                            101: "Application",
+                            102: "Pilote",
+                            103: "Service",
+                          } as Record<string, string>
+                        )[String(item.eventId)] ?? "Autre"}
+                      </td>
+                      <td>{display(item.durationMs)} ms</td>
+                      <td>{display(item.degradationMs)} ms</td>
+                      <td>{display(item.timestampUtc)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>
+              Aucun événement correspondant retourné. Cela ne garantit pas un
+              démarrage optimal.
+            </p>
+          )}
+        </div>
       )}
       {typeof asRow(raw.diagnostics).text === "string" && (
         <pre className="wb-output">{String(asRow(raw.diagnostics).text)}</pre>
@@ -488,11 +579,16 @@ function WorkbenchView({
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                   >
-                    {["Tout", "Diagnostic", "Windows", "Réseau", "Énergie"].map(
-                      (item) => (
-                        <option key={item}>{item}</option>
-                      ),
-                    )}
+                    {[
+                      "Tout",
+                      "Diagnostic",
+                      "Windows",
+                      "Stockage",
+                      "Réseau",
+                      "Énergie",
+                    ].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </label>
               </div>

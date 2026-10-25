@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 preview — 2026-10-25
+
+- Analyse et optimisation confirmée du volume système via Windows, selon le support, sans défragmentation forcée.
+- Tableau des lenteurs de démarrage signalées dans les événements récents.
+- Diagnostics des blocages de veille, états disponibles, dernière source de réveil et minuteurs.
+- Filtre Stockage, erreurs de diagnostic explicites et contrôles supplémentaires automatisés.
+
 ## 0.2.1 preview — 2026-10-25
 
 - Fermeture normale confirmée des seules applications autorisées, sans arrêt forcé.

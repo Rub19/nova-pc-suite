@@ -23,7 +23,7 @@ function Get-WinEvent { param($FilterHashtable,$MaxEvents,$ErrorAction); throw '
 function Get-Process { @([pscustomobject]@{},[pscustomobject]@{}) }
 $root=Join-Path (Split-Path $PSScriptRoot -Parent) ('work\optimize-tests-'+[guid]::NewGuid().ToString('N'))
 Assert (-not (Test-Path -LiteralPath $root)) 'Scratch root must be unique'
-$protected=@('dism-analyze','dism-cleanup','system-check','disk-scan','dns-flush','energy-saver','hibernate-on','hibernate-off','power-report')
+$protected=@('dism-analyze','dism-cleanup','system-check','disk-scan','dns-flush','energy-saver','hibernate-on','hibernate-off','power-report','storage-analyze','storage-optimize','power-requests','wake-sources')
 foreach ($action in $protected) {
  $r=Invoke-OptimizeAction $action '' $root
  Assert ($r.error -eq 'AdministratorRequired' -and -not $r.ok) "Missing admin guard: $action"
@@ -115,4 +115,46 @@ $r=Invoke-OptimizeAction 'dns-flush' '' $root
 Assert $r.ok 'Mutex not released after failure'
 $json=$r | ConvertTo-Json -Depth 8 -Compress | ConvertFrom-Json
 Assert ($json.ok -and $null -eq $json.error -and $json.data.flushed) 'Envelope invalid'
+# New storage actions use mocks only, including the volume query.
+$script:volumeHealth='Healthy';$script:storageCalls=@()
+function Get-Volume {param($DriveLetter,$ErrorAction);[pscustomobject]@{FileSystem='NTFS';DriveType='Fixed';HealthStatus=$script:volumeHealth}}
+function Optimize-Volume {
+ [CmdletBinding()]param([char[]]$DriveLetter,[switch]$Analyze)
+ $script:storageCalls+=,@{letter=[string]$DriveLetter[0];analyze=[bool]$Analyze;parameters=@($PSBoundParameters.Keys)}
+ Write-Verbose 'Fixture: volume analysis / operation completed'
+}
+$r=Invoke-OptimizeAction 'storage-analyze' 'e30=' $root
+Assert ($r.ok -and $r.data.readOnly -and $r.data.analysisOnly -and $r.data.output -match 'Fixture') 'Storage analysis not read-only or missing diagnostics'
+$r=Invoke-OptimizeAction 'storage-optimize' 'e30=' $root
+Assert ($r.ok -and -not $r.data.readOnly -and -not $r.data.analysisOnly -and $r.data.completed) 'Storage optimization dispatch failed'
+Assert ($script:storageCalls.Count -eq 2 -and $script:storageCalls[0].analyze -and -not $script:storageCalls[1].analyze) 'Analysis and optimization flags confused'
+Assert ($script:storageCalls[1].letter -eq $env:SystemDrive[0].ToString() -and $script:storageCalls[1].parameters -notcontains 'Defrag' -and $script:storageCalls[1].parameters -notcontains 'ReTrim' -and $script:storageCalls[1].parameters -notcontains 'NormalPriority') 'Windows media choice or low priority overridden'
+$script:volumeHealth='Warning'
+$r=Invoke-OptimizeAction 'storage-optimize' '' $root
+Assert ($r.error -eq 'StorageVolumeUnsupported' -and $script:storageCalls.Count -eq 2) 'Unhealthy storage must not be optimized'
+$script:volumeHealth='Healthy'
+$r=Invoke-OptimizeAction 'storage-optimize' 'eyJEcml2ZUxldHRlciI6IkQifQ==' $root
+Assert ($r.error -eq 'PayloadNotSupported' -and $script:storageCalls.Count -eq 2) 'Arbitrary target accepted'
+foreach($action in @('power-requests','sleep-states','wake-sources')){
+ $r=Invoke-OptimizeAction $action '' $root
+ Assert ($r.ok -and $r.data.readOnly -and $r.data.output.Length -gt 0) "Missing power diagnostics $action"
+}
+$commands=@($script:calls|ForEach-Object{$_.name+' '+($_.arguments -join ' ')})
+foreach($expected in @('powercfg.exe /requests','powercfg.exe /availablesleepstates','powercfg.exe /lastwake','powercfg.exe /waketimers')){Assert ($commands -contains $expected) "Missing fixed diagnostic $expected"}
+function Get-WinEvent {
+ param($FilterHashtable,$MaxEvents,$ErrorAction)
+ Assert ($MaxEvents -eq 30 -and $FilterHashtable.Id.Count -eq 3 -and $FilterHashtable.StartTime -is [datetime]) 'Boot query must be bounded'
+ $event=[pscustomobject]@{Id=101;TimeCreated=[datetime]'2026-10-25T12:00:00Z'}
+ $event|Add-Member ScriptMethod ToXml {'<Event><EventData><Data Name="Name">Fixture.exe</Data><Data Name="TotalTime">1234</Data><Data Name="DegradationTime">567</Data><Data Name="CommandLine">SECRET-ARGS</Data></EventData></Event>'}
+ $event
+}
+$r=Invoke-OptimizeAction 'boot-slowdowns' '' $root
+Assert ($r.ok -and $r.data.count -eq 1 -and $r.data.items[0].durationMs -eq 1234 -and $r.data.items[0].degradationMs -eq 567) 'Boot event extraction failed'
+Assert (($r|ConvertTo-Json -Depth 8) -notmatch 'SECRET-ARGS|CommandLine') 'Boot data includes extra event fields'
+function Get-WinEvent {param($FilterHashtable,$MaxEvents,$ErrorAction);throw 'Access denied fixture'}
+$r=Invoke-OptimizeAction 'boot-slowdowns' '' $root
+Assert (-not $r.ok -and $r.error -eq 'BootDiagnosticsUnavailable') 'Access failure must not look like a healthy empty journal'
+function Get-WinEvent {param($FilterHashtable,$MaxEvents,$ErrorAction);Write-Error 'No events fixture' -ErrorId NoMatchingEventsFound -ErrorAction Stop}
+$r=Invoke-OptimizeAction 'boot-slowdowns' '' $root
+Assert ($r.ok -and $r.data.count -eq 0 -and $r.data.available) 'Empty journal should be distinguished from access failure'
 Write-Output "PASS: $script:checks checks; mocked OS commands only. Scratch fixtures: $root"

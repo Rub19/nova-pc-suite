@@ -37,6 +37,75 @@ afterEach(async () => {
   host.remove();
 });
 describe("confirmations et résultats de maintenance", () => {
+  it("affiche les lenteurs de démarrage identifiées dans un tableau lisible", async () => {
+    mocks.invoke.mockResolvedValue({
+      ok: true,
+      data: {
+        items: [
+          {
+            name: "Fixture startup",
+            eventId: 101,
+            durationMs: 1234,
+            degradationMs: 567,
+            timestampUtc: "2026-10-25T12:00:00Z",
+          },
+        ],
+        count: 1,
+        interpretation: "Événements Windows récents",
+      },
+    });
+    await act(async () => root.render(<Workbench section="maintenance" />));
+    const heading = [...host.querySelectorAll("h3")].find(
+      (h) => h.textContent === "Repérer les lenteurs au démarrage",
+    )!;
+    await act(async () =>
+      (
+        heading.closest(".wb-row")!.querySelector("button") as HTMLButtonElement
+      ).click(),
+    );
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "extended_action",
+      expect.objectContaining({ action: "boot-slowdowns", confirmed: false }),
+    );
+    expect(host.querySelector("table")?.textContent).toContain(
+      "Fixture startup",
+    );
+    expect(host.querySelector("table")?.textContent?.replace(/\s/g, "")).toContain("1234ms");
+    expect(host.querySelector("table")?.textContent).toContain("Application");
+  });
+  it("permet de filtrer le stockage et exige une confirmation pour l’optimiser", async () => {
+    mocks.invoke.mockResolvedValue({
+      ok: true,
+      data: { completed: true, readOnly: false },
+    });
+    await act(async () => root.render(<Workbench section="maintenance" />));
+    const category = host.querySelector("select")!;
+    expect([...category.options].some((o) => o.value === "Stockage")).toBe(
+      true,
+    );
+    await act(async () => {
+      category.value = "Stockage";
+      category.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const heading = [...host.querySelectorAll("h3")].find(
+      (h) => h.textContent === "Optimiser le disque avec Windows",
+    )!;
+    await act(async () =>
+      (
+        heading.closest(".wb-row")!.querySelector("button") as HTMLButtonElement
+      ).click(),
+    );
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    await click("Confirmer");
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "extended_action",
+      expect.objectContaining({
+        module: "optimize",
+        action: "storage-optimize",
+        confirmed: true,
+      }),
+    );
+  });
   it("désactive une entrée de démarrage uniquement après confirmation", async () => {
     mocks.invoke.mockResolvedValue({
       ok: true,

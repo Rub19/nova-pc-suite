@@ -28,6 +28,10 @@ const errors: Record<string, string> = {
     "Windows n’a pas pu appliquer ce réglage de planification ou contacter GitHub.",
   MaintenanceBusy: "Une maintenance est déjà en cours dans Nova.",
   BaselineMissing: "Enregistrez d’abord une mesure de référence.",
+  StorageVolumeUnsupported:
+    "L’outil prend en charge le volume système fixe NTFS déclaré sain par Windows. Aucun autre volume n’a été modifié.",
+  BootDiagnosticsUnavailable:
+    "Le journal de performance du démarrage est indisponible ou son accès est refusé. Cela ne signifie pas que le démarrage est sain.",
   NativeCommandFailed:
     "Windows a signalé une erreur. Consultez le code et les diagnostics retournés.",
   MaintenanceFailed:

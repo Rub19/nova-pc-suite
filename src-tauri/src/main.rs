@@ -57,12 +57,13 @@ fn extended_policy(module: &str, action: &str) -> Option<bool> {
         (
             "optimize",
             "opti-audit" | "dism-analyze" | "system-check" | "snapshot-compare" | "battery-report"
-            | "power-report",
+            | "power-report" | "storage-analyze" | "boot-slowdowns" | "power-requests"
+            | "sleep-states" | "wake-sources",
         ) => Some(false),
         (
             "optimize",
             "dism-cleanup" | "disk-scan" | "dns-flush" | "energy-saver" | "hibernate-on"
-            | "hibernate-off" | "snapshot-baseline",
+            | "hibernate-off" | "snapshot-baseline" | "storage-optimize",
         ) => Some(true),
         ("apps", "apps-list" | "app-upgrades" | "startup-list") => Some(false),
         ("apps", "app-upgrade" | "startup-disable" | "startup-enable") => Some(true),
@@ -588,6 +589,15 @@ mod tests {
     }
     #[test]
     fn extended_allowlist_cannot_accept_an_unconfirmed_unknown_operation() {
+        for action in [
+            "storage-analyze",
+            "boot-slowdowns",
+            "power-requests",
+            "sleep-states",
+            "wake-sources",
+        ] {
+            assert_eq!(extended_policy("optimize", action), Some(false));
+        }
         for (module, action) in [
             ("cleanup", "../../Windows"),
             ("network", "reset-firewall"),
@@ -604,6 +614,7 @@ mod tests {
             ("apps", "app-upgrade"),
             ("memory", "memory-trim"),
             ("memory", "process-close"),
+            ("optimize", "storage-optimize"),
             ("automation", "schedule-daily"),
         ] {
             assert_eq!(extended_policy(module, action), Some(true));

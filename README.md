@@ -4,10 +4,10 @@ Application Windows 10/11 x64 de diagnostic, pilotes et maintenance. Interface f
 
 ## Télécharger
 
-[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.1 preview**, maintenance étendue et thème sombre graphite.
+[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.2 preview**, maintenance étendue et thème sombre graphite.
 
-- `Nova-PC-Suite-0.2.1-setup.exe` : véritable installateur avec désinstallation Windows.
-- `Nova-PC-Suite-0.2.1.exe` : exécutable autonome, WebView2 requis.
+- `Nova-PC-Suite-0.2.2-setup.exe` : véritable installateur avec désinstallation Windows.
+- `Nova-PC-Suite-0.2.2.exe` : exécutable autonome, WebView2 requis.
 - `SHA256SUMS.txt` : empreintes de contrôle.
 
 Binaires non signés Authenticode : Windows peut afficher un avertissement d’éditeur inconnu. La preview doit encore être validée sur plusieurs PC et VM Windows 10 avant une version stable.
@@ -26,6 +26,13 @@ Binaires non signés Authenticode : Windows peut afficher un avertissement d’�
 - Accès aux outils de nettoyage, démarrage et sécurité Windows.
 - Recommandations locales ; IA optionnelle via Ollama avec le premier modèle installé sur le PC.
 - Historique local des 100 dernières opérations et export JSON ; recherche et pagination des tableaux.
+
+### Nouveautés 0.2.2
+
+- **Stockage** : analyse du volume système NTFS puis optimisation confirmée avec le choix natif Windows selon le support. Volume fixe déclaré sain uniquement ; aucun autre volume ciblé et aucun mode de défragmentation imposé.
+- **Démarrage** : tableau des événements de ralentissement des sept derniers jours, limité à 30 événements. Aucun pilote/service désactivé automatiquement ; un événement ne prouve pas à lui seul la cause d’une lenteur.
+- **Énergie** : programmes/pilotes qui empêchent la veille, modes de veille disponibles et causes de réveil/minuteurs. Diagnostics sans modifier leurs paramètres.
+- Filtre Stockage et résultats locaux. Voir [validation et limites](docs/VALIDATION-0.2.2.md).
 
 ### Nouveautés 0.2.1
 
