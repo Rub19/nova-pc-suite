@@ -2,7 +2,12 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 export type Row = Record<string, unknown>;
 export type Reply = { ok: boolean; data?: Row; error?: string };
-export type Event = { timestamp: number; action: string; ok: boolean };
+export type Event = {
+  timestamp: number;
+  action: string;
+  ok: boolean;
+  result?: Reply;
+};
 export const labels: Record<string, string> = {
   snapshot: "Diagnostic système",
   drivers: "Inventaire des pilotes",
@@ -19,8 +24,34 @@ export const labels: Record<string, string> = {
   "energy-performance": "Mode performances élevées",
 };
 const errors: Record<string, string> = {
-  MaintenanceAlreadyRunning: 'Une autre fenêtre Nova effectue déjà une maintenance. Attendez sa fin.',
-  PreviousMaintenanceInterrupted: 'Une précédente maintenance a été interrompue. Vérifiez Windows Update et les journaux Windows avant de relancer.',
+  AutomationUnavailable:
+    "Windows n’a pas pu appliquer ce réglage de planification ou contacter GitHub.",
+  MaintenanceBusy: "Une maintenance est déjà en cours dans Nova.",
+  BaselineMissing: "Enregistrez d’abord une mesure de référence.",
+  NativeCommandFailed:
+    "Windows a signalé une erreur. Consultez le code et les diagnostics retournés.",
+  MaintenanceFailed:
+    "Cette opération n’est pas disponible ou n’a pas abouti sur ce PC.",
+  InvalidBaseline:
+    "La référence enregistrée est invalide. Enregistrez une nouvelle mesure.",
+  WingetUnavailable:
+    "WinGet est indisponible. Vérifiez l’installation de Programme d’installation d’application Microsoft.",
+  WingetOperationFailed:
+    "WinGet n’a pas terminé la demande. Consultez sa réponse ; des licences ou sources peuvent demander une intervention.",
+  AppsOperationFailed:
+    "Windows n’a pas pu terminer l’opération sur les applications.",
+  StartupConflict:
+    "Une entrée de démarrage du même nom existe déjà. Nova la conserve.",
+  StartupChanged: "L’entrée a changé depuis la lecture. Actualisez la liste.",
+  InvalidBackup:
+    "La sauvegarde ne peut pas être validée. L’opération a été refusée.",
+  OperationInProgress: "Une autre opération sur les applications est en cours.",
+  PackageNotInstalledOrQueryFailed:
+    "WinGet n’a pas confirmé ce paquet installé. Vérifiez l’identifiant exact et les sources.",
+  MaintenanceAlreadyRunning:
+    "Une autre fenêtre Nova effectue déjà une maintenance. Attendez sa fin.",
+  PreviousMaintenanceInterrupted:
+    "Une précédente maintenance a été interrompue. Vérifiez Windows Update et les journaux Windows avant de relancer.",
   AdministratorRequired:
     "Ouvrez Nova en administrateur avec le bouton en bas à gauche, puis relancez cette action.",
   DriverSearchIncomplete:

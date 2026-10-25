@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import Workbench from "./Workbench";
+import { MemoryGuardian, NetworkTools } from "./HealthTools";
 import {
   Activity,
   ArrowDownToLine,
@@ -50,11 +52,18 @@ const nav = [
   { id: "overview", label: "Vue d’ensemble", icon: LayoutDashboard },
   { id: "drivers", label: "Pilotes & mises à jour", icon: Download },
   { id: "optimize", label: "Optimisation", icon: Zap },
+  { id: "measurements", label: "Avant / après", icon: Activity },
+  { id: "network", label: "Diagnostic réseau", icon: Activity },
+  { id: "memory", label: "Mémoire intelligente", icon: MemoryStick },
+  { id: "cleanup", label: "Nettoyage récupérable", icon: HardDrive },
+  { id: "applications", label: "Applications", icon: Download },
   { id: "storage", label: "Stockage", icon: HardDrive },
   { id: "startup", label: "Démarrage", icon: Play },
   { id: "processes", label: "Moniteur d’activité", icon: Activity },
   { id: "security", label: "Sécurité", icon: ShieldCheck },
   { id: "assistant", label: "Assistant Nova", icon: Sparkles },
+  { id: "automation", label: "Planification & Nova", icon: Clock3 },
+  { id: "driver-sources", label: "Sources constructeurs", icon: Cpu },
   { id: "history", label: "Historique", icon: History },
 ];
 type Confirm = {
@@ -97,6 +106,13 @@ export default function App() {
   const volumes = rows(data.storage, "volumes");
   const installed = rows(data.drivers);
   const updates = rows(data.updates);
+  const [driverSelection, setDriverSelection] = useState<string[]>([]);
+  useEffect(() => {
+    setDriverSelection(rows(data.updates).map((u) => text(u.id)));
+  }, [data.updates]);
+  const selectedUpdates = updates.filter((u) =>
+    driverSelection.includes(text(u.id)),
+  );
   const advice = recommendations(snapshot, data.storage);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -264,7 +280,7 @@ export default function App() {
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.1.1</span>
+              Nova <span className="version">v0.2.0</span>
             </span>
             <button
               aria-label={
@@ -592,35 +608,65 @@ export default function App() {
                 </div>
                 <button
                   className="button primary"
-                  disabled={!!busy || !updates.length}
+                  disabled={!!busy || !selectedUpdates.length}
                   onClick={() =>
                     setConfirm({
                       action: "install-drivers",
-                      ids: updates.map((u) => text(u.id)),
-                      eulas: updates
+                      ids: selectedUpdates.map((u) => text(u.id)),
+                      eulas: selectedUpdates
                         .filter((u) => u.eulaAccepted !== true)
                         .map((u) => ({
                           title: text(u.title),
                           text: text(u.eulaText),
                         })),
-                      description: `Installer les ${updates.length} pilotes affichés via Windows Update. Une session administrateur est nécessaire. Un point de restauration est conseillé. Un redémarrage peut être requis ; Nova ne le déclenche pas.`,
+                      description: `Installer les ${selectedUpdates.length} pilotes sélectionnés via Windows Update. Une session administrateur est nécessaire. Un point de restauration est conseillé. Un redémarrage peut être requis ; Nova ne le déclenche pas.`,
                     })
                   }
                 >
                   <ArrowDownToLine size={16} />
-                  Tout installer
+                  {selectedUpdates.length === updates.length
+                    ? "Tout installer"
+                    : `Installer la sélection (${selectedUpdates.length})`}
                 </button>
               </div>
               {data.updates ? (
                 updates.length ? (
-                  <DataTable
-                    items={filtered(updates)}
-                    columns={[
-                      ["title", "Mise à jour"],
-                      ["eulaAccepted", "Licence acceptée"],
-                      ["downloaded", "Téléchargé"],
-                    ]}
-                  />
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Sélection</th>
+                          <th>Mise à jour</th>
+                          <th>Licence acceptée</th>
+                          <th>Téléchargé</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered(updates).map((u) => (
+                          <tr key={text(u.id)}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                aria-label={`Sélectionner ${text(u.title)}`}
+                                checked={driverSelection.includes(text(u.id))}
+                                disabled={!!busy}
+                                onChange={(e) =>
+                                  setDriverSelection((old) =>
+                                    e.target.checked
+                                      ? [...old, text(u.id)]
+                                      : old.filter((id) => id !== text(u.id)),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>{text(u.title)}</td>
+                            <td>{text(u.eulaAccepted)}</td>
+                            <td>{text(u.downloaded)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <Empty
                     icon={CheckCircle2}
@@ -1093,6 +1139,14 @@ export default function App() {
                         </small>
                       </div>
                       <span>{e.ok ? "Terminé" : "À vérifier"}</span>
+                      {e.result && (
+                        <details className="wb-details">
+                          <summary>Résultat enregistré</summary>
+                          <pre className="wb-output">
+                            {JSON.stringify(e.result, null, 2)}
+                          </pre>
+                        </details>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1105,6 +1159,17 @@ export default function App() {
               )}
             </>
           )}
+          {page === "network" && <NetworkTools />}
+          <MemoryGuardian visible={page === "memory"} />
+          {page === "optimize" && <Workbench section="maintenance" />}
+          {page === "startup" && <Workbench section="startup-manage" />}
+          {[
+            "cleanup",
+            "applications",
+            "automation",
+            "measurements",
+            "driver-sources",
+          ].includes(page) && <Workbench section={page} />}
           <footer className="main-footer">
             <span>
               <ShieldCheck size={14} />

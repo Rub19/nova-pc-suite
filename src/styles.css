@@ -173,6 +173,15 @@ button svg {
   padding: 32px 16px 16px;
   z-index: 3;
 }
+.sidebar nav {
+  overflow-y: auto;
+  min-height: 80px;
+  flex: 1;
+  scrollbar-width: thin;
+}
+.sidebar-bottom {
+  flex-shrink: 0;
+}
 .brand {
   display: flex;
   align-items: center;
