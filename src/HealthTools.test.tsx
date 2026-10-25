@@ -24,25 +24,23 @@ beforeEach(async () => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  mocks.invoke
-    .mockReset()
-    .mockResolvedValue({
-      ok: true,
-      data: {
-        usedPercent: 80,
-        freeBytes: 100,
-        items: [
-          {
-            pid: 42,
-            started: "123",
-            name: "Fixture",
-            manageable: true,
-            workingSetBytes: 200e6,
-            privateBytes: 300e6,
-          },
-        ],
-      },
-    });
+  mocks.invoke.mockReset().mockResolvedValue({
+    ok: true,
+    data: {
+      usedPercent: 80,
+      freeBytes: 100,
+      items: [
+        {
+          pid: 42,
+          started: "123",
+          name: "Fixture",
+          manageable: true,
+          workingSetBytes: 200e6,
+          privateBytes: 300e6,
+        },
+      ],
+    },
+  });
   await act(async () => root.render(<MemoryGuardian visible />));
   await click("Mesurer la mémoire");
   mocks.invoke.mockClear();
@@ -74,4 +72,43 @@ it("only closes the explicitly confirmed PID and reports pending application con
   expect(host.textContent).toContain(
     "une confirmation ou un enregistrement peut être nécessaire",
   );
+});
+it("keeps protected processes unavailable for closure", async () => {
+  mocks.invoke.mockResolvedValue({
+    ok: true,
+    data: {
+      usedPercent: 80,
+      freeBytes: 100,
+      items: [
+        {
+          pid: 4,
+          started: "123",
+          name: "Protected fixture",
+          manageable: false,
+          workingSetBytes: 200e6,
+          privateBytes: 300e6,
+        },
+      ],
+    },
+  });
+  await click("Mesurer la mémoire");
+  const close = [...host.querySelectorAll("button")].find(
+    (b) => b.textContent === "Fermer",
+  );
+  expect(close?.disabled).toBe(true);
+  mocks.invoke.mockClear();
+  await act(async () => close?.click());
+  expect(mocks.invoke).not.toHaveBeenCalled();
+});
+it("reports a refused closure without claiming that the application exited", async () => {
+  mocks.invoke.mockResolvedValue({
+    ok: false,
+    error: "ProcessHasNoClosableWindow",
+  });
+  await click("Fermer");
+  await click("Confirmer");
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "Aucun arrêt forcé",
+  );
+  expect(host.textContent).not.toContain("Fixture a quitté");
 });
