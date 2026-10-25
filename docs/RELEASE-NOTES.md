@@ -9,3 +9,5 @@ Preview non signée Authenticode. Diagnostic réel et recherche Windows Update v
 Les pilotes sont ceux proposés par Windows Update, pas tous les catalogues constructeurs. Le nettoyage et les modifications de démarrage s’ouvrent dans les paramètres Windows. Aucune promesse de gain universel. Aucun compte ni télémétrie.
 
 Consulter `SHA256SUMS.txt` pour vérifier les fichiers téléchargés.
+
+Installateur et désinstallateur vérifiés localement dans un dossier de test dédié. Le paquet installe l’application, sans appliquer de maintenance au PC.

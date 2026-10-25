@@ -9,6 +9,7 @@
 - Inventaires locaux en lecture seule : snapshot, drivers, startup, security, storage, processes.
 - Garde-fous WUA et licences par mocks : aucune installation réelle.
 - Build de l’exécutable et de l’installateur NSIS x64.
+- Installation silencieuse locale dans un répertoire de test dédié, contrôle d’intégrité (hors marqueur de type de bundle Tauri), désinstallation réussie et exécutable de test retiré.
 - Vérification visuelle et confirmation/annulation dans l’interface.
 - Recherche WUA réelle depuis l’exécutable : deux pilotes applicables retournés, aucun téléchargement ni installation lancé.
 - Affichage du diagnostic réel dans la fenêtre native, y compris le redémarrage en attente.
