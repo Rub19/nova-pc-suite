@@ -3,6 +3,8 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 #[cfg(windows)]
+use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::{
     fs::{self, OpenOptions},
@@ -15,6 +17,227 @@ use std::{
 use tauri::Manager;
 
 struct OperationLock(Arc<Mutex<()>>);
+mod cleanup;
+mod winpaths;
+fn local_data_root() -> Result<std::path::PathBuf, String> {
+    winpaths::local_data()
+}
+
+fn hold_data_root(path: &std::path::Path) -> Result<Vec<std::fs::File>, String> {
+    if !path.is_absolute() {
+        return Err("Dossier Nova invalide".into());
+    }
+    let mut held = Vec::new();
+    for component in path.ancestors().collect::<Vec<_>>().into_iter().rev() {
+        if !component.exists() {
+            fs::create_dir(component).map_err(|_| "Création du dossier Nova impossible")?;
+        }
+        let mut options = OpenOptions::new();
+        options.read(true);
+        #[cfg(windows)]
+        options.share_mode(3).custom_flags(0x02000000 | 0x00200000);
+        let file = options
+            .open(component)
+            .map_err(|_| "Protection du dossier Nova impossible")?;
+        let metadata = file.metadata().map_err(|_| "Dossier Nova inaccessible")?;
+        #[cfg(windows)]
+        if metadata.file_attributes() & 0x400 != 0 {
+            return Err("Nova refuse un dossier redirigé par un lien ou une jonction.".into());
+        }
+        if !metadata.is_dir() {
+            return Err("Dossier Nova invalide".into());
+        }
+        held.push(file);
+    }
+    Ok(held)
+}
+
+fn extended_policy(module: &str, action: &str) -> Option<bool> {
+    match (module, action) {
+        (
+            "optimize",
+            "opti-audit" | "dism-analyze" | "system-check" | "snapshot-compare" | "battery-report"
+            | "power-report",
+        ) => Some(false),
+        (
+            "optimize",
+            "dism-cleanup" | "disk-scan" | "dns-flush" | "energy-saver" | "hibernate-on"
+            | "hibernate-off" | "snapshot-baseline",
+        ) => Some(true),
+        ("apps", "apps-list" | "app-upgrades" | "startup-list") => Some(false),
+        ("apps", "app-upgrade" | "startup-disable" | "startup-enable") => Some(true),
+        ("cleanup", "preview" | "cleanup-batches") => Some(false),
+        ("cleanup", "quarantine" | "restore" | "purge") => Some(true),
+        ("automation", "schedule-status" | "check-release" | "open-release" | "open-source") => {
+            Some(false)
+        }
+        (
+            "automation",
+            "schedule-daily" | "schedule-weekly" | "schedule-disable" | "notifications-on"
+            | "notifications-off",
+        ) => Some(true),
+        ("network", "network-audit" | "network-probe" | "network-connections") => Some(false),
+        ("memory", "memory-snapshot") => Some(false),
+        ("memory", "memory-trim") => Some(true),
+        _ => None,
+    }
+}
+
+fn append_event(app: &tauri::AppHandle, action: &str, result: &Result<Value, String>) {
+    if let Ok(dir) = app.path().app_local_data_dir() {
+        append_event_dir(&dir, action, result);
+    }
+}
+fn append_event_dir(dir: &std::path::Path, action: &str, result: &Result<Value, String>) {
+    let Ok(_held) = hold_data_root(dir) else {
+        return;
+    };
+    let path = dir.join("activity.jsonl");
+    if fs::metadata(&path)
+        .map(|m| m.len() > 4_000_000)
+        .unwrap_or(false)
+    {
+        let _ = fs::rename(&path, dir.join("activity.previous.jsonl"));
+    }
+    {
+        let mut event = json!({"timestamp":SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),"action":action,"ok":result.as_ref().map(|v|v["ok"]==true).unwrap_or(false)});
+        // Persist bounded operation results, not request payloads or AI chats.
+        if let Ok(value) = result {
+            if action != "memory-snapshot"
+                && action != "network-connections"
+                && value.to_string().len() < 100_000
+            {
+                event["result"] = value.clone();
+            }
+        }
+        let _ = winpaths::write_owned(&path, format!("{}\n", event).as_bytes(), true);
+    }
+}
+
+#[tauri::command]
+async fn extended_action(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, OperationLock>,
+    module: String,
+    action: String,
+    payload: Value,
+    confirmed: bool,
+) -> Result<Value, String> {
+    let modifies = extended_policy(&module, &action).ok_or("Opération inconnue")?;
+    if modifies && !confirmed {
+        return Err("Confirmez cette opération avant de continuer.".into());
+    }
+    if payload.to_string().len() > 64_000 || !payload.is_object() {
+        return Err("Paramètres invalides".into());
+    }
+    let lock = state.0.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = lock
+            .try_lock()
+            .map_err(|_| "Une opération Nova est déjà en cours.")?;
+        let dir = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|_| "Stockage Nova indisponible")?;
+        let _held_dirs = hold_data_root(&dir)?;
+        let _module_dirs = if module == "optimize" {
+            Some(hold_data_root(&dir.join(
+                if matches!(action.as_str(), "power-report" | "battery-report") {
+                    "reports"
+                } else {
+                    "maintenance"
+                },
+            ))?)
+        } else if module == "apps" && action.starts_with("startup-") {
+            Some(hold_data_root(&dir.join("startup-backups"))?)
+        } else {
+            None
+        };
+        let cross_lock = OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(dir.join("extended.lock"))
+            .map_err(|_| "Verrou Nova indisponible")?;
+        cross_lock
+            .try_lock()
+            .map_err(|_| "Une autre fenêtre Nova effectue une opération.")?;
+        let result = if module == "cleanup" {
+            match action.as_str() {
+                "preview" => cleanup::preview(&dir),
+                "cleanup-batches" => cleanup::list_batches(&dir),
+                "quarantine" => {
+                    let ids: Vec<String> = serde_json::from_value(payload["ids"].clone())
+                        .map_err(|_| "Sélection invalide")?;
+                    if ids.is_empty() || ids.len() > 1000 {
+                        return Err("Sélection invalide".into());
+                    }
+                    cleanup::quarantine(&dir, ids)
+                }
+                "restore" => cleanup::restore(
+                    &dir,
+                    payload["batchId"]
+                        .as_str()
+                        .ok_or("Lot manquant")?
+                        .to_string(),
+                ),
+                "purge" => cleanup::purge(
+                    &dir,
+                    payload["batchId"]
+                        .as_str()
+                        .ok_or("Lot manquant")?
+                        .to_string(),
+                ),
+                _ => Err("Opération inconnue".into()),
+            }
+        } else {
+            let source = match module.as_str() {
+                "optimize" => include_str!("../scripts/optimize.ps1"),
+                "apps" => include_str!("../scripts/apps.ps1"),
+                "automation" => include_str!("../scripts/automation.ps1"),
+                "network" => include_str!("../scripts/network.ps1"),
+                "memory" => include_str!("../scripts/memory.ps1"),
+                _ => return Err("Module inconnu".into()),
+            };
+            let encoded_payload = STANDARD.encode(payload.to_string().as_bytes());
+            let root = dir.to_string_lossy().replace('\'', "''");
+            let extra = if module == "automation" {
+                format!(
+                    " -Executable '{}'",
+                    std::env::current_exe()
+                        .map_err(|_| "Exécutable manquant")?
+                        .to_string_lossy()
+                        .replace('\'', "''")
+                )
+            } else {
+                String::new()
+            };
+            let script = format!(
+                "& {{\n{}\n}} -Action '{}' -PayloadBase64 '{}' -DataRoot '{}'{}",
+                source, action, encoded_payload, root, extra
+            );
+            powershell(
+                &script,
+                if modifies
+                    || (module == "optimize"
+                        && matches!(
+                            action.as_str(),
+                            "dism-analyze" | "system-check" | "power-report" | "battery-report"
+                        ))
+                {
+                    0
+                } else {
+                    240
+                },
+            )
+        };
+        append_event(&app, &action, &result);
+        result
+    })
+    .await
+    .map_err(|_| "Opération interrompue".to_string())?
+}
 
 fn allowed(action: &str) -> bool {
     matches!(
@@ -203,21 +426,7 @@ fn run_action(
     };
     // Run synchronously on this command thread; UI stays responsive through IPC.
     let result = powershell(&script, seconds);
-    if let Ok(dir) = app.path().app_local_data_dir() {
-        if fs::create_dir_all(&dir).is_ok() {
-            let path = dir.join("activity.jsonl");
-            if fs::metadata(&path)
-                .map(|m| m.len() > 2_000_000)
-                .unwrap_or(false)
-            {
-                let _ = fs::rename(&path, dir.join("activity.previous.jsonl"));
-            }
-            if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-                let event = json!({"timestamp":SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),"action":action,"ok": result.as_ref().map(|v|v["ok"].as_bool().unwrap_or(false)).unwrap_or(false)});
-                let _ = writeln!(file, "{}", event);
-            }
-        }
-    }
+    append_event(&app, &action, &result);
     drop(guard);
     result
 }
@@ -282,6 +491,29 @@ $result = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/chat' -Method Post 
 }
 
 fn main() {
+    // Scheduled tasks execute only this bounded read-only audit, with no UI.
+    if std::env::args().any(|a| a == "--scheduled-scan") {
+        if let Ok(local) = local_data_root() {
+            let dir = local.join("io.github.rub19.novapcsuite");
+            if let Ok(_held) = hold_data_root(&dir) {
+                let result = powershell(include_str!("../scripts/scheduled.ps1"), 120);
+                if let Ok(value) = &result {
+                    if value["ok"] == true {
+                        let _ = winpaths::write_owned(
+                            &dir.join("scheduled-report.json"),
+                            value["data"].to_string().as_bytes(),
+                            false,
+                        );
+                        if dir.join("notifications-enabled").is_file() {
+                            let _=powershell("try { [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; $xml = New-Object Windows.Data.Xml.Dom.XmlDocument; $xml.LoadXml('<toast><visual><binding template=\"ToastGeneric\"><text>Nova PC Suite</text><text>Votre analyse locale est terminée. Ouvrez Nova pour consulter le bilan.</text></binding></visual></toast>'); $toast = [Windows.UI.Notifications.ToastNotification]::new($xml); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Nova PC Suite').Show($toast); @{ok=$true}|ConvertTo-Json } catch { @{ok=$false}|ConvertTo-Json }",15);
+                        }
+                    }
+                }
+                append_event_dir(&dir, "scheduled-audit", &result);
+            }
+        }
+        return;
+    }
     tauri::Builder::default()
         .manage(OperationLock(Arc::new(Mutex::new(()))))
         .invoke_handler(tauri::generate_handler![
@@ -289,7 +521,8 @@ fn main() {
             history,
             elevate,
             open_settings,
-            ask_local_ai
+            ask_local_ai,
+            extended_action
         ])
         .run(tauri::generate_context!())
         .expect("Impossible de démarrer Nova");
@@ -352,5 +585,42 @@ mod tests {
         let value = powershell(&script, 60).unwrap();
         assert_eq!(value["ok"], true);
         assert!(value["data"]["memory"]["totalBytes"].as_f64().unwrap() > 0.0);
+    }
+    #[test]
+    fn extended_allowlist_cannot_accept_an_unconfirmed_unknown_operation() {
+        for (module, action) in [
+            ("cleanup", "../../Windows"),
+            ("network", "reset-firewall"),
+            ("apps", "uninstall-all"),
+            ("memory", "kill"),
+            ("automation", "eval"),
+        ] {
+            assert_eq!(extended_policy(module, action), None);
+        }
+        for (module, action) in [
+            ("cleanup", "purge"),
+            ("cleanup", "restore"),
+            ("apps", "startup-disable"),
+            ("apps", "app-upgrade"),
+            ("memory", "memory-trim"),
+            ("automation", "schedule-daily"),
+        ] {
+            assert_eq!(extended_policy(module, action), Some(true));
+        }
+    }
+    #[test]
+    fn extended_audit_accepts_real_empty_json_payload_over_transport() {
+        let dir = std::env::current_dir()
+            .unwrap()
+            .join("target/audit-test-data");
+        let _guards = hold_data_root(&dir).unwrap();
+        let script = format!(
+            "& {{\n{}\n}} -Action 'opti-audit' -PayloadBase64 'e30=' -DataRoot '{}'",
+            include_str!("../scripts/optimize.ps1"),
+            dir.to_string_lossy().replace('\'', "''")
+        );
+        let value = powershell(&script, 90).unwrap();
+        assert_eq!(value["ok"], true);
+        assert!(value["data"]["sample"].is_object());
     }
 }
