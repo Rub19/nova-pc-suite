@@ -70,7 +70,7 @@ Un mutex Windows global détenu par le contrôleur PowerShell sérialise les mai
 
 ## Confidentialité
 
-Aucune télémétrie, aucun compte ni clé cloud. L’historique local contient l’action, sa date et son succès ; les inventaires restent en mémoire pendant la session. Le thème reste dans le stockage WebView local. Windows Update communique avec le service Microsoft/entreprise configuré. L’IA reçoit votre question et un résumé des mesures uniquement sur `127.0.0.1:11434`.
+Aucune télémétrie, aucun compte ni clé cloud. L’historique local contient l’action, sa date, son succès et les résultats de moins de 100 000 octets, qui peuvent inclure des noms d’applications, chemins et diagnostics locaux. Les relevés mémoire et listes de connexions TCP détaillées ne sont pas conservés dans cet historique ; les questions à l’IA et les paramètres de requête n’y sont pas enregistrés. Vérifiez un export avant de le partager. Le thème reste dans le stockage WebView local. Windows Update communique avec le service Microsoft/entreprise configuré. L’IA reçoit votre question et un résumé des mesures uniquement sur `127.0.0.1:11434`.
 
 ## Compiler
 

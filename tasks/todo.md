@@ -5,7 +5,7 @@
 - [x] Six outils supplémentaires : analyse/optimisation du disque système, lenteurs de démarrage et trois diagnostics de veille/réveil.
 - [x] Confirmation, contrôle du support et mutex pour le stockage ; tests avec commandes OS simulées.
 - [x] Filtre Stockage et tableau des événements de démarrage.
-- [ ] Compilation native, contrôles Rust et publication de l’installateur 0.2.2.
+- [x] Compilation native, 14 tests Rust et publication de l’installateur 0.2.2.
 
 ## 0.2 — demande utilisateur : maintenance étendue
 

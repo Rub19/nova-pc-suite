@@ -14,7 +14,8 @@ Les commandes d’énergie sont fixes : `/requests`, `/availablesleepstates`, `/
 
 - Tests PowerShell : 84 vérifications, commandes OS et accès disque simulés. Couvre les refus admin/payload, les supports non sains, le choix Windows du traitement, les arguments fixes et les erreurs du journal.
 - Tests d’interface : 17 tests passent, dont confirmation obligatoire de l’optimisation, filtre Stockage et tableau des lenteurs au démarrage. DOM et bridge simulés.
-- Tests Rust et compilation Tauri/NSIS exécutés séparément ; résultats consignés dans la livraison et le workflow Windows GitHub.
+- Tests Rust : 14 tests passent. Compilation Tauri/NSIS réussie ; installateur et exécutable version 0.2.2 publiés avec leurs SHA256.
+- Types 101/102/103 et noms de champs vérifiés dans les métadonnées du fournisseur Windows Diagnostics-Performance installé, en lecture seule, sans lecture d’événements utilisateur.
 - Aucune optimisation native, aucun réglage de veille ni manipulation du bureau sur le PC utilisateur pour valider cette version. Il reste à mesurer les effets sur des supports physiques dédiés et à valider l’interface en conditions réelles Windows 10/11. Les tests simulés ne remplacent pas cette validation.
 
 ## Références
