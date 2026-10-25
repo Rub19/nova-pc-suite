@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 preview — 2026-10-25
+
+- Outils de maintenance Windows supplémentaires, rapports énergie/batterie et comparaison de mesures.
+- Nettoyage récupérable des temporaires anciens avec purge distincte et contrôles de fichiers par handle.
+- Gestion réversible du démarrage utilisateur, sauvegardes DPAPI, inventaire et mises à jour WinGet par identifiant exact.
+- Diagnostic réseau, connexions par processus, DNS et sondes courtes de latence/pertes.
+- Surveillance mémoire opt-in et entretien conditionnel des seuls processus autorisés.
+- Audit planifié utilisateur, bilan persistant et notifications Windows optionnelles.
+- Supports constructeurs officiels et vérification des versions Nova publiées.
+- Sélection des pilotes WUA et résultats d’opérations enregistrés dans l’historique.
+
+Signature publique, validation client Windows 10/11 sur plusieurs machines et auto-updater signé restent hors validation de cette preview.
+
 ## 0.1.1 preview — 2026-10-25
 
 - Thème sombre graphite par défaut, avec conservation du choix clair/sombre.

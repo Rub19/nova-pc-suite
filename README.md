@@ -4,10 +4,10 @@ Application Windows 10/11 x64 de diagnostic, pilotes et maintenance. Interface f
 
 ## Télécharger
 
-[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.1.1 preview**, thème sombre graphite.
+[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.0 preview**, maintenance étendue et thème sombre graphite.
 
-- `Nova-PC-Suite-0.1.1-setup.exe` : véritable installateur avec désinstallation Windows.
-- `Nova-PC-Suite-0.1.1.exe` : exécutable autonome, WebView2 requis.
+- `Nova-PC-Suite-0.2.0-setup.exe` : véritable installateur avec désinstallation Windows.
+- `Nova-PC-Suite-0.2.0.exe` : exécutable autonome, WebView2 requis.
 - `SHA256SUMS.txt` : empreintes de contrôle.
 
 Binaires non signés Authenticode : Windows peut afficher un avertissement d’éditeur inconnu. La preview doit encore être validée sur plusieurs PC et VM Windows 10 avant une version stable.
@@ -26,6 +26,21 @@ Binaires non signés Authenticode : Windows peut afficher un avertissement d’�
 - Accès aux outils de nettoyage, démarrage et sécurité Windows.
 - Recommandations locales ; IA optionnelle via Ollama avec le premier modèle installé sur le PC.
 - Historique local des 100 dernières opérations et export JSON ; recherche et pagination des tableaux.
+
+### Nouveautés 0.2.0
+
+- **Maintenance** : audit des disques, du démarrage mesuré, de la mémoire virtuelle et du profil énergie ; analyse/nettoyage du magasin de composants Windows, vérification DISM/SFC sans réparation, analyse CHKDSK en ligne, cache DNS, profil économe, activation/désactivation de l’hibernation, rapports énergie/batterie.
+- **Avant/après** : référence persistante puis comparaison CPU, mémoire disponible, nombre de processus, espace disque et dernier démarrage mesuré. Les variations dépendent de la charge et ne démontrent pas à elles seules un gain.
+- **Nettoyage récupérable** : sélection de fichiers de plus de 7 jours, uniquement à la racine des temporaires utilisateur ; 1 000 propositions maximum, sans parcours récursif. Mise à l’écart, restauration sans écrasement et purge irréversible distincte. Le déplacement ne libère pas d’espace. Les octets de purge sont des tailles logiques, pas une mesure des clusters physiques récupérés.
+- **Démarrage** : gestion réversible des valeurs utilisateur `HKCU Run`, sauvegardes chiffrées DPAPI et exclusion des protections identifiées. Les autres sources restent en lecture seule. Les dossiers de démarrage et les tâches des logiciels ne sont pas modifiés.
+- **Applications** : inventaire, recherche de mises à jour WinGet et mise à jour d’un identifiant exact confirmé. Les accords de sources et licences ne sont pas acceptés silencieusement.
+- **Réseau** : interfaces, DNS, passerelles, proxy, indices de VPN, compteurs cumulés, connexions TCP/processus, ports en écoute. Tests courts de latence/pertes et résolution DNS. Aucune interception du trafic ; aucun verdict automatique de fuite DNS ou d’exfiltration. Les sondes contactent la passerelle, `1.1.1.1` et le DNS configuré pour `example.com`, à la demande.
+- **Mémoire intelligente** : surveillance optionnelle tant que Nova reste ouvert, entretien des seuls processus sélectionnés après pression soutenue ≥90 %, pagination faible et délai de 10 minutes. Aucun processus au premier plan n’est entretenu. La réduction de working set peut provoquer des rechargements ; ce n’est ni une correction de fuite mémoire ni une garantie de performance.
+- **Planification** : audit en lecture seule quotidien ou hebdomadaire à 9 h, utilisateur connecté ; dernier bilan consultable, notifications Windows optionnelles selon disponibilité. Conserver l’exécutable au même emplacement. Le désinstallateur tente de retirer uniquement la tâche Nova de cet utilisateur ; on peut aussi la désactiver depuis Nova.
+- **Distribution** : vérification de version via GitHub et ouverture de la page officielle. Les mises à jour automatiques signées ne sont pas activées sans clé/certificat de distribution.
+- **Constructeurs** : raccourcis officiels Intel, NVIDIA, AMD, Dell, Lenovo, HP, ASUS et MSI en complément de WUA. Ce sont des accès aux supports, pas un moteur d’installation multi-catalogue.
+
+Le détail et les limites de validation figurent dans [docs/VALIDATION-0.2.md](docs/VALIDATION-0.2.md).
 
 Un résultat Windows Update vide ne signifie pas qu’aucune version constructeur plus récente n’existe : les catalogues NVIDIA/AMD/Intel/OEM ne sont pas agrégés. Nettoyage et modifications du démarrage s’effectuent dans les paramètres Windows. Aucun gain universel de performances n’est garanti.
 
@@ -53,6 +68,10 @@ npm test
 npm run build
 powershell -NoProfile -File tests/system-tests.ps1
 powershell -NoProfile -File tests/backend-safety-tests.ps1
+powershell -NoProfile -File tests/optimize-tests.ps1
+powershell -NoProfile -File tests/apps-tests.ps1
+powershell -NoProfile -File tests/automation-tests.ps1
+powershell -NoProfile -File tests/health-tests.ps1
 cargo test --manifest-path src-tauri/Cargo.toml --release --locked
 npm run tauri:build
 ```

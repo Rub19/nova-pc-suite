@@ -26,8 +26,13 @@ jobs:
       - run: npm run build
       - run: powershell -NoProfile -File tests/system-tests.ps1
       - run: powershell -NoProfile -File tests/backend-safety-tests.ps1
+      - run: powershell -NoProfile -File tests/optimize-tests.ps1
+      - run: powershell -NoProfile -File tests/apps-tests.ps1
+      - run: powershell -NoProfile -File tests/automation-tests.ps1
+      - run: powershell -NoProfile -File tests/health-tests.ps1
       - run: cargo test --manifest-path src-tauri/Cargo.toml --release --locked
       - run: npm run tauri:build -- --ci
+      - run: powershell -NoProfile -File scripts/test-installer.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: Nova-PC-Suite-Windows-x64

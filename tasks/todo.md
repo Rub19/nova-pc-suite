@@ -1,5 +1,16 @@
 # Nova — Task List
 
+## 0.2 — demande utilisateur : maintenance étendue
+
+- [x] Audits et actions de maintenance étendues avec confirmations.
+- [x] Référence et comparaison des mesures persistantes.
+- [x] Nettoyage sélectionné avec récupération et purge explicite.
+- [x] Démarrage utilisateur réversible et gestion des applications WinGet.
+- [x] Analyses planifiées en lecture seule, bilan et notifications optionnelles.
+- [x] Vérification des releases Nova et sources officielles constructeurs.
+- [x] Diagnostic réseau et surveillance mémoire conditionnelle opt-in.
+- [ ] UI graphite, tests, revue, installateur et release publique.
+
 - [x] Initialiser Tauri + React + TypeScript.
 - [x] Design Nova, navigation, thèmes et dashboard.
 - [x] Contrats de réponses, recommandations et tests.
