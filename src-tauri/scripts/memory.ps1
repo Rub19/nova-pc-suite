@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('memory-snapshot','memory-trim')][string]$Action='memory-snapshot',[string]$PayloadBase64='',[string]$DataRoot)
+param([ValidateSet('memory-snapshot','memory-trim','process-close')][string]$Action='memory-snapshot',[string]$PayloadBase64='',[string]$DataRoot)
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
 function Memory-Sample {
@@ -27,6 +27,18 @@ try {
         $before=Memory-Sample
         $target=@($before.items|Where-Object{$_.pid -eq $payload.pid -and $_.started -eq $payload.started -and $_.manageable})
         if($target.Count -ne 1){throw 'MemoryTargetUnavailable'}
+        if($Action -eq 'process-close'){
+            $application=[Diagnostics.Process]::GetProcessById([int]$payload.pid)
+            try{
+                # Retaining the handle prevents PID reuse while validating and requesting closure.
+                $retained=$application.Handle
+                if($application.HasExited -or $application.StartTime.ToUniversalTime().Ticks.ToString() -ne [string]$payload.started){throw 'MemoryTargetUnavailable'}
+                if(-not $application.CloseMainWindow()){throw 'ProcessHasNoClosableWindow'}
+                $exited=$application.WaitForExit(1500)
+                @{ok=$true;data=@{targetPid=$payload.pid;closeRequested=$true;exited=$exited;status=$(if($exited){'closed'}else{'awaiting-application'});limitation='La fermeture peut demander un enregistrement ou être refusée par l’application. Aucun arrêt forcé.'}}|ConvertTo-Json -Depth 5 -Compress
+                return
+            }finally{$application.Dispose()}
+        }
         # Operate on a retained handle and check its creation time again to avoid PID reuse.
         Add-Type -TypeDefinition @'
 using System;
@@ -54,4 +66,4 @@ public static class NovaMemory {
         $data=@{before=$before;after=$after;targetPid=$payload.pid;trimRequested=$true;limitation='Réduction du working set, pas de la mémoire privée allouée. Les pages peuvent revenir en RAM et provoquer des défauts de page ; ce n’est pas une correction de fuite mémoire.'}
     }
     @{ok=$true;data=$data}|ConvertTo-Json -Depth 10 -Compress
-}catch{$code=$_.Exception.Message;if($code -notin @('InvalidMemoryTarget','MemoryTargetUnavailable','ForegroundApplicationSkipped','MemoryTrimFailed')){$code='MemoryDiagnosticUnavailable'};@{ok=$false;data=$null;error=$code}|ConvertTo-Json -Compress}
+}catch{$code=$_.Exception.Message;if($code -notin @('InvalidMemoryTarget','MemoryTargetUnavailable','ForegroundApplicationSkipped','MemoryTrimFailed','ProcessHasNoClosableWindow')){$code='MemoryDiagnosticUnavailable'};@{ok=$false;data=$null;error=$code}|ConvertTo-Json -Compress}

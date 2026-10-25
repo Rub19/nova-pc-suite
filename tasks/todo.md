@@ -9,7 +9,14 @@
 - [x] Analyses planifiées en lecture seule, bilan et notifications optionnelles.
 - [x] Vérification des releases Nova et sources officielles constructeurs.
 - [x] Diagnostic réseau et surveillance mémoire conditionnelle opt-in.
-- [ ] UI graphite, tests, revue, installateur et release publique.
+- [x] UI graphite, tests, revue, installateur et release publique 0.2.0 ; CI Windows et installation/désinstallation réussies sur runner GitHub.
+
+## 0.2.1 — applications et confort
+
+- [x] Demande de fermeture normale confirmée, identité et propriétaire contrôlés, aucun arrêt forcé.
+- [x] Recherche/tri RAM, mémoire privée et nom ; filtre des applications gérables.
+- [x] Recherche et filtres d’état au démarrage, compteurs et commandes intégrées.
+- [ ] Compilation, tests et publication de l’installateur 0.2.1.
 
 - [x] Initialiser Tauri + React + TypeScript.
 - [x] Design Nova, navigation, thèmes et dashboard.
@@ -23,9 +30,10 @@
 
 ## Suite du produit (hors preview livrée)
 
-- [ ] Nettoyage interne avec aperçu de fichiers et récupération.
-- [ ] Gestion interne des apps et du démarrage.
-- [ ] Planification de maintenance, notifications, mises à jour signées.
+- [x] Nettoyage interne avec aperçu de fichiers et récupération.
+- [x] Gestion interne des apps et du démarrage.
+- [x] Planification d’audits et notifications optionnelles.
+- [ ] Mises à jour automatiques signées.
 - [ ] Intégrations des catalogues constructeurs.
 - [ ] Validation complète en VM Windows 10/11 et signature Authenticode.
 

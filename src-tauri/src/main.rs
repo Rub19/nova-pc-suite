@@ -78,7 +78,7 @@ fn extended_policy(module: &str, action: &str) -> Option<bool> {
         ) => Some(true),
         ("network", "network-audit" | "network-probe" | "network-connections") => Some(false),
         ("memory", "memory-snapshot") => Some(false),
-        ("memory", "memory-trim") => Some(true),
+        ("memory", "memory-trim" | "process-close") => Some(true),
         _ => None,
     }
 }
@@ -603,6 +603,7 @@ mod tests {
             ("apps", "startup-disable"),
             ("apps", "app-upgrade"),
             ("memory", "memory-trim"),
+            ("memory", "process-close"),
             ("automation", "schedule-daily"),
         ] {
             assert_eq!(extended_policy(module, action), Some(true));

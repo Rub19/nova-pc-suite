@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 preview — 2026-10-25
+
+- Fermeture normale confirmée des seules applications autorisées, sans arrêt forcé.
+- Recherche et tri des applications par RAM/mémoire privée/nom ; filtre par processus gérable.
+- Recherche et filtres d’état au démarrage, compteurs et boutons Désactiver/Réactiver.
+- Tests de non-exécution avant confirmation et d’annulation, sans fermer de programme utilisateur.
+
 ## 0.2.0 preview — 2026-10-25
 
 - Outils de maintenance Windows supplémentaires, rapports énergie/batterie et comparaison de mesures.

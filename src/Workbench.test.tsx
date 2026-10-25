@@ -37,6 +37,37 @@ afterEach(async () => {
   host.remove();
 });
 describe("confirmations et résultats de maintenance", () => {
+  it("désactive une entrée de démarrage uniquement après confirmation", async () => {
+    mocks.invoke.mockResolvedValue({
+      ok: true,
+      data: {
+        items: [
+          {
+            id: "fixture-id",
+            name: "Fixture startup",
+            enabled: true,
+            manageable: true,
+          },
+        ],
+      },
+    });
+    await act(async () => root.render(<Workbench section="startup-manage" />));
+    await click("Actualiser le démarrage");
+    mocks.invoke.mockClear();
+    await click("Désactiver");
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    mocks.invoke.mockResolvedValue({ ok: true, data: {} });
+    await click("Confirmer");
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "extended_action",
+      expect.objectContaining({
+        module: "apps",
+        action: "startup-disable",
+        payload: { id: "fixture-id" },
+        confirmed: true,
+      }),
+    );
+  });
   it("n’applique pas de réglage avant la confirmation", async () => {
     mocks.invoke.mockResolvedValue({ ok: true, data: { enabled: true } });
     await act(async () => root.render(<Workbench section="automation" />));

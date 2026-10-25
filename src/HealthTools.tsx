@@ -22,6 +22,8 @@ const errors: Record<string, string> = {
   ForegroundApplicationSkipped:
     "L’application au premier plan a été conservée.",
   MemoryTrimFailed: "Windows a refusé la réduction du working set.",
+  ProcessHasNoClosableWindow:
+    "Cette application n’a pas de fenêtre disponible pour une fermeture normale. Aucun arrêt forcé n’a été effectué.",
   MemoryDiagnosticUnavailable: "Mesures mémoire indisponibles.",
   NetworkDiagnosticUnavailable:
     "Certains diagnostics réseau sont indisponibles. Vérifiez les permissions Windows.",
@@ -200,6 +202,10 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
   const [sample, setSample] = useState<MemorySample>(),
     [selected, setSelected] = useState<MemoryTarget[]>([]),
     [auto, setAuto] = useState(false),
+    [closing, setClosing] = useState(false),
+    [query, setQuery] = useState(""),
+    [sort, setSort] = useState("ram"),
+    [manageableOnly, setManageableOnly] = useState(false),
     [pending, setPending] = useState<"auto" | MemoryTarget | null>(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -267,22 +273,43 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
       session.current++;
     };
   }, [auto, selected]);
-  async function trim(target: MemoryTarget) {
+  async function trim(target: MemoryTarget, close = false) {
     if (guard.current) return;
     guard.current = true;
     setBusy(true);
     setError("");
     try {
-      await call(
+      const result = await call(
         "memory",
-        "memory-trim",
+        close ? "process-close" : "memory-trim",
         { pid: target.pid, started: target.started },
         true,
       );
       setNotice(
-        `Windows a reçu la demande pour ${target.name}. Il s’agit d’une réduction du working set, pas de la mémoire privée allouée.`,
+        close
+          ? result.exited === true
+            ? `${target.name} a quitté.`
+            : `Fermeture demandée pour ${target.name}. Vérifiez sa fenêtre : une confirmation ou un enregistrement peut être nécessaire.`
+          : `Windows a reçu la demande pour ${target.name}. Il s’agit d’une réduction du working set, pas de la mémoire privée allouée.`,
       );
-      lastTrim.current = Date.now();
+      if (close) {
+        setSelected((old) =>
+          old.filter(
+            (t) => t.pid !== target.pid || t.started !== target.started,
+          ),
+        );
+        if (result.exited === true)
+          setSample((old) =>
+            old
+              ? {
+                  ...old,
+                  items: old.items.filter(
+                    (t) => t.pid !== target.pid || t.started !== target.started,
+                  ),
+                }
+              : old,
+          );
+      } else lastTrim.current = Date.now();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -290,7 +317,22 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
       setBusy(false);
     }
   }
-  const targets = sample?.items ?? [];
+  const targets = (sample?.items ?? [])
+    .filter(
+      (t) =>
+        (!manageableOnly || t.manageable) &&
+        `${t.name} ${t.pid}`
+          .toLocaleLowerCase()
+          .includes(query.trim().toLocaleLowerCase()),
+    )
+    .slice()
+    .sort((a, b) =>
+      sort === "name"
+        ? a.name.localeCompare(b.name)
+        : sort === "private"
+          ? b.privateBytes - a.privateBytes
+          : b.workingSetBytes - a.workingSetBytes,
+    );
   return (
     <section hidden={!visible} className="workbench">
       <div className="info-strip">
@@ -299,8 +341,8 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
           <strong>Surveillance mémoire intelligente</strong>
           <span>
             Mesure de la pression RAM et entretien optionnel des seules
-            applications choisies. Aucune fermeture d’application ni suppression
-            de données.
+            applications choisies. Fermeture normale disponible sur demande
+            explicite.
           </span>
         </div>
       </div>
@@ -320,7 +362,10 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
               session.current++;
               setAuto(false);
               pressure.current = 0;
-            } else setPending("auto");
+            } else {
+              setClosing(false);
+              setPending("auto");
+            }
           }}
         >
           {auto
@@ -379,6 +424,39 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
       )}
       <section className="panel">
         <h2>Applications consommatrices</h2>
+        <div className="toolbar">
+          <label>
+            Rechercher une application ou un PID{" "}
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <label>
+            Trier par{" "}
+            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="ram">RAM utilisée</option>
+              <option value="private">Mémoire privée</option>
+              <option value="name">Nom</option>
+            </select>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={manageableOnly}
+              onChange={(e) => setManageableOnly(e.target.checked)}
+            />{" "}
+            Applications gérables uniquement
+          </label>
+        </div>
+        {sample && (
+          <p>
+            {targets.length} application(s) affichée(s) sur{" "}
+            {sample.items.length} · {selected.length} autorisée(s) pour
+            l’entretien automatique.
+          </p>
+        )}
         <p>
           Sélectionnez les processus autorisés pour l’entretien automatique. Les
           processus système et certaines protections sont exclus. La liste est
@@ -409,9 +487,22 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
             <button
               className="button secondary"
               disabled={!t.manageable || busy}
-              onClick={() => setPending(t)}
+              onClick={() => {
+                setClosing(false);
+                setPending(t);
+              }}
             >
               Entretenir
+            </button>
+            <button
+              className="button secondary"
+              disabled={!t.manageable || busy || auto}
+              onClick={() => {
+                setClosing(true);
+                setPending(t);
+              }}
+            >
+              Fermer
             </button>
           </div>
         ))}
@@ -432,12 +523,16 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
         <h2 id="memory-confirm">
           {pending === "auto"
             ? "Activer l’entretien mémoire automatique ?"
-            : "Entretenir cette application ?"}
+            : closing
+              ? `Fermer ${pending?.name ?? "cette application"} ?`
+              : "Entretenir cette application ?"}
         </h2>
         <p>
           {pending === "auto"
             ? "Nova pourra demander une réduction du working set aux seuls processus que vous avez sélectionnés, lorsque les critères de pression sont remplis. Cette autorisation dure jusqu’à l’arrêt du mode ou la fermeture de Nova."
-            : "Windows pourra retirer des pages du working set de cette application en arrière-plan. Des défauts de page peuvent augmenter lors de sa prochaine utilisation."}
+            : closing
+              ? "Enregistrez votre travail avant de continuer. Nova demande une fermeture normale de cette application uniquement. Elle peut demander confirmation ou refuser ; les processus système sont exclus et aucun arrêt forcé n’est effectué."
+              : "Windows pourra retirer des pages du working set de cette application en arrière-plan. Des défauts de page peuvent augmenter lors de sa prochaine utilisation."}
         </p>
         <div className="dialog-actions">
           <button className="button secondary" onClick={() => setPending(null)}>
@@ -452,7 +547,7 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
                 pressure.current = 0;
                 session.current++;
                 setAuto(true);
-              } else if (target) void trim(target);
+              } else if (target) void trim(target, closing);
             }}
           >
             Confirmer

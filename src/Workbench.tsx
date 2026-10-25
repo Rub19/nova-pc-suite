@@ -341,6 +341,8 @@ function WorkbenchView({
   const [category, setCategory] = useState("Tout");
   const [selected, setSelected] = useState<string[]>([]);
   const [appId, setAppId] = useState("");
+  const [startupSearch, setStartupSearch] = useState("");
+  const [startupState, setStartupState] = useState("all");
   const dialog = useRef<HTMLDialogElement>(null);
   const uid = useId();
   useEffect(() => {
@@ -708,7 +710,11 @@ function WorkbenchView({
             <>
               <div className="wb-intro">
                 <h2>Applications installées</h2>
-                <p>La recherche interroge les sources WinGet configurées. Certaines sources ou licences peuvent nécessiter une acceptation dans l’outil officiel avant de continuer.</p>
+                <p>
+                  La recherche interroge les sources WinGet configurées.
+                  Certaines sources ou licences peuvent nécessiter une
+                  acceptation dans l’outil officiel avant de continuer.
+                </p>
                 <div className="wb-actions">
                   {button({
                     module: "apps",
@@ -805,50 +811,93 @@ function WorkbenchView({
                   label: "Actualiser le démarrage",
                 })}
               </div>
-              {startup.map((item, index) => {
-                const id = typeof item.id === "string" ? item.id : "";
-                const enabled = item.enabled;
-                return (
-                  <div className="wb-row" key={`${id}-${index}`}>
-                    <div>
-                      <h3>{display(item.name)}</h3>
-                      <p>
-                        {enabled === true
-                          ? "Activé"
-                          : enabled === false
-                            ? "Désactivé"
-                            : "État inconnu"}{" "}
-                        ·{" "}
-                        {item.manageable
-                          ? "Gérable dans Nova"
-                          : "Lecture seule"}
-                      </p>
+              <div className="toolbar">
+                <label>
+                  Rechercher au démarrage{" "}
+                  <input
+                    type="search"
+                    value={startupSearch}
+                    onChange={(e) => setStartupSearch(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Afficher{" "}
+                  <select
+                    value={startupState}
+                    onChange={(e) => setStartupState(e.target.value)}
+                  >
+                    <option value="all">Tous les éléments</option>
+                    <option value="enabled">Activés</option>
+                    <option value="disabled">Désactivés</option>
+                    <option value="manageable">Gérables dans Nova</option>
+                  </select>
+                </label>
+              </div>
+              {has("startup-list") && (
+                <p>
+                  {startup.filter((item) => item.enabled === true).length}{" "}
+                  activé(s) ·{" "}
+                  {startup.filter((item) => item.enabled === false).length}{" "}
+                  désactivé(s). Désactiver au démarrage ne ferme pas une
+                  application déjà ouverte.
+                </p>
+              )}
+              {startup
+                .filter(
+                  (item) =>
+                    display(item.name)
+                      .toLocaleLowerCase("fr")
+                      .includes(startupSearch.trim().toLocaleLowerCase("fr")) &&
+                    (startupState === "all" ||
+                      (startupState === "manageable" &&
+                        item.manageable === true) ||
+                      (startupState === "enabled" && item.enabled === true) ||
+                      (startupState === "disabled" && item.enabled === false)),
+                )
+                .map((item, index) => {
+                  const id = typeof item.id === "string" ? item.id : "";
+                  const enabled = item.enabled;
+                  return (
+                    <div className="wb-row" key={`${id}-${index}`}>
+                      <div>
+                        <h3>{display(item.name)}</h3>
+                        <p>
+                          {enabled === true
+                            ? "Activé"
+                            : enabled === false
+                              ? "Désactivé"
+                              : "État inconnu"}{" "}
+                          ·{" "}
+                          {item.manageable
+                            ? "Gérable dans Nova"
+                            : "Lecture seule"}
+                        </p>
+                      </div>
+                      {button(
+                        {
+                          module: "apps",
+                          action:
+                            enabled === true
+                              ? "startup-disable"
+                              : "startup-enable",
+                          label:
+                            enabled === true
+                              ? "Désactiver"
+                              : "Restaurer la sauvegarde",
+                          payload: { id },
+                          confirmation:
+                            enabled === true
+                              ? `Désactiver « ${display(item.name)} » au démarrage (identifiant ${id}) ?`
+                              : `Restaurer la sauvegarde de « ${display(item.name)} » (identifiant ${id}) pour le réactiver au démarrage ?`,
+                        },
+                        enabled === true ? "Désactiver" : "Réactiver",
+                        !id ||
+                          item.manageable !== true ||
+                          typeof enabled !== "boolean",
+                      )}
                     </div>
-                    {button(
-                      {
-                        module: "apps",
-                        action:
-                          enabled === true
-                            ? "startup-disable"
-                            : "startup-enable",
-                        label:
-                          enabled === true
-                            ? "Désactiver"
-                            : "Restaurer la sauvegarde",
-                        payload: { id },
-                        confirmation:
-                          enabled === true
-                            ? `Désactiver « ${display(item.name)} » au démarrage (identifiant ${id}) ?`
-                            : `Restaurer la sauvegarde de « ${display(item.name)} » (identifiant ${id}) pour le réactiver au démarrage ?`,
-                      },
-                      enabled === true ? "Désactiver" : "Réactiver",
-                      !id ||
-                        item.manageable !== true ||
-                        typeof enabled !== "boolean",
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
               {has("startup-list") && !startup.length && (
                 <p className="wb-empty">
                   Aucun élément disponible dans cette réponse.
@@ -861,7 +910,10 @@ function WorkbenchView({
               <p className="wb-note">
                 Les tâches planifiées effectuent uniquement des audits en
                 lecture seule, avec l’utilisateur connecté : à 9 h chaque jour
-                ou le lundi à 9 h chaque semaine. Conservez Nova installé au même emplacement. Les notifications Windows sont proposées au mieux selon les autorisations du système ; le bilan reste consultable ici.
+                ou le lundi à 9 h chaque semaine. Conservez Nova installé au
+                même emplacement. Les notifications Windows sont proposées au
+                mieux selon les autorisations du système ; le bilan reste
+                consultable ici.
               </p>
               {[
                 [

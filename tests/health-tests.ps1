@@ -24,8 +24,11 @@ Assert ($r.ok -and $r.data.items[0].process -eq 'Fixture' -and $r.data.listeners
 $bad=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('{"pid":0,"started":"123"}'))
 $r=& (Join-Path $root 'src-tauri/scripts/memory.ps1') -Action memory-trim -PayloadBase64 $bad|ConvertFrom-Json
 Assert (-not $r.ok -and $r.error -eq 'InvalidMemoryTarget') 'Invalid PID must be rejected before any trim'
+$r=& (Join-Path $root 'src-tauri/scripts/memory.ps1') -Action process-close -PayloadBase64 $bad|ConvertFrom-Json
+Assert (-not $r.ok -and $r.error -eq 'InvalidMemoryTarget') 'Invalid PID must be rejected before any close'
 $source=[IO.File]::ReadAllText((Join-Path $root 'src-tauri/scripts/memory.ps1'))
 Assert ($source.Contains('ForegroundApplicationSkipped') -and $source.Contains('GetProcessTimes') -and $source.Contains('GetOwnerSid')) 'Memory target guard missing'
+Assert ($source.Contains('CloseMainWindow') -and $source.Contains('$application.Handle') -and $source -notmatch 'Stop-Process|\.Kill\(|TerminateProcess') 'Only guarded normal closure is permitted'
 $source=[IO.File]::ReadAllText($network)
 Assert ($source -notmatch '(?i)Set-DnsClientServerAddress|Disable-NetAdapter|Set-NetFirewall|Invoke-Expression') 'Diagnostic changes networking'
 Write-Output 'Health diagnostics tests PASS: mocks only; no network probes or RAM trim executed.'
