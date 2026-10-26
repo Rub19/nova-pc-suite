@@ -85,3 +85,30 @@ it("keeps unknown measurements distinct from false and empty batteries", () => {
     )?.rows,
   ).toHaveLength(0);
 });
+
+it("keeps repeated hardware records compact until the user asks for their details", async () => {
+  mocks.invoke.mockResolvedValue({
+    ok: true,
+    data: {
+      computer: { manufacturer: "Fixture", model: "PC" },
+      gpu: [
+        { name: "NVIDIA GeForce RTX", driverVersion: "32.0" },
+        { name: "Virtual display adapter", driverVersion: "1.0" },
+        { name: "Remote display adapter", driverVersion: "2.0" },
+      ],
+      unavailable: [],
+      limitations: [],
+    },
+  });
+
+  await act(async () => root.render(<AboutPC visible />));
+
+  const card = host.querySelector("#pc-gpu")!;
+  const extraRecords = card.querySelector("details");
+  expect(extraRecords).not.toBeNull();
+  expect(extraRecords?.open).toBe(false);
+  expect(extraRecords?.querySelector("summary")?.textContent).toContain(
+    "2 éléments supplémentaires",
+  );
+  expect(card.querySelectorAll(".about-device")).toHaveLength(3);
+});

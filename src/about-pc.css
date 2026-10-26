@@ -11,6 +11,12 @@
   gap: 18px;
   align-items: start;
 }
+.about-column {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
 .about-card {
   scroll-margin-top: 24px;
   min-width: 0;
@@ -28,6 +34,37 @@
   border-top: 1px solid var(--line);
   margin-top: 18px;
   padding-top: 15px;
+}
+.about-more-records {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.about-more-records summary {
+  cursor: pointer;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+  padding: 14px 2px 0;
+}
+.about-more-records summary::-webkit-details-marker {
+  display: none;
+}
+.about-more-records summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+.about-more-records[open] summary::before {
+  content: "−";
+}
+.about-more-records .about-device:first-of-type {
+  margin-top: 14px;
 }
 .about-device h3 {
   color: var(--muted);

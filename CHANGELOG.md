@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.9 preview — 2026-10-26
+
+- Fiche « À propos de ce PC » restructurée : deux colonnes indépendantes qui évitent les grandes zones vides entre des cartes de hauteurs différentes.
+- Les groupes répétés (cartes graphiques, barrettes mémoire, volumes et adaptateurs réseau) restent courts ; les éléments supplémentaires sont accessibles par un panneau repliable.
+- Les champs Windows indisponibles ne sont plus affichés comme des lignes vides dans la fiche, sans rien retirer du rapport exporté.
+
 ## 0.2.8 preview — 2026-10-26
 
 - Installateur NSIS Nova personnalisé : illustration graphite et bleu, bandeau assorti, icônes cohérentes pour installation/désinstallation et dossier Démarrer dédié.

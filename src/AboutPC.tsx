@@ -29,6 +29,18 @@ type Section = {
   fields: Field[];
   unavailable: boolean;
 };
+export function splitHardwareSections(
+  sections: Section[],
+): [Section[], Section[]] {
+  const columns: [Section[], Section[]] = [[], []];
+  const weights = [0, 0];
+  for (const section of sections) {
+    const target = weights[0] <= weights[1] ? 0 : 1;
+    columns[target].push(section);
+    weights[target] += Math.max(1, section.rows.length) * section.fields.length;
+  }
+  return columns;
+}
 const object = (v: unknown): Row =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Row) : {};
 const rows = (v: unknown): Row[] =>
@@ -273,6 +285,70 @@ export function hardwareSections(info: Row): Section[] {
     ),
   ];
 }
+function HardwareCard({ section }: { section: Section }) {
+  const { id, title, icon: Icon, rows: items, fields, unavailable } = section;
+  const device = (item: Row, index: number) => {
+    const present = fields.filter(
+      ([key, , format]) =>
+        hardwareValue(item[key], format) !== "Non disponible",
+    );
+    return (
+      <div className="about-device" key={index}>
+        {items.length > 1 && <h3>{`${title} · ${index + 1}`}</h3>}
+        {present.length ? (
+          <dl>
+            {present.map(([key, label, format]) => (
+              <div key={key}>
+                <dt>{label}</dt>
+                <dd>{hardwareValue(item[key], format)}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="wb-note">
+            Aucune valeur exploitable n’a été retournée.
+          </p>
+        )}
+      </div>
+    );
+  };
+  return (
+    <section className="panel about-card" id={`pc-${id}`}>
+      <h2>
+        <Icon size={19} />
+        {title}
+      </h2>
+      {unavailable ? (
+        <p className="wb-note">
+          Cette source Windows est indisponible. Les valeurs manquantes ne
+          permettent pas de conclure à l’absence du composant.
+        </p>
+      ) : null}
+      {items.length ? (
+        <>
+          {device(items[0], 0)}
+          {items.length > 1 && (
+            <details className="about-more-records">
+              <summary>
+                Afficher {items.length - 1} élément
+                {items.length > 2 ? "s" : ""} supplémentaire
+                {items.length > 2 ? "s" : ""}
+              </summary>
+              {items.slice(1).map(device)}
+            </details>
+          )}
+        </>
+      ) : (
+        <p>
+          {unavailable
+            ? "Informations non disponibles."
+            : "Aucun élément déclaré par cette source Windows."}
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function AboutPC({ visible }: { visible: boolean }) {
   const [info, setInfo] = useState<Row>(),
     [busy, setBusy] = useState(false),
@@ -318,6 +394,7 @@ export default function AboutPC({ visible }: { visible: boolean }) {
           .includes(query.trim().toLocaleLowerCase("fr")),
       )
     : [];
+  const [leftSections, rightSections] = splitHardwareSections(sections);
   function report() {
     return [
       "Nova — À propos de ce PC",
@@ -447,48 +524,16 @@ export default function AboutPC({ visible }: { visible: boolean }) {
             ))}
           </nav>
           <div className="about-grid">
-            {sections.map(
-              ({ id, title, icon: Icon, rows: items, fields, unavailable }) => (
-                <section className="panel about-card" id={`pc-${id}`} key={id}>
-                  <h2>
-                    <Icon size={19} />
-                    {title}
-                  </h2>
-                  {unavailable ? (
-                    <p className="wb-note">
-                      Cette source Windows est indisponible. Les valeurs
-                      manquantes ne permettent pas de conclure à l’absence du
-                      composant.
-                    </p>
-                  ) : null}
-                  {items.length ? (
-                    items.map((item, i) => (
-                      <div className="about-device" key={i}>
-                        {items.length > 1 && (
-                          <h3>
-                            {title} · {i + 1}
-                          </h3>
-                        )}
-                        <dl>
-                          {fields.map(([key, label, format]) => (
-                            <div key={key}>
-                              <dt>{label}</dt>
-                              <dd>{hardwareValue(item[key], format)}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    ))
-                  ) : (
-                    <p>
-                      {unavailable
-                        ? "Informations non disponibles."
-                        : "Aucun élément déclaré par cette source Windows."}
-                    </p>
-                  )}
-                </section>
-              ),
-            )}
+            <div className="about-column">
+              {leftSections.map((section) => (
+                <HardwareCard section={section} key={section.id} />
+              ))}
+            </div>
+            <div className="about-column">
+              {rightSections.map((section) => (
+                <HardwareCard section={section} key={section.id} />
+              ))}
+            </div>
           </div>
           {!sections.length && (
             <p>Aucune rubrique ne correspond à la recherche.</p>
