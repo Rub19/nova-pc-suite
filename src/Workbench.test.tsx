@@ -192,6 +192,16 @@ describe("confirmations et résultats de maintenance", () => {
     expect(host.textContent).toContain("87");
     expect(host.textContent).toContain("Windows a signalé une erreur");
   });
+  it("rend visible le bilan WinGet après une recherche de logiciels", async () => {
+    mocks.invoke.mockResolvedValue({
+      ok: true,
+      data: { available: true, exitCode: 0, output: "Fixture update", truncated: false },
+    });
+    await act(async () => root.render(<Workbench section="applications" />));
+    await click("Rechercher les mises à jour");
+    expect(host.textContent).toContain("Dernière recherche WinGet");
+    expect(host.textContent).toContain("Fixture update");
+  });
   it("exige un consentement distinct avant la purge irréversible", async () => {
     mocks.invoke.mockResolvedValue({
       ok: true,

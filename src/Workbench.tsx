@@ -548,6 +548,7 @@ function WorkbenchView({
   const apps = list(results["apps-list"], "apps").length
     ? list(results["apps-list"], "apps")
     : list(results["apps-list"]);
+  const upgrades = asRow(results["app-upgrades"]);
   const startup = list(results["startup-list"]);
   const validAppId = /^[A-Za-z0-9][A-Za-z0-9._-]{1,127}$/.test(appId);
   const has = (action: string) =>
@@ -895,6 +896,27 @@ function WorkbenchView({
                 <p className="wb-empty">
                   Aucune application disponible dans cette réponse.
                 </p>
+              )}
+              {has("app-upgrades") && (
+                <section className="wb-note wb-upgrades" aria-live="polite">
+                  <strong>Dernière recherche WinGet</strong>
+                  <p>
+                    {upgrades.available === true
+                      ? upgrades.exitCode === 0
+                        ? "Recherche terminée. Consultez les paquets proposés avant toute mise à jour."
+                        : "WinGet a terminé avec un code à vérifier."
+                      : "WinGet n’est pas disponible sur ce PC."}
+                  </p>
+                  {typeof upgrades.output === "string" && upgrades.output.trim() && (
+                    <details className="wb-details">
+                      <summary>Résultats proposés</summary>
+                      <pre className="wb-output">{upgrades.output}</pre>
+                    </details>
+                  )}
+                  {upgrades.truncated === true && (
+                    <small>Le résultat est tronqué pour préserver les performances.</small>
+                  )}
+                </section>
               )}
               <div className="wb-intro">
                 <h2>Mettre à jour un paquet précis</h2>
