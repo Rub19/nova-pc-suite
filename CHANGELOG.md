@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 preview — 2026-10-26
+
+- Recherche globale navigable au clavier avec les flèches et Entrée, plus annonce accessible du résultat actif.
+- Lien d’évitement vers le contenu principal pour les utilisateurs au clavier et lecteurs d’écran.
+- Effacement volontaire du seul historique local de score de santé, sans toucher aux diagnostics Windows ni à l’historique des opérations.
+
 ## 0.2.5 preview — 2026-10-26
 
 - Navigation regroupée, repliable et mémorisée, avec recherche globale au clavier (`Ctrl+K`).

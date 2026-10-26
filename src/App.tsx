@@ -517,7 +517,7 @@ export default function App() {
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.2.5</span>
+              Nova <span className="version">v0.2.6</span>
             </span>
             <button
               aria-label={
