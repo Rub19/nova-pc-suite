@@ -250,6 +250,10 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
     if (guard.current) return;
     guard.current = true;
     setBusy(true);
+    if (!automatic) {
+      setError("");
+      setNotice("");
+    }
     const generation = session.current;
     try {
       const current = (await call(
@@ -435,6 +439,19 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
               strokeWidth="2"
             />
           </svg>
+        </section>
+      )}
+      {!sample && !busy && (
+        <section className="panel memory-empty" role="status">
+          <MemoryStick size={22} />
+          <div>
+            <h2>Aucun relevé mémoire pour le moment</h2>
+            <p>
+              Cliquez sur « Mesurer la mémoire » pour afficher l’utilisation RAM,
+              la pagination et les applications les plus consommatrices. Cette
+              mesure est locale et n’arrête aucun programme.
+            </p>
+          </div>
         </section>
       )}
       {busy && <p role="status">Mesure ou entretien mémoire en cours…</p>}

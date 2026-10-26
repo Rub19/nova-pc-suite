@@ -131,6 +131,17 @@ it("conserve un sélecteur de tri accessible avec une présentation Nova", () =>
     "name",
   ]);
 });
+it("explique comment lancer le premier relevé mémoire", async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  mocks.invoke.mockReset().mockResolvedValue({ ok: true, data: {} });
+  await act(async () => root.render(<MemoryGuardian visible />));
+  expect(host.textContent).toContain("Aucun relevé mémoire pour le moment");
+  expect(host.textContent).toContain("Mesurer la mémoire");
+});
 it("only closes the explicitly confirmed PID and reports pending application confirmation", async () => {
   mocks.invoke.mockResolvedValue({
     ok: true,

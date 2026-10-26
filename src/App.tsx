@@ -773,11 +773,21 @@ export default function App() {
                 <div className="grow">
                   <h2>Votre matériel mérite les bons pilotes.</h2>
                   <p>
-                    Windows Update recherche les mises à jour applicables. Les
-                    catalogues constructeur peuvent proposer d’autres versions.
+                    Windows Update recherche les mises à jour applicables. Nova
+                    compare aussi votre inventaire local et détecte les fabricants
+                    présents pour vous guider vers leur support officiel.
                   </p>
                 </div>
-                {scanButton("updates", "Rechercher les mises à jour")}
+                <div className="action-banner-actions">
+                  {scanButton("updates", "Rechercher les mises à jour")}
+                  <button
+                    className="button secondary"
+                    onClick={() => changePage("driver-sources")}
+                  >
+                    Fabricants détectés
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
               </section>
               <div className="toolbar">
                 <div>

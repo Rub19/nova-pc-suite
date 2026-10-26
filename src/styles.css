@@ -907,6 +907,12 @@ progress::-webkit-progress-value {
   align-items: center;
   gap: 20px;
 }
+.action-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .action-banner .feature-icon {
   margin: 0;
 }
@@ -1199,6 +1205,23 @@ tbody tr:hover {
 .suggestion-card button:hover {
   text-decoration: underline;
 }
+.memory-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-style: dashed;
+}
+.memory-empty > svg {
+  margin-top: 2px;
+  color: var(--blue);
+}
+.memory-empty h2 {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.memory-empty p {
+  font-size: 12px;
+}
 .assistant-intro > svg {
   color: var(--blue);
   margin-bottom: 16px;
@@ -1394,6 +1417,10 @@ dialog p {
   }
   .action-banner {
     flex-wrap: wrap;
+  }
+  .action-banner-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
   .optimization-item {
     padding: 22px;

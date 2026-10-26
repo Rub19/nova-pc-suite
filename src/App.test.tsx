@@ -123,6 +123,19 @@ describe("raccourcis d'interface", () => {
     expect(mocks.action).toHaveBeenCalledTimes(1);
   });
 
+  it("oriente la recherche de pilotes vers les fabricants détectés", async () => {
+    await act(async () => root.render(<App />));
+    const drivers = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Pilotes & mises à jour"),
+    )!;
+    await act(async () => drivers.click());
+    const sources = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Fabricants détectés"),
+    )!;
+    await act(async () => sources.click());
+    expect(host.textContent).toContain("Atelier");
+  });
+
   it("affiche une attente explicite pour les mesures non encore analysées", async () => {
     await act(async () => root.render(<App />));
     expect(host.textContent).toContain("Analyse requise");
