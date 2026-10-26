@@ -461,7 +461,11 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
           </label>
           <label>
             Trier par{" "}
-            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+            <select
+              className="nova-select"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
               <option value="ram">RAM utilisée</option>
               <option value="private">Mémoire privée</option>
               <option value="name">Nom</option>

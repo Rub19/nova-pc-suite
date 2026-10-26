@@ -584,6 +584,7 @@ function WorkbenchView({
                 <label>
                   Profil / catégorie
                   <select
+                    className="nova-select"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                   >
@@ -959,6 +960,7 @@ function WorkbenchView({
                 <label>
                   Afficher{" "}
                   <select
+                    className="nova-select"
                     value={startupState}
                     onChange={(e) => setStartupState(e.target.value)}
                   >

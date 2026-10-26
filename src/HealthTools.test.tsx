@@ -121,6 +121,16 @@ it("never requests closure on measurement, opening a dialog, or cancel", async (
   await click("Annuler");
   expect(mocks.invoke).not.toHaveBeenCalled();
 });
+it("conserve un sélecteur de tri accessible avec une présentation Nova", () => {
+  const select = host.querySelector<HTMLSelectElement>("select")!;
+  expect(select.classList.contains("nova-select")).toBe(true);
+  expect(select.value).toBe("ram");
+  expect([...select.options].map((option) => option.value)).toEqual([
+    "ram",
+    "private",
+    "name",
+  ]);
+});
 it("only closes the explicitly confirmed PID and reports pending application confirmation", async () => {
   mocks.invoke.mockResolvedValue({
     ok: true,

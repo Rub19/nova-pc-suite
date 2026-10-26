@@ -133,6 +133,11 @@
   color: var(--text, #edf0f4);
   font: inherit;
 }
+.workbench .nova-select {
+  padding-right: 38px;
+  border-radius: 8px;
+  background-color: var(--bg, #131518);
+}
 .wb-tag {
   display: inline-block;
   margin-top: 8px;
