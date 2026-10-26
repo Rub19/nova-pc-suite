@@ -98,6 +98,29 @@ describe("raccourcis d'interface", () => {
     expect(document.activeElement).not.toBe(input);
   });
 
+  it("permet de choisir un résultat de recherche au clavier", async () => {
+    await act(async () => root.render(<App />));
+    const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input,
+        "pilotes",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () =>
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),
+    );
+    expect(host.querySelector("[role='option'][aria-selected='true']")?.textContent).toContain(
+      "Pilotes & mises à jour",
+    );
+    await act(async () =>
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+    );
+    expect(input.value).toBe("");
+    expect(host.textContent).toContain("Pilotes & mises à jour");
+  });
+
   it("permet de replier un groupe sans retirer ses pages de la recherche", async () => {
     await act(async () => root.render(<App />));
     const maintenance = [...host.querySelectorAll("button")].find((button) =>

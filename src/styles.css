@@ -470,7 +470,8 @@ button svg {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.search-results button:hover {
+.search-results button:hover,
+.search-results button.active {
   background: var(--hover);
 }
 .search-results button:focus-visible {

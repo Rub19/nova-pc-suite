@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Workbench from "./Workbench";
@@ -132,6 +132,7 @@ export default function App() {
   );
   const [collapsedGroups, setCollapsedGroups] = useState(readCollapsedGroups);
   const [query, setQuery] = useState("");
+  const [activeSearchResult, setActiveSearchResult] = useState(-1);
   const [data, setData] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -365,6 +366,29 @@ export default function App() {
           .map((item) => ({ ...item, group: group.label })),
       )
     : [];
+  function selectSearchResult(index: number) {
+    const result = filteredNav[index];
+    if (result) changePage(result.id);
+  }
+  function handleSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (!filteredNav.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSearchResult((current) =>
+        current >= filteredNav.length - 1 ? 0 : current + 1,
+      );
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSearchResult((current) =>
+        current <= 0 ? filteredNav.length - 1 : current - 1,
+      );
+    }
+    if (event.key === "Enter" && activeSearchResult >= 0) {
+      event.preventDefault();
+      selectSearchResult(activeSearchResult);
+    }
+  }
   function filtered(items: Row[]) {
     return items.filter((x) =>
       Object.values(x)
@@ -510,9 +534,21 @@ export default function App() {
             <input
               ref={searchInput}
               aria-label="Rechercher dans Nova et les résultats"
+              aria-autocomplete="list"
+              aria-controls="nova-search-results"
+              aria-expanded={Boolean(query)}
+              aria-activedescendant={
+                activeSearchResult >= 0
+                  ? `nova-search-result-${activeSearchResult}`
+                  : undefined
+              }
               placeholder="Rechercher dans Nova…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActiveSearchResult(-1);
+              }}
+              onKeyDown={handleSearchKeyDown}
             />
             {!query && <kbd aria-hidden="true">Ctrl K</kbd>}
             {query && (
@@ -524,9 +560,17 @@ export default function App() {
               </button>
             )}
             {query && (
-              <div className="search-results">
-                {filteredNav.map((n) => (
-                  <button key={n.id} onClick={() => changePage(n.id)}>
+              <div className="search-results" id="nova-search-results" role="listbox">
+                {filteredNav.map((n, index) => (
+                  <button
+                    id={`nova-search-result-${index}`}
+                    key={n.id}
+                    role="option"
+                    aria-selected={activeSearchResult === index}
+                    className={activeSearchResult === index ? "active" : undefined}
+                    onMouseEnter={() => setActiveSearchResult(index)}
+                    onClick={() => selectSearchResult(index)}
+                  >
                     <span>
                       {n.label}
                       <small>{n.group}</small>
