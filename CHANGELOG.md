@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.11 preview — 2026-10-26
+
+- Correction de la carte « Nettoyage automatique des temporaires » : case, titre et explication sont réunis dans une zone cliquable lisible avec survol et focus cohérents.
+
 ## 0.2.10 preview — 2026-10-26
 
 - Menu de tri Mémoire reconstruit avec le style sombre Nova, état sélectionné et navigation clavier, sans le rendu hétérogène du menu natif Windows.

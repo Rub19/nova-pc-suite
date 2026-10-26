@@ -12,12 +12,10 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  mocks.invoke
-    .mockReset()
-    .mockResolvedValue({
-      ok: true,
-      data: { deletedCount: 2, preservedCount: 0, freedBytes: 1024 },
-    });
+  mocks.invoke.mockReset().mockResolvedValue({
+    ok: true,
+    data: { deletedCount: 2, preservedCount: 0, freedBytes: 1024 },
+  });
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -54,6 +52,15 @@ it("resumes the saved opt-in while navigating other pages", async () => {
   await act(async () => root.render(<AutomaticCleanup visible={false} />));
   expect(mocks.invoke).toHaveBeenCalledTimes(1);
   expect(host.querySelector("section")?.hidden).toBe(true);
+});
+it("groups the automatic-cleanup checkbox and its explanation in one click target", async () => {
+  await act(async () => root.render(<AutomaticCleanup visible />));
+  const toggle = host.querySelector(".auto-cleanup-toggle");
+  expect(toggle?.tagName).toBe("LABEL");
+  expect(toggle?.querySelector('input[type="checkbox"]')).not.toBeNull();
+  expect(toggle?.textContent).toContain(
+    "Suppression définitive des fichiers éligibles",
+  );
 });
 it("keeps partial results visible and never presents failure as successful cleanup", async () => {
   mocks.invoke.mockResolvedValue({

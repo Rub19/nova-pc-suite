@@ -63,7 +63,7 @@ export default function AutomaticCleanup({ visible }: { visible: boolean }) {
       aria-label="Nettoyage automatique des temporaires"
     >
       <h2>Nettoyage automatique des temporaires</h2>
-      <label className="wb-check-row">
+      <label className="wb-check-row auto-cleanup-toggle">
         <input
           type="checkbox"
           checked={enabled}

@@ -337,3 +337,46 @@
 .auto-cleanup[hidden] {
   display: none;
 }
+.auto-cleanup .auto-cleanup-toggle {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 14px 0 12px;
+  padding: 12px;
+  border: 1px solid var(--line, #30353d);
+  border-radius: 8px;
+  background: var(--bg, #131518);
+  color: var(--text, #edf0f4);
+  cursor: pointer;
+}
+.auto-cleanup .auto-cleanup-toggle:hover {
+  border-color: var(--accent-line, #34465f);
+  background: var(--hover, #262b32);
+}
+.auto-cleanup .auto-cleanup-toggle:focus-within {
+  border-color: var(--blue, #98baff);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--blue, #98baff) 16%, transparent);
+}
+.auto-cleanup .auto-cleanup-toggle input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--blue, #98baff);
+}
+.auto-cleanup .auto-cleanup-toggle span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.auto-cleanup .auto-cleanup-toggle strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+.auto-cleanup .auto-cleanup-toggle small {
+  color: var(--muted, #a4acb8);
+  font-size: 12px;
+  line-height: 1.45;
+}
