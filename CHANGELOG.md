@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.8 preview — 2026-10-26
+
+- Installateur NSIS Nova personnalisé : illustration graphite et bleu, bandeau assorti, icônes cohérentes pour installation/désinstallation et dossier Démarrer dédié.
+- Les visuels sont générés puis convertis dans le dépôt par un script reproductible, exécuté avant chaque bundle.
+
 ## 0.2.7 preview — 2026-10-26
 
 - Audit local des appareils et pilotes : erreurs PnP déclarées par Windows, compteurs de signature et liste limitée des appareils à examiner.

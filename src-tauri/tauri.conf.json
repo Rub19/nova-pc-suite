@@ -1,9 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Nova PC Suite",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "identifier": "io.github.rub19.novapcsuite",
-  "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://127.0.0.1:1420", "beforeBuildCommand": "npm run build && node scripts/generate-hooks.mjs", "frontendDist": "../dist" },
+  "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://127.0.0.1:1420", "beforeBuildCommand": "npm run build && node scripts/generate-hooks.mjs && powershell -NoProfile -File scripts/generate-installer-art.ps1", "frontendDist": "../dist" },
   "app": {
     "windows": [{ "title": "Nova PC Suite", "width": 1280, "height": 860, "minWidth": 850, "minHeight": 620 }],
     "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost" }
@@ -13,6 +13,20 @@
     "shortDescription": "Votre centre de maintenance Windows",
     "category": "Utility",
     "icon": ["icons/icon.ico", "icons/32x32.png", "icons/128x128.png"],
-    "windows": { "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true }, "nsis": { "installMode": "currentUser", "languages": ["French", "English"], "displayLanguageSelector": true, "installerHooks": "hooks.nsh" } }
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["French", "English"],
+        "displayLanguageSelector": true,
+        "installerHooks": "hooks.nsh",
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "sidebarImage": "windows/sidebar.bmp",
+        "headerImage": "windows/header.bmp",
+        "uninstallerHeaderImage": "windows/header.bmp",
+        "startMenuFolder": "Nova PC Suite"
+      }
+    }
   }
 }
