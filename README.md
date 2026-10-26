@@ -4,10 +4,10 @@ Application Windows 10/11 x64 de diagnostic, pilotes et maintenance. Interface f
 
 ## Télécharger
 
-[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.4 preview**, maintenance étendue et thème sombre graphite.
+[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.5 preview**, maintenance étendue et thème sombre graphite.
 
-- `Nova-PC-Suite-0.2.4-setup.exe` : véritable installateur avec désinstallation Windows.
-- `Nova-PC-Suite-0.2.4.exe` : exécutable autonome, WebView2 requis.
+- `Nova-PC-Suite-0.2.5-setup.exe` : véritable installateur avec désinstallation Windows.
+- `Nova-PC-Suite-0.2.5.exe` : exécutable autonome, WebView2 requis.
 - `SHA256SUMS.txt` : empreintes de contrôle.
 
 Binaires non signés Authenticode : Windows peut afficher un avertissement d’éditeur inconnu. La preview doit encore être validée sur plusieurs PC et VM Windows 10 avant une version stable.
@@ -26,6 +26,15 @@ Binaires non signés Authenticode : Windows peut afficher un avertissement d’�
 - Accès aux outils de nettoyage, démarrage et sécurité Windows.
 - Recommandations locales ; IA optionnelle via Ollama avec le premier modèle installé sur le PC.
 - Historique local des 100 dernières opérations et export JSON ; recherche et pagination des tableaux.
+
+### Nouveautés 0.2.5
+
+- Navigation regroupée, repliable et mémorisée, recherche globale `Ctrl+K`, états de chargement lisibles et cartes plus cohérentes.
+- Score de santé local explicable, tendance locale limitée et rapports `.txt`/`.json` sans processus, numéros de série ni adresses réseau.
+- Assistant de première utilisation, suggestions locales non automatiques et parcours de mesure mémoire plus clair.
+- Centre logiciel avec résultats WinGet détaillés ; pilotes classés (graphique, réseau, audio, stockage, chipset et périphériques) et filtrables.
+- L’inventaire matériel lourd est chargé seulement à l’ouverture de « À propos de ce PC » pour accélérer le démarrage.
+- [Notes de version et limites](docs/RELEASE-NOTES-0.2.5.md).
 
 ### Nouveautés 0.2.4
 

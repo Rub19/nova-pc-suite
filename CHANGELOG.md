@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.5 preview — 2026-10-26
+
+- Navigation regroupée, repliable et mémorisée, avec recherche globale au clavier (`Ctrl+K`).
+- Tableau de santé local avec score explicable, historique minimal local et rapports texte/JSON qui excluent processus, numéros de série et adresses réseau.
+- Assistant de première utilisation, suggestions d’entretien non automatiques et états de chargement plus clairs dans le tableau de bord.
+- Centre logiciel enrichi avec résultats WinGet lisibles ; catégories et filtres pour les pilotes installés.
+- Mesure mémoire guidée avant affichage des processus ; inventaire matériel chargé seulement à l’ouverture de l’onglet pour alléger le démarrage.
+- Menus déroulants, cartes et libellés affinés pour une interface sombre plus cohérente.
+
 ## 0.2.4 preview — 2026-10-26
 
 - Correction des erreurs PowerShell intégrées UTF-8 qui empêchaient les diagnostics matériel, mémoire et réseau.
