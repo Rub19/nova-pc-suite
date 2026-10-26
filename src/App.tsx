@@ -164,6 +164,8 @@ export default function App() {
   const volumes = rows(data.storage, "volumes");
   const installed = rows(data.drivers);
   const updates = rows(data.updates);
+  const driverAudit = data["driver-audit"];
+  const driverProblems = rows(driverAudit, "problemDevices");
   const [driverSelection, setDriverSelection] = useState<string[]>([]);
   const [driverCategoryFilter, setDriverCategoryFilter] = useState("Tout");
   useEffect(() => {
@@ -917,6 +919,42 @@ export default function App() {
                     <ArrowRight size={15} />
                   </button>
                 </div>
+              </section>
+              <section className="panel driver-audit" aria-label="Audit local des appareils">
+                <div>
+                  <span className="tag neutral">LECTURE SEULE</span>
+                  <h2>État des appareils et des pilotes</h2>
+                  <p>
+                    Vérifie les erreurs déclarées par Windows et les métadonnées
+                    de signature. Cet audit ne télécharge, n’installe ni ne remplace aucun pilote.
+                  </p>
+                </div>
+                <div className="driver-audit-actions">
+                  {scanButton("driver-audit", "Auditer les appareils")}
+                  <button className="button secondary" onClick={() => changePage("driver-sources")}>
+                    Supports officiels <ArrowRight size={15} />
+                  </button>
+                </div>
+                {driverAudit && (
+                  <div className="driver-audit-result" aria-live="polite">
+                    <span>{text(driverAudit.deviceCount)} appareils relevés</span>
+                    <span>{text(driverAudit.signedDriverCount)} pilotes déclarés signés</span>
+                    <span>{text(driverAudit.unsignedDriverCount)} à vérifier</span>
+                    {driverProblems.length ? (
+                      <div className="driver-problems">
+                        <strong>{driverProblems.length} appareil{driverProblems.length > 1 ? "s" : ""} demande{driverProblems.length > 1 ? "nt" : ""} une attention</strong>
+                        {driverProblems.slice(0, 5).map((device, index) => (
+                          <p key={`${text(device.name)}-${index}`}>
+                            {text(device.name) || "Appareil non nommé"} · code Windows {text(device.errorCode)}
+                          </p>
+                        ))}
+                        <small>Ouvrez les supports officiels ou recherchez les mises à jour Windows avant toute modification.</small>
+                      </div>
+                    ) : (
+                      <span className="health-clear"><CheckCircle2 size={16} /> Aucun appareil en erreur signalé par Windows</span>
+                    )}
+                  </div>
+                )}
               </section>
               <div className="toolbar">
                 <div>

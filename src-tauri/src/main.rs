@@ -258,6 +258,7 @@ fn allowed(action: &str) -> bool {
         action,
         "snapshot"
             | "drivers"
+            | "driver-audit"
             | "updates"
             | "install-drivers"
             | "startup"
@@ -641,6 +642,7 @@ mod tests {
             assert!(allowed(action) && mutation(action));
         }
         assert!(!mutation("snapshot"));
+        assert!(allowed("driver-audit") && !mutation("driver-audit"));
     }
     #[test]
     fn encoding_preserves_unicode() {

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('snapshot','drivers','updates','install-drivers','startup','security','storage','processes','restore','repair','trim','energy-balanced','energy-performance')]
+    [ValidateSet('snapshot','drivers','driver-audit','updates','install-drivers','startup','security','storage','processes','restore','repair','trim','energy-balanced','energy-performance')]
     [string]$Action = 'snapshot',
     [string[]]$ApprovedIds = @(),
     [switch]$AcceptEulas
@@ -95,6 +95,27 @@ try {
             $data = @{ items = @(Get-CimInstance Win32_PnPSignedDriver | ForEach-Object {
                 @{ name = $_.DeviceName; manufacturer = $_.Manufacturer; version = $_.DriverVersion; signed = $_.IsSigned; date = $(if ($null -ne $_.DriverDate) { $_.DriverDate.ToString('yyyy-MM-dd') } else { $null }) }
             }) }
+        }
+        'driver-audit' {
+            # Read-only inventory. ConfigManagerErrorCode is documented by Microsoft as
+            # the PnP Configuration Manager status; hardware IDs are deliberately omitted.
+            # https://learn.microsoft.com/windows/win32/cimwin32prov/win32-pnpentity
+            $devices = @(Get-CimInstance Win32_PnPEntity -Property Name,Manufacturer,ConfigManagerErrorCode | ForEach-Object {
+                @{ name = $_.Name; manufacturer = $_.Manufacturer; errorCode = [int]$_.ConfigManagerErrorCode }
+            })
+            # Win32_PnPSignedDriver exposes signature metadata. A missing signature is
+            # reported for review only; Nova never blocks or replaces a driver from it.
+            # https://learn.microsoft.com/windows/win32/cimwin32prov/win32-pnpsigneddriver
+            $signed = @(Get-CimInstance Win32_PnPSignedDriver -Property IsSigned | Where-Object { $_.IsSigned -eq $true }).Count
+            $unsigned = @(Get-CimInstance Win32_PnPSignedDriver -Property IsSigned | Where-Object { $_.IsSigned -eq $false }).Count
+            $problems = @($devices | Where-Object { $_.errorCode -ne 0 } | Select-Object -First 50)
+            $data = @{
+                deviceCount = $devices.Count
+                signedDriverCount = $signed
+                unsignedDriverCount = $unsigned
+                problemDevices = $problems
+                hasProblems = [bool]($problems.Count -gt 0)
+            }
         }
         'startup' {
             # Commands, locations and user identities are deliberately omitted.

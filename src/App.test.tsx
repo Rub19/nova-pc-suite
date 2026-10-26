@@ -182,6 +182,19 @@ describe("raccourcis d'interface", () => {
     expect(host.textContent).toContain("Atelier");
   });
 
+  it("lance un audit de pilotes en lecture seule à la demande", async () => {
+    await act(async () => root.render(<App />));
+    const drivers = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Pilotes & mises à jour"),
+    )!;
+    await act(async () => drivers.click());
+    const audit = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Auditer les appareils"),
+    )!;
+    await act(async () => audit.click());
+    expect(mocks.action).toHaveBeenLastCalledWith("driver-audit", false, [], false);
+  });
+
   it("affiche une attente explicite pour les mesures non encore analysées", async () => {
     await act(async () => root.render(<App />));
     expect(host.textContent).toContain("Analyse requise");

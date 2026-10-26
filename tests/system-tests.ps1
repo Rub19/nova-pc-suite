@@ -7,12 +7,13 @@ if ($parseErrors.Count) { throw 'Backend PowerShell syntax is invalid.' }
 $shapes = @{
     snapshot = @('os', 'cpu', 'memory', 'isAdmin')
     drivers = @('items')
+    'driver-audit' = @('deviceCount', 'signedDriverCount', 'unsignedDriverCount', 'problemDevices')
     startup = @('items')
     security = @('antivirus', 'firewall')
     storage = @('volumes')
     processes = @('items')
 }
-foreach ($action in @('snapshot', 'drivers', 'startup', 'security', 'storage', 'processes')) {
+foreach ($action in @('snapshot', 'drivers', 'driver-audit', 'startup', 'security', 'storage', 'processes')) {
     $raw = & "$PSHOME/powershell.exe" -NoProfile -NonInteractive -File $scriptPath -Action $action
     $result = ($raw -join "`n") | ConvertFrom-Json
     if ($result.ok -isnot [bool]) { throw "$action : invalid JSON envelope" }

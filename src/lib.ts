@@ -11,6 +11,7 @@ export type Event = {
 export const labels: Record<string, string> = {
   snapshot: "Diagnostic système",
   drivers: "Inventaire des pilotes",
+  "driver-audit": "Audit des appareils et pilotes",
   updates: "Recherche des mises à jour",
   "install-drivers": "Installation groupée des pilotes",
   startup: "Applications au démarrage",

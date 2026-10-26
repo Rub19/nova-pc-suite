@@ -652,6 +652,52 @@ main {
   width: 160px;
   height: 28px;
 }
+.driver-audit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin: 18px 0;
+}
+.driver-audit h2 {
+  margin: 8px 0 6px;
+}
+.driver-audit p {
+  font-size: 12px;
+}
+.driver-audit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.driver-audit-result {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.driver-audit-result > span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+.driver-problems {
+  width: 100%;
+  color: var(--text);
+}
+.driver-problems strong,
+.driver-problems small {
+  display: block;
+  margin-top: 8px;
+}
+.driver-problems p {
+  margin-top: 4px;
+}
 .quiet-action {
   margin-left: auto;
   color: var(--muted);
@@ -1569,6 +1615,12 @@ dialog p {
 @media (max-width: 900px) {
   .health-summary {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+  .driver-audit {
+    grid-template-columns: 1fr;
+  }
+  .driver-audit-actions {
+    justify-content: flex-start;
   }
   .health-actions {
     grid-column: 1 / -1;
