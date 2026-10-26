@@ -43,6 +43,7 @@ import {
   Event,
   getHistory,
   healthScore,
+  healthReport,
   labels,
   memoryPercent,
   message,
@@ -172,6 +173,16 @@ export default function App() {
   );
   const advice = recommendations(snapshot, data.storage);
   const health = healthScore(snapshot, data.storage, data.security, updates.length);
+  function downloadHealthReport(format: "txt" | "json") {
+    const report = healthReport(health);
+    const content = format === "txt" ? report.text : report.json;
+    const blob = new Blob([content], { type: format === "txt" ? "text/plain;charset=utf-8" : "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `nova-bilan-sante.${format}`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
   useEffect(() => {
     if (!snapshot) return;
     setHealthHistory((previous) => {
@@ -669,6 +680,10 @@ export default function App() {
                   ) : (
                     <span className="health-clear"><CheckCircle2 size={16} /> Aucun point prioritaire détecté</span>
                   )}
+                  <div className="health-export">
+                    <button onClick={() => downloadHealthReport("txt")}>Rapport .txt</button>
+                    <button onClick={() => downloadHealthReport("json")}>Rapport .json</button>
+                  </div>
                 </div>
               </section>
               {healthHistory.length > 1 && (

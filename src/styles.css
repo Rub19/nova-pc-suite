@@ -608,6 +608,20 @@ main {
 .health-clear {
   color: var(--green);
 }
+.health-export {
+  display: flex;
+  gap: 10px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+}
+.health-export button {
+  color: var(--muted);
+  font-size: 10px;
+}
+.health-export button:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
 .health-trend {
   display: flex;
   align-items: center;

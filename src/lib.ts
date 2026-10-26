@@ -256,3 +256,24 @@ export function driverCategory(driver: Row) {
   if (/chipset|pci express|system management|i2c|smbus/.test(value)) return "Chipset";
   return "Périphérique";
 }
+
+export function healthReport(health: { score: number; level: string; items: HealthItem[] }) {
+  const report = {
+    generatedAt: new Date().toISOString(),
+    score: health.score,
+    level: health.level,
+    findings: health.items.map(({ title, detail, penalty }) => ({ title, detail, penalty })),
+    privacy: "Exclut les identifiants matériel, noms de processus, adresses réseau et numéros de série.",
+  };
+  return {
+    json: JSON.stringify(report, null, 2),
+    text: [
+      "Bilan Nova — local",
+      `Score : ${report.score}/100 (${report.level})`,
+      "",
+      ...(report.findings.length ? report.findings.map((item) => `- ${item.title} : ${item.detail}`) : ["- Aucun point prioritaire détecté."]),
+      "",
+      report.privacy,
+    ].join("\n"),
+  };
+}

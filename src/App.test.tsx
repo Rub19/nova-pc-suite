@@ -26,6 +26,7 @@ vi.mock("./lib", () => ({
   message: (value: unknown) => String(value ?? ""),
   recommendations: () => [],
   healthScore: () => ({ score: 100, level: "Bon état", items: [] }),
+  healthReport: () => ({ text: "Bilan Nova", json: "{}" }),
   driverCategory: () => "Périphérique",
   elevate: vi.fn(),
   openSettings: vi.fn(),
