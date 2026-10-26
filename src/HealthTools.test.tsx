@@ -121,15 +121,27 @@ it("never requests closure on measurement, opening a dialog, or cancel", async (
   await click("Annuler");
   expect(mocks.invoke).not.toHaveBeenCalled();
 });
-it("conserve un sélecteur de tri accessible avec une présentation Nova", () => {
-  const select = host.querySelector<HTMLSelectElement>("select")!;
-  expect(select.classList.contains("nova-select")).toBe(true);
-  expect(select.value).toBe("ram");
-  expect([...select.options].map((option) => option.value)).toEqual([
-    "ram",
-    "private",
-    "name",
-  ]);
+it("uses a compact Nova sort menu instead of the browser dropdown", async () => {
+  expect(host.querySelector("select")).toBeNull();
+  await click("RAM utilisée");
+  const menu = host.querySelector('[role="listbox"]');
+  expect(menu?.textContent).toContain("Mémoire privée");
+  await click("Mémoire privée");
+  expect(host.querySelector('[role="listbox"]')).toBeNull();
+  expect(host.querySelector('[role="combobox"]')?.textContent).toContain(
+    "Mémoire privée",
+  );
+});
+it("allows automatic observation after a measurement before targets are selected", async () => {
+  const auto = [...host.querySelectorAll("button")].find((button) =>
+    button.textContent?.includes("Activer la surveillance automatique"),
+  )!;
+  expect(auto.disabled).toBe(false);
+  await act(async () => auto.click());
+  expect(host.querySelector("dialog")?.open).toBe(true);
+  expect(host.querySelector("dialog")?.textContent).toContain(
+    "Aucun processus n’est encore autorisé",
+  );
 });
 it("explique comment lancer le premier relevé mémoire", async () => {
   await act(async () => root.unmount());

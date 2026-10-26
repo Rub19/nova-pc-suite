@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, ShieldCheck, Wifi, MemoryStick } from "lucide-react";
+import {
+  Activity,
+  Check,
+  ChevronDown,
+  MemoryStick,
+  ShieldCheck,
+  Wifi,
+} from "lucide-react";
 import {
   memoryDecision,
   type MemorySample,
@@ -29,6 +36,65 @@ const errors: Record<string, string> = {
   NetworkDiagnosticUnavailable:
     "Certains diagnostics réseau sont indisponibles. Vérifiez les permissions Windows.",
 };
+const sortLabels = {
+  ram: "RAM utilisée",
+  private: "Mémoire privée",
+  name: "Nom",
+} as const;
+type MemorySort = keyof typeof sortLabels;
+
+function MemorySortMenu({
+  value,
+  onChange,
+}: {
+  value: MemorySort;
+  onChange: (value: MemorySort) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="memory-sort">
+      <button
+        type="button"
+        className="memory-sort-trigger"
+        role="combobox"
+        aria-controls="memory-sort-options"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+        }}
+      >
+        <span>{sortLabels[value]}</span>
+        <ChevronDown size={17} aria-hidden="true" />
+      </button>
+      {open && (
+        <div
+          className="memory-sort-menu"
+          id="memory-sort-options"
+          role="listbox"
+        >
+          {(Object.keys(sortLabels) as MemorySort[]).map((option) => (
+            <button
+              type="button"
+              key={option}
+              role="option"
+              aria-selected={value === option}
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+            >
+              <span>{sortLabels[option]}</span>
+              {value === option && <Check size={16} aria-label="Sélectionné" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 async function call(
   module: string,
   action: string,
@@ -205,7 +271,7 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
     [auto, setAuto] = useState(false),
     [closing, setClosing] = useState(false),
     [query, setQuery] = useState(""),
-    [sort, setSort] = useState("ram"),
+    [sort, setSort] = useState<MemorySort>("ram"),
     [manageableOnly, setManageableOnly] = useState(false),
     [pending, setPending] = useState<"auto" | MemoryTarget | null>(null),
     [error, setError] = useState(""),
@@ -386,7 +452,7 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
         </button>
         <button
           className="button primary"
-          disabled={!selected.length || busy}
+          disabled={!sample || busy}
           onClick={() => {
             if (auto) {
               session.current++;
@@ -407,7 +473,10 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
         <p role="status" className="alert success">
           <ShieldCheck size={18} />
           Surveillance active tant que Nova reste ouvert, même sur un autre
-          écran. {selected.length} processus autorisé(s).
+          écran.{" "}
+          {selected.length
+            ? `${selected.length} processus autorisé(s).`
+            : "Mode observation : choisissez une application pour autoriser son entretien automatique."}
         </p>
       )}
       {sample && (
@@ -447,9 +516,9 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
           <div>
             <h2>Aucun relevé mémoire pour le moment</h2>
             <p>
-              Cliquez sur « Mesurer la mémoire » pour afficher l’utilisation RAM,
-              la pagination et les applications les plus consommatrices. Cette
-              mesure est locale et n’arrête aucun programme.
+              Cliquez sur « Mesurer la mémoire » pour afficher l’utilisation
+              RAM, la pagination et les applications les plus consommatrices.
+              Cette mesure est locale et n’arrête aucun programme.
             </p>
           </div>
         </section>
@@ -477,16 +546,8 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
             />
           </label>
           <label>
-            Trier par{" "}
-            <select
-              className="nova-select"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              <option value="ram">RAM utilisée</option>
-              <option value="private">Mémoire privée</option>
-              <option value="name">Nom</option>
-            </select>
+            Trier par
+            <MemorySortMenu value={sort} onChange={setSort} />
           </label>
           <label>
             <input
@@ -514,7 +575,7 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
             <label className="grow">
               <input
                 type="checkbox"
-                disabled={!t.manageable || busy || auto}
+                disabled={!t.manageable || busy}
                 checked={selected.some(
                   (s) => s.pid === t.pid && s.started === t.started,
                 )}
@@ -576,7 +637,9 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
         </h2>
         <p>
           {pending === "auto"
-            ? "Nova pourra demander une réduction du working set aux seuls processus que vous avez sélectionnés, lorsque les critères de pression sont remplis. Cette autorisation dure jusqu’à l’arrêt du mode ou la fermeture de Nova."
+            ? selected.length
+              ? "Nova pourra demander une réduction du working set aux seuls processus que vous avez sélectionnés, lorsque les critères de pression sont remplis. Cette autorisation dure jusqu’à l’arrêt du mode ou la fermeture de Nova."
+              : "Aucun processus n’est encore autorisé : Nova surveillera la pression RAM sans modifier d’application. Vous pourrez cocher une application gérable pendant la surveillance pour autoriser son entretien automatique."
             : closing
               ? "Enregistrez votre travail avant de continuer. Nova demande une fermeture normale de cette application uniquement. Elle peut demander confirmation ou refuser ; les processus système sont exclus et aucun arrêt forcé n’est effectué."
               : "Windows pourra retirer des pages du working set de cette application en arrière-plan. Des défauts de page peuvent augmenter lors de sa prochaine utilisation."}

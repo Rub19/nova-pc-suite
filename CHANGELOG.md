@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10 preview — 2026-10-26
+
+- Menu de tri Mémoire reconstruit avec le style sombre Nova, état sélectionné et navigation clavier, sans le rendu hétérogène du menu natif Windows.
+- La surveillance mémoire démarre après une mesure même sans application autorisée : elle observe d’abord, puis entretient uniquement les applications cochées par l’utilisateur.
+- Message explicite lors de l’activation et possibilité d’ajouter ou retirer une application autorisée pendant la surveillance.
+
 ## 0.2.9 preview — 2026-10-26
 
 - Fiche « À propos de ce PC » restructurée : deux colonnes indépendantes qui évitent les grandes zones vides entre des cartes de hauteurs différentes.

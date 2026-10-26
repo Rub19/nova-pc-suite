@@ -125,18 +125,23 @@ a:focus-visible {
   padding: 9px 38px 9px 12px;
   color: var(--text);
   background-color: var(--bg);
-  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
     linear-gradient(135deg, var(--muted) 50%, transparent 50%);
   background-position:
     calc(100% - 17px) 18px,
     calc(100% - 12px) 18px;
-  background-size: 5px 5px, 5px 5px;
+  background-size:
+    5px 5px,
+    5px 5px;
   background-repeat: no-repeat;
   font: inherit;
   font-weight: 550;
   line-height: 1.4;
   cursor: pointer;
-  transition: border-color 140ms ease, background-color 140ms ease,
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
     box-shadow 140ms ease;
 }
 .nova-select:hover:not(:disabled) {
@@ -152,6 +157,59 @@ a:focus-visible {
 .nova-select option {
   color: var(--text);
   background: var(--surface);
+}
+.memory-sort {
+  position: relative;
+  min-width: 190px;
+}
+.memory-sort-trigger {
+  display: inline-flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 550;
+}
+.memory-sort-trigger:hover,
+.memory-sort-trigger[aria-expanded="true"] {
+  border-color: var(--blue);
+  background: var(--hover);
+}
+.memory-sort-trigger:focus-visible,
+.memory-sort-menu button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.memory-sort-menu {
+  position: absolute;
+  z-index: 4;
+  width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 12px 28px var(--backdrop);
+}
+.memory-sort-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  text-align: left;
+}
+.memory-sort-menu button:hover,
+.memory-sort-menu button[aria-selected="true"] {
+  background: var(--hover);
 }
 button {
   border: 0;
@@ -429,7 +487,9 @@ button svg {
   padding: 2px 5px;
   color: var(--muted);
   background: var(--bg);
-  font: 600 9px/1.2 "Segoe UI", sans-serif;
+  font:
+    600 9px/1.2 "Segoe UI",
+    sans-serif;
   white-space: nowrap;
 }
 .search-wrap input:focus {
@@ -545,7 +605,9 @@ main {
   background: var(--button-hover);
 }
 .button:not(:disabled) {
-  transition: background-color 140ms ease, border-color 140ms ease,
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
     transform 140ms ease;
 }
 .button:not(:disabled):active {
