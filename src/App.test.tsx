@@ -41,6 +41,8 @@ beforeEach(() => {
     this.open = true;
   };
   localStorage.clear();
+  mocks.action.mockReset();
+  mocks.history.mockReset();
   mocks.action.mockResolvedValue({ ok: true, data: {} });
   mocks.history.mockResolvedValue([]);
   host = document.createElement("div");
@@ -108,5 +110,16 @@ describe("raccourcis d'interface", () => {
     await act(async () => (driverResult as HTMLButtonElement).click());
     expect(maintenance.getAttribute("aria-expanded")).toBe("true");
     expect(localStorage.getItem("nova-collapsed-nav")).toBe("[]");
+  });
+
+  it("présente des suggestions sans lancer de maintenance automatiquement", async () => {
+    await act(async () => root.render(<App />));
+    const suggestions = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Suggestions Nova"),
+    )!;
+    await act(async () => suggestions.click());
+    expect(host.textContent).toContain("Suggestions pour votre PC");
+    expect(host.textContent).toContain("Gérer les logiciels");
+    expect(mocks.action).toHaveBeenCalledTimes(1);
   });
 });

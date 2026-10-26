@@ -1093,6 +1093,65 @@ tbody tr:hover {
   padding: 25px 0 35px;
   text-align: center;
 }
+.suggestion-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--blue-soft);
+}
+.suggestion-hero .feature-icon {
+  margin: 0;
+}
+.suggestion-hero h2 {
+  margin: 9px 0 7px;
+  font-size: 18px;
+}
+.suggestion-hero p,
+.suggestion-priority p {
+  font-size: 12px;
+}
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.suggestion-card {
+  display: flex;
+  min-height: 188px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.suggestion-card > svg {
+  color: var(--blue);
+}
+.suggestion-card h2 {
+  font-size: 14px;
+}
+.suggestion-card p {
+  font-size: 11px;
+}
+.suggestion-card button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 4px 0 0;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 650;
+}
+.suggestion-card button:hover {
+  text-decoration: underline;
+}
 .assistant-intro > svg {
   color: var(--blue);
   margin-bottom: 16px;
@@ -1357,6 +1416,14 @@ dialog p {
   }
   .optimization-item > .button {
     margin-left: 63px;
+  }
+}
+@media (max-width: 620px) {
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+  .suggestion-hero {
+    padding: 18px;
   }
 }
 @media (max-width: 600px) {

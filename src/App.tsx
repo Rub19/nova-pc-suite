@@ -89,6 +89,7 @@ const navGroups = [
     label: "Nova",
     items: [
       { id: "assistant", label: "Assistant Nova", icon: Sparkles },
+      { id: "suggestions", label: "Suggestions Nova", icon: CircleHelp },
       { id: "automation", label: "Planification & Nova", icon: Clock3 },
       { id: "driver-sources", label: "Fabricants détectés", icon: Cpu },
       { id: "history", label: "Historique", icon: History },
@@ -161,6 +162,51 @@ export default function App() {
     driverSelection.includes(text(u.id)),
   );
   const advice = recommendations(snapshot, data.storage);
+  const suggestionTools = [
+    {
+      icon: Download,
+      title: updates.length
+        ? `${updates.length} mise${updates.length > 1 ? "s" : ""} à jour à examiner`
+        : "Vérifier les pilotes et mises à jour",
+      detail: updates.length
+        ? "Des mises à jour applicables sont prêtes à être examinées avant toute installation."
+        : "Recherchez les mises à jour proposées pour votre matériel par Windows Update.",
+      target: "drivers",
+      label: "Voir les pilotes",
+    },
+    {
+      icon: Download,
+      title: "Gérer les logiciels",
+      detail:
+        "Consultez vos applications et leurs mises à jour disponibles, sans désinstaller ni modifier quoi que ce soit automatiquement.",
+      target: "applications",
+      label: "Voir les logiciels",
+    },
+    {
+      icon: Play,
+      title: "Alléger le démarrage",
+      detail:
+        "Identifiez les applications lancées à l’ouverture de session et désactivez uniquement celles que vous choisissez.",
+      target: "startup",
+      label: "Gérer le démarrage",
+    },
+    {
+      icon: HardDrive,
+      title: "Préserver votre espace disque",
+      detail:
+        "Analysez le stockage et les fichiers temporaires avant toute opération de nettoyage.",
+      target: "storage",
+      label: "Analyser le stockage",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Contrôler les protections Windows",
+      detail:
+        "Vérifiez antivirus et pare-feu depuis Nova, puis ouvrez les réglages Windows lorsque c’est nécessaire.",
+      target: "security",
+      label: "Voir la sécurité",
+    },
+  ];
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("nova-theme", dark ? "dark" : "light");
@@ -1119,6 +1165,62 @@ export default function App() {
                   <ExternalLink size={15} />
                 </button>
               )}
+            </>
+          )}
+
+          {page === "suggestions" && (
+            <>
+              <section className="suggestion-hero">
+                <div className="feature-icon blue">
+                  <Sparkles size={24} />
+                </div>
+                <div>
+                  <span className="tag">GUIDE LOCAL</span>
+                  <h2>Suggestions pour votre PC</h2>
+                  <p>
+                    Une feuille de route claire pour entretenir votre ordinateur.
+                    Nova vous propose des outils ; aucune action n’est appliquée sans votre choix.
+                  </p>
+                </div>
+              </section>
+              {advice.length > 0 && (
+                <section className="panel suggestion-priority">
+                  <div className="panel-head">
+                    <div>
+                      <h2>À regarder en priorité</h2>
+                      <p>Basé sur le dernier diagnostic local.</p>
+                    </div>
+                    <span className="tag neutral">{advice.length} CONSEIL{advice.length > 1 ? "S" : ""}</span>
+                  </div>
+                  {advice.map((item) => (
+                    <button
+                      className="step"
+                      key={item.title}
+                      onClick={() => changePage(item.target)}
+                    >
+                      <span className="step-dot" />
+                      <div>
+                        <strong>{item.title}</strong>
+                        <small>{item.detail}</small>
+                      </div>
+                      <ArrowRight size={17} />
+                    </button>
+                  ))}
+                </section>
+              )}
+              <section className="suggestion-grid" aria-label="Outils suggérés">
+                {suggestionTools.map(({ icon: Icon, title, detail, target, label }) => (
+                  <article className="suggestion-card" key={target}>
+                    <Icon size={20} />
+                    <h2>{title}</h2>
+                    <p>{detail}</p>
+                    <button onClick={() => changePage(target)}>
+                      {label}
+                      <ArrowRight size={15} />
+                    </button>
+                  </article>
+                ))}
+              </section>
             </>
           )}
 
