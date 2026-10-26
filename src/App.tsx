@@ -142,6 +142,12 @@ export default function App() {
     localStorage.getItem("nova-theme") !== "light",
   );
   const [lastScan, setLastScan] = useState<Date | null>(null);
+  const [healthHistory, setHealthHistory] = useState<{ score: number; at: number }[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("nova-health-history") ?? "[]");
+      return Array.isArray(saved) ? saved.filter((item) => typeof item?.score === "number" && typeof item?.at === "number").slice(-20) : [];
+    } catch { return []; }
+  });
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
@@ -166,6 +172,14 @@ export default function App() {
   );
   const advice = recommendations(snapshot, data.storage);
   const health = healthScore(snapshot, data.storage, data.security, updates.length);
+  useEffect(() => {
+    if (!snapshot) return;
+    setHealthHistory((previous) => {
+      const next = [...previous, { score: health.score, at: Date.now() }].slice(-20);
+      localStorage.setItem("nova-health-history", JSON.stringify(next));
+      return next;
+    });
+  }, [snapshot]);
   const suggestionTools = [
     {
       icon: Download,
@@ -657,6 +671,17 @@ export default function App() {
                   )}
                 </div>
               </section>
+              {healthHistory.length > 1 && (
+                <section className="health-trend" aria-label="Évolution du bilan de santé">
+                  <span>Évolution des derniers bilans</span>
+                  <svg viewBox="0 0 200 32" role="img" aria-label="Historique du score santé">
+                    <polyline
+                      points={healthHistory.map((item, index) => `${(index * 200) / Math.max(1, healthHistory.length - 1)},${32 - item.score * 0.32}`).join(" ")}
+                      fill="none" stroke="var(--blue)" strokeWidth="2"
+                    />
+                  </svg>
+                </section>
+              )}
               <section className="metrics" aria-label="Mesures système">
                 {metric(
                   "Processeur",

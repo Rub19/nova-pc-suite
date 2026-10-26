@@ -608,6 +608,18 @@ main {
 .health-clear {
   color: var(--green);
 }
+.health-trend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: -8px 0 20px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.health-trend svg {
+  width: 160px;
+  height: 28px;
+}
 .hero-main {
   display: flex;
   gap: 20px;
