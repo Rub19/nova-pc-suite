@@ -211,6 +211,12 @@ export default function App() {
       label: "Voir la sécurité",
     },
   ];
+  const guidedSteps = [
+    { title: "Diagnostic du PC", detail: "Matériel, mémoire et état Windows", target: "overview", complete: Boolean(snapshot) },
+    { title: "Stockage", detail: "Volumes locaux et espace disponible", target: "storage", complete: Boolean(data.storage) },
+    { title: "Pilotes", detail: "Inventaire local et mises à jour applicables", target: "drivers", complete: Boolean(data.drivers || data.updates) },
+    { title: "Protections", detail: "Antivirus et profils de pare-feu", target: "security", complete: Boolean(data.security) },
+  ];
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("nova-theme", dark ? "dark" : "light");
@@ -1275,6 +1281,27 @@ export default function App() {
                   ))}
                 </section>
               )}
+              <section className="panel guided-setup">
+                <div className="panel-head">
+                  <div>
+                    <h2>Parcours conseillé</h2>
+                    <p>{guidedSteps.filter((step) => step.complete).length} / {guidedSteps.length} vérifications effectuées dans cette session.</p>
+                  </div>
+                  <span className="tag neutral">À VOTRE RYTHME</span>
+                </div>
+                {guidedSteps.map((step, index) => (
+                  <button className="step" key={step.title} onClick={() => changePage(step.target)}>
+                    <span className={step.complete ? "guided-done" : "step-number"}>
+                      {step.complete ? <Check size={14} /> : index + 1}
+                    </span>
+                    <div>
+                      <strong>{step.title}</strong>
+                      <small>{step.complete ? "Vérifié dans cette session" : step.detail}</small>
+                    </div>
+                    <ArrowRight size={17} />
+                  </button>
+                ))}
+              </section>
               <section className="suggestion-grid" aria-label="Outils suggérés">
                 {suggestionTools.map(({ icon: Icon, title, detail, target, label }) => (
                   <article className="suggestion-card" key={target}>

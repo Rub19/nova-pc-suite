@@ -122,6 +122,8 @@ describe("raccourcis d'interface", () => {
     await act(async () => suggestions.click());
     expect(host.textContent).toContain("Suggestions pour votre PC");
     expect(host.textContent).toContain("Gérer les logiciels");
+    expect(host.textContent).toContain("Parcours conseillé");
+    expect(host.textContent).toContain("1 / 4 vérifications effectuées");
     expect(mocks.action).toHaveBeenCalledTimes(1);
   });
 

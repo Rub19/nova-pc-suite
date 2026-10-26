@@ -1292,6 +1292,19 @@ tbody tr:hover {
 .memory-empty p {
   font-size: 12px;
 }
+.guided-setup .panel-head p {
+  margin-top: 5px;
+  font-size: 11px;
+}
+.guided-done {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--green-text);
+  background: var(--green-bg);
+}
 .assistant-intro > svg {
   color: var(--blue);
   margin-bottom: 16px;
