@@ -91,6 +91,7 @@ describe("raccourcis d'interface", () => {
     expect(maintenance.getAttribute("aria-expanded")).toBe("true");
     await act(async () => maintenance.click());
     expect(maintenance.getAttribute("aria-expanded")).toBe("false");
+    expect(localStorage.getItem("nova-collapsed-nav")).toBe('["maintenance"]');
     expect(host.textContent).not.toContain("Pilotes & mises à jour");
     const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
     await act(async () => {
@@ -106,5 +107,6 @@ describe("raccourcis d'interface", () => {
     )!;
     await act(async () => (driverResult as HTMLButtonElement).click());
     expect(maintenance.getAttribute("aria-expanded")).toBe("true");
+    expect(localStorage.getItem("nova-collapsed-nav")).toBe("[]");
   });
 });

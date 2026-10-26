@@ -96,6 +96,18 @@ const navGroups = [
   },
 ];
 const nav = navGroups.flatMap((group) => group.items);
+const navGroupIds = new Set(navGroups.map((group) => group.id));
+
+function readCollapsedGroups() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("nova-collapsed-nav") ?? "[]");
+    return Array.isArray(saved)
+      ? saved.filter((group): group is string => typeof group === "string" && navGroupIds.has(group))
+      : [];
+  } catch {
+    return [];
+  }
+}
 type Confirm = {
   action: string;
   description: string;
@@ -114,7 +126,7 @@ export default function App() {
   const [page, setPage] = useState(
     nav.some((item) => item.id === savedPage) ? savedPage! : "overview",
   );
-  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState(readCollapsedGroups);
   const [query, setQuery] = useState("");
   const [data, setData] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -156,6 +168,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("nova-last-page", page);
   }, [page]);
+  useEffect(() => {
+    localStorage.setItem("nova-collapsed-nav", JSON.stringify(collapsedGroups));
+  }, [collapsedGroups]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -263,7 +278,11 @@ export default function App() {
     if (id === "history") void getHistory().then(setEvents);
   }
   const filteredNav = query
-    ? nav.filter((n) => n.label.toLowerCase().includes(query.toLowerCase()))
+    ? navGroups.flatMap((group) =>
+        group.items
+          .filter((item) => item.label.toLowerCase().includes(query.toLowerCase()))
+          .map((item) => ({ ...item, group: group.label })),
+      )
     : [];
   function filtered(items: Row[]) {
     return items.filter((x) =>
@@ -422,14 +441,20 @@ export default function App() {
                 <X size={14} />
               </button>
             )}
-            {filteredNav.length > 0 && (
+            {query && (
               <div className="search-results">
                 {filteredNav.map((n) => (
                   <button key={n.id} onClick={() => changePage(n.id)}>
-                    {n.label}
+                    <span>
+                      {n.label}
+                      <small>{n.group}</small>
+                    </span>
                     <ArrowRight size={15} />
                   </button>
                 ))}
+                {filteredNav.length === 0 && (
+                  <p className="search-empty">Aucune rubrique trouvée.</p>
+                )}
               </div>
             )}
           </div>
