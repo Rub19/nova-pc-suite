@@ -152,9 +152,9 @@ export async function openSettings(target: string) {
   const reply = await invoke<Reply>("open_settings", { target });
   if (!reply.ok) throw new Error("Impossible d’ouvrir ce panneau Windows.");
 }
-export async function elevate(): Promise<Reply> {
+export async function elevate(page = "overview"): Promise<Reply> {
   if (!isTauri()) throw new Error("Disponible dans l’application Windows.");
-  return invoke("elevate");
+  return invoke("elevate", { page });
 }
 export function recommendations(snapshot?: Row, storage?: Row) {
   const items: { title: string; detail: string; target: string }[] = [];

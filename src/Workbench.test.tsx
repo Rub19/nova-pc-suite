@@ -37,6 +37,31 @@ afterEach(async () => {
   host.remove();
 });
 describe("confirmations et résultats de maintenance", () => {
+  it("détecte les fabricants à l’ouverture sans lancer de téléchargement", async () => {
+    mocks.invoke.mockResolvedValue({
+      ok: true,
+      data: {
+        providers: [
+          { id: "intel", name: "Intel", devices: ["Fixture chipset"] },
+        ],
+        otherManufacturers: [
+          { manufacturer: "Other fixture", devices: ["Fixture device"] },
+        ],
+      },
+    });
+    await act(async () => root.render(<Workbench section="driver-sources" />));
+    expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("extended_action", {
+      module: "automation",
+      action: "detect-sources",
+      payload: {},
+      confirmed: false,
+    });
+    expect(host.textContent).toContain("Fixture chipset");
+    expect(host.textContent).toContain("Other fixture");
+    expect(
+      mocks.invoke.mock.calls.some(([, args]) => args.action === "open-source"),
+    ).toBe(false);
+  });
   it("affiche les lenteurs de démarrage identifiées dans un tableau lisible", async () => {
     mocks.invoke.mockResolvedValue({
       ok: true,
@@ -70,7 +95,9 @@ describe("confirmations et résultats de maintenance", () => {
     expect(host.querySelector("table")?.textContent).toContain(
       "Fixture startup",
     );
-    expect(host.querySelector("table")?.textContent?.replace(/\s/g, "")).toContain("1234ms");
+    expect(
+      host.querySelector("table")?.textContent?.replace(/\s/g, ""),
+    ).toContain("1234ms");
     expect(host.querySelector("table")?.textContent).toContain("Application");
   });
   it("permet de filtrer le stockage et exige une confirmation pour l’optimiser", async () => {

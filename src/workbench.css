@@ -314,3 +314,6 @@
     font-size: 24px;
   }
 }
+.auto-cleanup[hidden] {
+  display: none;
+}

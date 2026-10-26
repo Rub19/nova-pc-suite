@@ -1,0 +1,12 @@
+Nova PC Suite 0.2.4 preview — correctif des diagnostics, nettoyage automatique et instance unique
+
+Installeur : `Nova-PC-Suite-0.2.4-setup.exe`. Exécutable autonome : `Nova-PC-Suite-0.2.4.exe` (WebView2 requis).
+
+Correction des bandeaux rouges « Windows n’a pas retourné de résultat valide » dans À propos de ce PC, Mémoire et Réseau. Des apostrophes typographiques rendaient les scripts intégrés invalides en UTF-8, alors que les anciens tests de fichiers PowerShell les lisaient en ANSI. Les tests vérifient maintenant les textes UTF-8 réellement embarqués et exécutent les trois diagnostics en lecture seule par le transport natif. Les erreurs distinguent désormais une syntaxe interne, un échec de commande et une réponse illisible, sans attribuer à tort le problème aux permissions.
+
+- Option de nettoyage automatique : au lancement puis toutes les heures tant que Nova reste ouvert ; choix conservé sur ce PC, désactivé par défaut. Une fois activée, suppression sans nouvelle confirmation des fichiers éligibles de plus de sept jours à la racine des temporaires utilisateur. Jusqu’à 1 000 fichiers par cycle. Dossiers, liens, fichiers occupés ou modifiés conservés. Les octets affichés sont des tailles logiques, pas une mesure des clusters récupérés.
+- Suppression manuelle directe depuis l’aperçu, sélection/désélection globale et résultats par fichier. La quarantaine récupérable reste disponible. Les suppressions automatiques sont définitives ; un arrêt imprévu peut laisser un lot récupérable.
+- Une seule instance : un deuxième lancement ne crée plus de copie supplémentaire. Le bouton « Passer en administrateur » prépare une transition vers une nouvelle session élevée et attend son démarrage avant de terminer l’ancienne ; fenêtre précédente restaurée en cas d’annulation ou d’échec. L’onglet courant est repris. La validation UAC reste celle de Windows.
+- Fabricants détectés automatiquement depuis ordinateur, carte mère, CPU, GPU et périphériques. Regroupement par constructeur, composants reconnus et supports officiels intégrés, dont GIGABYTE. Les autres fabricants identifiés restent affichés. Cette détection locale ne contacte pas les sites et ne remplace pas la recherche de pilotes Windows Update ; les catalogues constructeurs ne sont pas agrégés automatiquement.
+
+Preview non signée Authenticode. Validation Windows 10/11 sur plusieurs machines et mises à jour automatiques signées encore à compléter.

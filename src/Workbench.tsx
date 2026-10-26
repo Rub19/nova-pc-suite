@@ -170,7 +170,7 @@ const titles: Record<string, string> = {
   "startup-manage": "Gestion du démarrage",
   automation: "Automatisation",
   measurements: "Mesures comparées",
-  "driver-sources": "Sources de pilotes",
+  "driver-sources": "Fabricants détectés",
 };
 const asRow = (value: unknown): Row =>
   value !== null && typeof value === "object" && !Array.isArray(value)
@@ -438,6 +438,12 @@ function WorkbenchView({
   const uid = useId();
   useEffect(() => {
     mounted.current = true;
+    if (section === "driver-sources")
+      void run({
+        module: "automation",
+        action: "detect-sources",
+        label: "Détection des fabricants",
+      });
     return () => {
       mounted.current = false;
     };
@@ -463,17 +469,11 @@ function WorkbenchView({
         setResults((previous) => ({ ...previous, [job.action]: reply.data }));
         setLast({ action: job.action, label: job.label, data: reply.data });
       }
-      if (!reply.ok)
-        throw new Error(
-          message(reply.error) ||
-            "Le service n’a pas pu terminer cette opération.",
-        );
-      setResults((previous) => ({ ...previous, [job.action]: reply.data }));
-      setLast({ action: job.action, label: job.label, data: reply.data });
-      setNotice(`${job.label} : terminé.`);
       if (
         job.module === "cleanup" &&
-        ["quarantine", "restore", "purge"].includes(job.action)
+        ["quarantine", "restore", "purge", "delete-selected"].includes(
+          job.action,
+        )
       ) {
         setSelected([]);
         setResults((previous) => {
@@ -483,6 +483,14 @@ function WorkbenchView({
           return next;
         });
       }
+      if (!reply.ok)
+        throw new Error(
+          message(reply.error) ||
+            "Le service n’a pas pu terminer cette opération.",
+        );
+      setResults((previous) => ({ ...previous, [job.action]: reply.data }));
+      setLast({ action: job.action, label: job.label, data: reply.data });
+      setNotice(`${job.label} : terminé.`);
       if (
         job.module === "apps" &&
         ["startup-enable", "startup-disable"].includes(job.action)
@@ -723,6 +731,38 @@ function WorkbenchView({
                     </p>
                   )}
                   <div className="wb-actions">
+                    <button
+                      className="button secondary"
+                      disabled={busy || !preview.length}
+                      onClick={() =>
+                        setSelected(
+                          preview
+                            .map((item) => String(item.id))
+                            .filter(Boolean),
+                        )
+                      }
+                    >
+                      Tout sélectionner
+                    </button>
+                    <button
+                      className="button secondary"
+                      disabled={busy || !selected.length}
+                      onClick={() => setSelected([])}
+                    >
+                      Tout désélectionner
+                    </button>
+                    {button(
+                      {
+                        module: "cleanup",
+                        action: "delete-selected",
+                        label: "Supprimer les temporaires sélectionnés",
+                        payload: { ids: selected },
+                        confirmation: `Supprimer définitivement les ${selected.length} temporaires sélectionnés ? Les fichiers occupés ou modifiés seront conservés.`,
+                        permanent: true,
+                      },
+                      "Supprimer définitivement",
+                      !selected.length,
+                    )}
                     {button(
                       {
                         module: "cleanup",
@@ -1080,40 +1120,69 @@ function WorkbenchView({
               <div className="wb-intro">
                 <h2>Support officiel des fabricants</h2>
                 <p>
-                  Ces boutons ouvrent les pages ou outils officiels de support.
-                  Ils ne réalisent ni détection automatique agrégée, ni
-                  installation de pilotes. Choisissez le fabricant de votre
-                  matériel et vérifiez son modèle sur le site officiel.
+                  Nova détecte les fabricants depuis votre ordinateur, carte
+                  mère, CPU, GPU et périphériques. Les composants identifiés
+                  sont regroupés ci-dessous avec les supports officiels
+                  disponibles. La recherche des mises à jour applicables reste
+                  dans Pilotes et mises à jour.
                 </p>
+                {button({
+                  module: "automation",
+                  action: "detect-sources",
+                  label: "Actualiser la détection",
+                })}
               </div>
-              {(
-                [
-                  ["intel", "Intel"],
-                  ["nvidia", "NVIDIA"],
-                  ["amd", "AMD"],
-                  ["dell", "Dell"],
-                  ["lenovo", "Lenovo"],
-                  ["hp", "HP"],
-                  ["asus", "ASUS"],
-                  ["msi", "MSI"],
-                ] as const
-              ).map(([id, name]) => (
-                <div className="wb-row" key={id}>
+              {list(results["detect-sources"], "providers").map((provider) => (
+                <div className="wb-row" key={String(provider.id)}>
                   <div>
-                    <h3>{name}</h3>
-                    <p>Ouvrir le support officiel dans le navigateur.</p>
+                    <h3>{display(provider.name)}</h3>
+                    {Array.isArray(provider.devices) &&
+                      provider.devices.map((device, i) => (
+                        <p key={i}>{display(device)}</p>
+                      ))}
                   </div>
                   {button(
                     {
                       module: "automation",
                       action: "open-source",
-                      label: `Support ${name}`,
-                      payload: { id },
+                      label: `Support ${display(provider.name)}`,
+                      payload: { id: provider.id },
                     },
                     "Ouvrir ↗",
                   )}
                 </div>
               ))}
+              {has("detect-sources") &&
+                !list(results["detect-sources"], "providers").length && (
+                  <p>
+                    Aucun fabricant avec support intégré identifié. Consultez
+                    aussi Windows Update et les autres fabricants ci-dessous.
+                  </p>
+                )}
+              {list(results["detect-sources"], "otherManufacturers").length >
+                0 && (
+                <section>
+                  <h2>Autres fabricants détectés</h2>
+                  <p>
+                    Ces fabricants sont identifiés ; aucun lien de
+                    téléchargement n’est intégré pour eux. Windows Update reste
+                    disponible pour leurs pilotes applicables.
+                  </p>
+                  {list(results["detect-sources"], "otherManufacturers").map(
+                    (item, i) => (
+                      <div className="wb-row" key={i}>
+                        <div>
+                          <h3>{display(item.manufacturer)}</h3>
+                          {Array.isArray(item.devices) &&
+                            item.devices.map((device, j) => (
+                              <p key={j}>{display(device)}</p>
+                            ))}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </section>
+              )}
             </>
           )}
           {!titles[section] && (

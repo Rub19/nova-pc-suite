@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.4 preview — 2026-10-26
+
+- Correction des erreurs PowerShell intégrées UTF-8 qui empêchaient les diagnostics matériel, mémoire et réseau.
+- Contrôle du vrai texte embarqué en CI, diagnostics natifs en lecture seule et erreurs de transport explicites.
+- Nettoyage des temporaires automatique opt-in persistant et suppression manuelle directe depuis l’aperçu.
+- Instance unique et remplacement de la session lors du passage administrateur, avec repli en cas d’annulation.
+- Détection locale des fabricants et regroupement des composants avec supports officiels disponibles.
+
 ## 0.2.3 preview — 2026-10-25
 
 - Onglet « À propos de ce PC », 12 rubriques matérielles/système, recherche et rapport texte copiable/exportable.

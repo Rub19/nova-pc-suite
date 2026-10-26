@@ -4,10 +4,10 @@ Application Windows 10/11 x64 de diagnostic, pilotes et maintenance. Interface f
 
 ## Télécharger
 
-[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.3 preview**, maintenance étendue et thème sombre graphite.
+[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.4 preview**, maintenance étendue et thème sombre graphite.
 
-- `Nova-PC-Suite-0.2.3-setup.exe` : véritable installateur avec désinstallation Windows.
-- `Nova-PC-Suite-0.2.3.exe` : exécutable autonome, WebView2 requis.
+- `Nova-PC-Suite-0.2.4-setup.exe` : véritable installateur avec désinstallation Windows.
+- `Nova-PC-Suite-0.2.4.exe` : exécutable autonome, WebView2 requis.
 - `SHA256SUMS.txt` : empreintes de contrôle.
 
 Binaires non signés Authenticode : Windows peut afficher un avertissement d’éditeur inconnu. La preview doit encore être validée sur plusieurs PC et VM Windows 10 avant une version stable.
@@ -26,6 +26,15 @@ Binaires non signés Authenticode : Windows peut afficher un avertissement d’�
 - Accès aux outils de nettoyage, démarrage et sécurité Windows.
 - Recommandations locales ; IA optionnelle via Ollama avec le premier modèle installé sur le PC.
 - Historique local des 100 dernières opérations et export JSON ; recherche et pagination des tableaux.
+
+### Nouveautés 0.2.4
+
+- Correction des erreurs de scripts UTF-8 sur la fiche PC, la mémoire et le réseau ; tests sur les scripts réellement embarqués.
+- Nettoyage automatique opt-in, choix conservé : au lancement puis toutes les heures lorsque Nova est ouvert. Suppression définitive des fichiers éligibles de plus de sept jours, à la racine des temporaires utilisateur, maximum 1 000 par passage. Dossiers, liens et fichiers occupés/modifiés conservés.
+- Suppression manuelle directe depuis l’aperçu et boutons Tout sélectionner/Tout désélectionner. La quarantaine reste disponible.
+- Instance unique et transition vers le mode administrateur, avec restauration de la fenêtre si l’UAC est annulé ou si la transition échoue.
+- Détection automatique des fabricants et composants, supports officiels disponibles et liste des autres constructeurs identifiés. Aucun catalogue tiers agrégé ni installation constructeur automatique.
+- [Validation et limites](docs/VALIDATION-0.2.4.md).
 
 ### Nouveautés 0.2.3
 
@@ -69,7 +78,7 @@ Un résultat Windows Update vide ne signifie pas qu’aucune version constructeu
 
 1. Installez puis ouvrez Nova. Le diagnostic initial est en lecture seule.
 2. Lancez l’inventaire et la recherche de pilotes.
-3. Pour une maintenance, utilisez « Ouvrir en administrateur » puis créez un point de restauration. L’élévation ouvre une nouvelle fenêtre ; relancez-y la recherche.
+3. Pour une maintenance, utilisez « Passer en administrateur » puis créez un point de restauration. Validez l’UAC Windows : Nova remplace la session courante et reprend son onglet. Si la demande est annulée ou échoue, la fenêtre initiale revient. Relancez la recherche de pilotes dans la session élevée.
 4. Vérifiez la liste et les licences avant « Tout installer ».
 5. Consultez les résultats et redémarrez manuellement si Windows le demande.
 

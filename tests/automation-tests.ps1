@@ -42,3 +42,20 @@ $global:novaTestExisting=@{Description='Another task';Actions=@(@{Arguments='--s
 $beforeCount=$global:novaTestActions.Count
 & (Join-Path $PSScriptRoot '../scripts/uninstall-task.ps1')
 Assert ($global:novaTestActions.Count -eq $beforeCount) 'Uninstall hook must preserve foreign task'
+function Get-CimInstance {
+    param($ClassName,$Property,$ErrorAction)
+    switch($ClassName){
+        'Win32_ComputerSystem'{[pscustomobject]@{Manufacturer='ASUSTeK';Model='Fixture PC'}}
+        'Win32_BaseBoard'{[pscustomobject]@{Manufacturer='ASUS';Product='Fixture board'}}
+        'Win32_Processor'{[pscustomobject]@{Manufacturer='GenuineIntel';Name='Fixture CPU'}}
+        'Win32_VideoController'{[pscustomobject]@{AdapterCompatibility='NVIDIA';Name='Fixture GPU'}}
+        'Win32_PnPSignedDriver'{[pscustomobject]@{Manufacturer='Realtek';DeviceName='Fixture Ethernet'};[pscustomobject]@{Manufacturer='Intel';DeviceName='Fixture chipset'}}
+    }
+}
+$previousUri=$global:novaTestUri
+$r=& $path -Action detect-sources -PayloadBase64 e30= -DataRoot $root -Executable $exe|ConvertFrom-Json
+Assert ($r.ok -and $r.data.providers.Count -eq 3 -and $r.data.readOnly -and -not $r.data.automaticInstall) 'Local manufacturer detection failed'
+Assert (@($r.data.providers|Where-Object{$_.id -eq 'asus'}).Count -eq 1) 'Manufacturer deduplication failed'
+Assert (@($r.data.otherManufacturers|Where-Object{$_.manufacturer -eq 'Realtek'}).Count -eq 1) 'Unmapped manufacturer must remain visible'
+Assert ($global:novaTestUri -eq $previousUri) 'Detection must not open a website'
+Write-Output 'Manufacturer detection PASS: local CIM mocked; known/unknown manufacturers retained; no browser opening.'

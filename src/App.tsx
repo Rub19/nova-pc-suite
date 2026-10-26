@@ -3,6 +3,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Workbench from "./Workbench";
 import AboutPC from "./AboutPC";
+import AutomaticCleanup from "./AutomaticCleanup";
 import { MemoryGuardian, NetworkTools } from "./HealthTools";
 import {
   Activity,
@@ -66,7 +67,7 @@ const nav = [
   { id: "security", label: "Sécurité", icon: ShieldCheck },
   { id: "assistant", label: "Assistant Nova", icon: Sparkles },
   { id: "automation", label: "Planification & Nova", icon: Clock3 },
-  { id: "driver-sources", label: "Sources constructeurs", icon: Cpu },
+  { id: "driver-sources", label: "Fabricants détectés", icon: Cpu },
   { id: "history", label: "Historique", icon: History },
 ];
 type Confirm = {
@@ -155,6 +156,12 @@ export default function App() {
   }
   useEffect(() => {
     void run("snapshot");
+    if (isTauri())
+      void invoke<string>("startup_page")
+        .then((id) => {
+          if (nav.some((item) => item.id === id)) setPage(id);
+        })
+        .catch(() => {});
   }, []);
   useEffect(() => {
     if (!isTauri()) return;
@@ -183,11 +190,11 @@ export default function App() {
   }
   async function admin() {
     try {
-      const result = await elevate();
+      const result = await elevate(page);
       if (!result.ok) setError(message(result.error));
       else
         setNotice(
-          "Une nouvelle fenêtre Nova s’ouvre en administrateur. Continuez vos opérations dans cette fenêtre.",
+          "Transition vers Nova administrateur en cours. La fenêtre actuelle sera remplacée.",
         );
     } catch (e) {
       setError(String(e));
@@ -291,17 +298,17 @@ export default function App() {
           <button
             className="admin-button"
             onClick={() => void admin()}
-            disabled={!!busy}
+            disabled={!!busy || snapshot?.isAdmin === true}
           >
             <ShieldCheck size={17} />
             {snapshot?.isAdmin
               ? "Session administrateur"
-              : "Ouvrir en administrateur"}
+              : "Passer en administrateur"}
             <ChevronRight size={14} />
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.2.3</span>
+              Nova <span className="version">v0.2.4</span>
             </span>
             <button
               aria-label={
@@ -1183,6 +1190,7 @@ export default function App() {
           {page === "network" && <NetworkTools />}
           <MemoryGuardian visible={page === "memory"} />
           <AboutPC visible={page === "about-pc"} />
+          <AutomaticCleanup visible={page === "cleanup"} />
           {page === "optimize" && <Workbench section="maintenance" />}
           {page === "startup" && <Workbench section="startup-manage" />}
           {[

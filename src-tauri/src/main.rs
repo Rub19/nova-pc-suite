@@ -18,6 +18,7 @@ use tauri::Manager;
 
 struct OperationLock(Arc<Mutex<()>>);
 mod cleanup;
+mod elevation;
 mod tray;
 mod winpaths;
 fn local_data_root() -> Result<std::path::PathBuf, String> {
@@ -69,10 +70,13 @@ fn extended_policy(module: &str, action: &str) -> Option<bool> {
         ("apps", "apps-list" | "app-upgrades" | "startup-list") => Some(false),
         ("apps", "app-upgrade" | "startup-disable" | "startup-enable") => Some(true),
         ("cleanup", "preview" | "cleanup-batches") => Some(false),
-        ("cleanup", "quarantine" | "restore" | "purge") => Some(true),
-        ("automation", "schedule-status" | "check-release" | "open-release" | "open-source") => {
-            Some(false)
+        ("cleanup", "quarantine" | "restore" | "purge" | "delete-selected" | "auto-clean") => {
+            Some(true)
         }
+        (
+            "automation",
+            "schedule-status" | "check-release" | "open-release" | "open-source" | "detect-sources",
+        ) => Some(false),
         (
             "automation",
             "schedule-daily" | "schedule-weekly" | "schedule-disable" | "notifications-on"
@@ -171,13 +175,18 @@ async fn extended_action(
             match action.as_str() {
                 "preview" => cleanup::preview(&dir),
                 "cleanup-batches" => cleanup::list_batches(&dir),
-                "quarantine" => {
+                "auto-clean" => cleanup::automatic(&dir),
+                "quarantine" | "delete-selected" => {
                     let ids: Vec<String> = serde_json::from_value(payload["ids"].clone())
                         .map_err(|_| "Sélection invalide")?;
                     if ids.is_empty() || ids.len() > 1000 {
                         return Err("Sélection invalide".into());
                     }
-                    cleanup::quarantine(&dir, ids)
+                    if action == "delete-selected" {
+                        cleanup::delete_selected(&dir, ids)
+                    } else {
+                        cleanup::quarantine(&dir, ids)
+                    }
                 }
                 "restore" => cleanup::restore(
                     &dir,
@@ -479,10 +488,30 @@ fn history(app: tauri::AppHandle) -> Vec<Value> {
 }
 
 #[tauri::command]
-fn elevate() -> Result<Value, String> {
-    let exe = std::env::current_exe().map_err(|_| "Exécutable introuvable")?;
-    let path = exe.to_string_lossy().replace('\'', "''");
-    powershell(&format!("try {{ Start-Process -FilePath '{}' -Verb RunAs -ErrorAction Stop; @{{ok=$true;data='Nouvelle fenêtre administrateur ouverte'}} | ConvertTo-Json }} catch {{ @{{ok=$false;error='Élévation annulée ou refusée'}} | ConvertTo-Json }}", path), 120)
+fn startup_page() -> String {
+    elevation::initial_page()
+}
+#[tauri::command]
+async fn elevate(app: tauri::AppHandle, page: String) -> Result<Value, String> {
+    if !elevation::valid_page(&page) {
+        return Err("Écran invalide".into());
+    }
+    tauri::async_runtime::spawn_blocking(move||{
+        if elevation::is_admin(){return Ok(json!({"ok":true,"data":{"alreadyAdmin":true}}));}
+        let handoff=elevation::Handoff::new()?;
+        let exe=std::env::current_exe().map_err(|_|"Exécutable introuvable")?;
+        let path=exe.to_string_lossy().replace('\'',"''");
+        let window=app.get_webview_window("main").ok_or("Fenêtre Nova indisponible")?;
+        window.hide().map_err(|_|"Transition de fenêtre impossible")?;
+        let launched=powershell(&format!("try {{ Start-Process -FilePath '{path}' -ArgumentList @('--elevated-handoff','{}','--start-page','{page}') -Verb RunAs -ErrorAction Stop; @{{ok=$true}}|ConvertTo-Json }} catch {{ @{{ok=$false;error='Élévation annulée ou refusée'}}|ConvertTo-Json }}",handoff.token),0);
+        if launched.as_ref().map(|value|value["ok"]==true).unwrap_or(false) && handoff.wait(60000){
+            app.exit(0);
+            Ok(json!({"ok":true,"data":{"replaced":true}}))
+        }else{
+            let _=window.show();let _=window.set_focus();
+            Ok(json!({"ok":false,"error":"Passage administrateur annulé ou non confirmé. Votre fenêtre Nova a été conservée."}))
+        }
+    }).await.map_err(|_|"Transition interrompue".to_string())?
 }
 
 #[tauri::command]
@@ -545,8 +574,24 @@ fn main() {
         }
         return;
     }
+    let replacement = match elevation::requested_token() {
+        Ok(token) => token.is_some() && elevation::is_admin(),
+        Err(_) => return,
+    };
+    let _instance = match elevation::Instance::acquire(replacement) {
+        Ok(Some(instance)) => instance,
+        _ => return,
+    };
     tauri::Builder::default()
         .setup(|app| {
+            if let Some(token) = elevation::requested_token()? {
+                let window = app
+                    .get_webview_window("main")
+                    .ok_or("Fenêtre Nova indisponible")?;
+                window.hide()?;
+                elevation::complete(&token)?;
+                window.show()?;
+            }
             // A missing tray must not prevent diagnostics from starting.
             if let Err(error) = tray::setup(app) {
                 eprintln!("Icône Nova indisponible : {error}");
@@ -558,6 +603,7 @@ fn main() {
             system_action,
             history,
             elevate,
+            startup_page,
             open_settings,
             ask_local_ai,
             extended_action,
@@ -717,6 +763,8 @@ mod tests {
         for (module, action) in [
             ("cleanup", "purge"),
             ("cleanup", "restore"),
+            ("cleanup", "auto-clean"),
+            ("cleanup", "delete-selected"),
             ("apps", "startup-disable"),
             ("apps", "app-upgrade"),
             ("memory", "memory-trim"),

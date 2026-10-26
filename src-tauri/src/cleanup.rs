@@ -87,7 +87,7 @@ struct Manifest {
     root: PathBuf,
     items: Vec<Item>,
 }
-fn uid() -> Result<String, String> {
+pub(crate) fn uid() -> Result<String, String> {
     let mut bytes = [0u8; 16];
     if unsafe { BCryptGenRandom(std::ptr::null_mut(), bytes.as_mut_ptr(), 16, 2) } != 0 {
         return Err("Identifiant sécurisé indisponible".into());
@@ -347,6 +347,56 @@ fn preview_at(data: &Path, root: &Path, min_age: u64) -> Result<Value, String> {
 pub fn quarantine(data: &Path, ids: Vec<String>) -> Result<Value, String> {
     quarantine_at(data, &temp_root()?, ids)
 }
+pub fn delete_selected(data: &Path, ids: Vec<String>) -> Result<Value, String> {
+    delete_selected_at(data, &temp_root()?, ids)
+}
+fn delete_selected_at(data: &Path, root: &Path, ids: Vec<String>) -> Result<Value, String> {
+    let moved = quarantine_at(data, root, ids)?;
+    let batch = moved["data"]["batchId"]
+        .as_str()
+        .ok_or("Lot indisponible")?;
+    // A persisted recovery manifest exists before any deletion is requested.
+    let purged = finish(data, root, batch, true).unwrap_or_else(
+        |error| json!({"ok":false,"data":{"freedBytes":0,"results":[]},"error":error}),
+    );
+    let mut results = Vec::new();
+    for item in moved["data"]["results"]
+        .as_array()
+        .ok_or("Résultats indisponibles")?
+    {
+        if item["ok"] != true {
+            results.push(item.clone());
+            continue;
+        }
+        let deleted = purged["data"]["results"]
+            .as_array()
+            .and_then(|items| items.iter().find(|row| row["name"] == item["name"]));
+        results.push(deleted.cloned().unwrap_or_else(|| json!({"name":item["name"],"ok":false,"error":"Fichier conservé en quarantaine ; consultez ce lot pour le restaurer"})));
+    }
+    let ok = results.iter().all(|row| row["ok"] == true);
+    let deleted_count = results.iter().filter(|row| row["ok"] == true).count();
+    Ok(
+        json!({"ok":ok,"data":{"batchId":batch,"freedBytes":purged["data"]["freedBytes"],"logicalBytes":true,"deletedCount":deleted_count,"preservedCount":results.len()-deleted_count,"results":results},"error":if ok {Value::Null} else {json!("Certains temporaires ont été conservés ; consultez les résultats et les lots récupérables")}}),
+    )
+}
+pub fn automatic(data: &Path) -> Result<Value, String> {
+    automatic_at(data, &temp_root()?, 7 * 86400)
+}
+fn automatic_at(data: &Path, root: &Path, min_age: u64) -> Result<Value, String> {
+    let preview = preview_at(data, root, min_age)?;
+    let ids: Vec<String> = preview["data"]["items"]
+        .as_array()
+        .ok_or("Analyse indisponible")?
+        .iter()
+        .filter_map(|row| row["id"].as_str().map(str::to_owned))
+        .collect();
+    if ids.is_empty() {
+        return Ok(
+            json!({"ok":true,"data":{"deletedCount":0,"preservedCount":0,"freedBytes":0,"logicalBytes":true,"results":[]}}),
+        );
+    }
+    delete_selected_at(data, root, ids)
+}
 fn quarantine_at(data: &Path, root: &Path, ids: Vec<String>) -> Result<Value, String> {
     let _root = super::hold_data_root(root)?;
     let store = storage(data)?;
@@ -520,6 +570,59 @@ mod tests {
         fs::create_dir_all(&data).unwrap();
         fs::create_dir(&temp).unwrap();
         (base, data, temp)
+    }
+    #[test]
+    fn direct_cleanup_only_deletes_selected_owned_unchanged_files() {
+        let (_base, data, temp) = fixture();
+        fs::write(temp.join("selected.tmp"), b"selected").unwrap();
+        fs::write(temp.join("keep.tmp"), b"keep").unwrap();
+        let preview = preview_at(&data, &temp, 0).unwrap();
+        let id = preview["data"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == "selected.tmp")
+            .unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let result = delete_selected_at(&data, &temp, vec![id]).unwrap();
+        assert_eq!(result["ok"], true);
+        assert_eq!(result["data"]["freedBytes"], 8);
+        assert!(!temp.join("selected.tmp").exists());
+        assert_eq!(fs::read(temp.join("keep.tmp")).unwrap(), b"keep");
+    }
+    #[test]
+    fn automatic_cleanup_skips_recent_files_and_handles_empty_sweeps() {
+        let (_base, data, temp) = fixture();
+        fs::write(temp.join("recent.tmp"), b"recent").unwrap();
+        let skipped = automatic_at(&data, &temp, 7 * 86400).unwrap();
+        assert_eq!(skipped["data"]["deletedCount"], 0);
+        assert!(temp.join("recent.tmp").exists());
+        let removed = automatic_at(&data, &temp, 0).unwrap();
+        assert_eq!(removed["data"]["deletedCount"], 1);
+        assert_eq!(removed["data"]["freedBytes"], 6);
+        assert!(!temp.join("recent.tmp").exists());
+        assert_eq!(
+            automatic_at(&data, &temp, 0).unwrap()["data"]["deletedCount"],
+            0
+        );
+    }
+    #[test]
+    fn direct_cleanup_preserves_changed_preview_files() {
+        let (_base, data, temp) = fixture();
+        fs::write(temp.join("changed.tmp"), b"old").unwrap();
+        let preview = preview_at(&data, &temp, 0).unwrap();
+        let id = preview["data"]["items"][0]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        fs::write(temp.join("changed.tmp"), b"new contents").unwrap();
+        let result = delete_selected_at(&data, &temp, vec![id]).unwrap();
+        assert_eq!(result["ok"], false);
+        assert_eq!(result["data"]["preservedCount"], 1);
+        assert_eq!(result["data"]["freedBytes"], 0);
+        assert_eq!(fs::read(temp.join("changed.tmp")).unwrap(), b"new contents");
     }
     #[test]
     fn rejects_paths() {

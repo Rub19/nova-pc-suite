@@ -1,5 +1,13 @@
 # Nova — Task List
 
+## 0.2.4 — erreurs de diagnostic, nettoyage auto et instance unique
+
+- [x] Reproduire puis corriger les scripts embarqués UTF-8 ; tests des trois diagnostics par le transport réel.
+- [x] Nettoyage automatique opt-in persistant, suppression directe et tests sur fixtures.
+- [x] Instance unique, transition admin avec accusé de réception et conservation de l’onglet.
+- [x] Détection automatique des fabricants et composants ; supports officiels connus.
+- [ ] Test visuel de la version corrigée et publication de l’installateur.
+
 ## 0.2.3 — fiche matérielle et zone de notification
 
 - [x] Fiche PC structurée en 12 rubriques, actualisation, recherche, copie et export.
