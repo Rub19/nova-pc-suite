@@ -122,4 +122,11 @@ describe("raccourcis d'interface", () => {
     expect(host.textContent).toContain("Gérer les logiciels");
     expect(mocks.action).toHaveBeenCalledTimes(1);
   });
+
+  it("affiche une attente explicite pour les mesures non encore analysées", async () => {
+    await act(async () => root.render(<App />));
+    expect(host.textContent).toContain("Analyse requise");
+    expect(host.textContent).toContain("Inventaire requis");
+    expect(host.textContent).not.toContain("Stockage—");
+  });
 });

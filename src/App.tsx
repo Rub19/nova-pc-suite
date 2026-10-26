@@ -345,13 +345,14 @@ export default function App() {
     subtitle: string,
     Icon: typeof Cpu,
     percent?: number | null,
+    pendingLabel?: string,
   ) => (
     <article className="metric">
       <div className="metric-title">
         <span>{label}</span>
         <Icon size={18} />
       </div>
-      <strong>{value}</strong>
+      {pendingLabel ? <strong className="metric-pending">{pendingLabel}</strong> : <strong>{value}</strong>}
       <span className="muted">{subtitle}</span>
       {percent != null && (
         <progress max="100" value={percent} aria-label={label} />
@@ -652,6 +653,8 @@ export default function App() {
                     ? "Espace disponible sur les volumes locaux"
                     : "Lancez l’analyse du stockage",
                   HardDrive,
+                  null,
+                  volumes.length ? undefined : "Analyse requise",
                 )}
                 {metric(
                   "Pilotes installés",
@@ -660,6 +663,8 @@ export default function App() {
                     ? "Inventoriés sur votre ordinateur"
                     : "Lancez l’inventaire des pilotes",
                   Download,
+                  null,
+                  data.drivers ? undefined : "Inventaire requis",
                 )}
               </section>
               <div className="section-heading">

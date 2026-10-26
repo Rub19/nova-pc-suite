@@ -618,6 +618,15 @@ main {
   margin: 16px 0 8px;
   font-weight: 600;
 }
+.metric .metric-pending {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
 .muted {
   color: var(--muted);
   font-size: 9px;
