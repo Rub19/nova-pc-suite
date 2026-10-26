@@ -1529,7 +1529,7 @@ export default function App() {
           )}
           {page === "network" && <NetworkTools />}
           <MemoryGuardian visible={page === "memory"} />
-          <AboutPC visible={page === "about-pc"} />
+          {page === "about-pc" && <AboutPC visible />}
           <AutomaticCleanup visible={page === "cleanup"} />
           {page === "optimize" && <Workbench section="maintenance" />}
           {page === "startup" && <Workbench section="startup-manage" />}

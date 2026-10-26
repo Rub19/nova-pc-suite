@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ action: vi.fn(), history: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 vi.mock("./AutomaticCleanup", () => ({ default: () => <div>Nettoyage automatique</div> }));
-vi.mock("./AboutPC", () => ({ default: () => <div>À propos</div> }));
+vi.mock("./AboutPC", () => ({ default: () => <div>FICHE_MATERIELLE_MOCK</div> }));
 vi.mock("./HealthTools", () => ({
   MemoryGuardian: () => <div>Mémoire</div>,
   NetworkTools: () => <div>Réseau</div>,
@@ -67,6 +67,16 @@ describe("raccourcis d'interface", () => {
     )!;
     await act(async () => overview.click());
     expect(localStorage.getItem("nova-last-page")).toBe("overview");
+  });
+
+  it("ne monte la fiche matérielle que lorsque sa page est ouverte", async () => {
+    await act(async () => root.render(<App />));
+    expect(host.textContent).not.toContain("FICHE_MATERIELLE_MOCK");
+    const about = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("À propos de ce PC"),
+    )!;
+    await act(async () => about.click());
+    expect(host.textContent).toContain("FICHE_MATERIELLE_MOCK");
   });
 
   it("ouvre la recherche avec Ctrl+K et l'efface avec Échap", async () => {
