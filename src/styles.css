@@ -970,6 +970,19 @@ progress::-webkit-progress-value {
   justify-content: flex-end;
   gap: 8px;
 }
+.inline-select {
+  display: grid;
+  min-width: 150px;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.inline-select .nova-select {
+  min-height: 38px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  font-size: 11px;
+}
 .action-banner .feature-icon {
   margin: 0;
 }

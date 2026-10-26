@@ -38,6 +38,7 @@ import {
 import {
   action,
   bytes,
+  driverCategory,
   elevate,
   Event,
   getHistory,
@@ -156,6 +157,7 @@ export default function App() {
   const installed = rows(data.drivers);
   const updates = rows(data.updates);
   const [driverSelection, setDriverSelection] = useState<string[]>([]);
+  const [driverCategoryFilter, setDriverCategoryFilter] = useState("Tout");
   useEffect(() => {
     setDriverSelection(rows(data.updates).map((u) => text(u.id)));
   }, [data.updates]);
@@ -904,14 +906,37 @@ export default function App() {
               <div className="toolbar">
                 <div>
                   <h2>Pilotes installés</h2>
-                  <p>Inventaire local avec version et signature numérique.</p>
+                  <p>Inventaire local, catégorie, version et signature numérique.</p>
                 </div>
-                {scanButton("drivers", "Actualiser l’inventaire")}
+                <div className="action-banner-actions">
+                  <label className="inline-select">
+                    Catégorie
+                    <select
+                      className="nova-select"
+                      value={driverCategoryFilter}
+                      onChange={(event) => setDriverCategoryFilter(event.target.value)}
+                    >
+                      {[
+                        "Tout",
+                        "Graphique",
+                        "Réseau",
+                        "Audio",
+                        "Stockage",
+                        "Chipset",
+                        "Périphérique",
+                      ].map((item) => <option key={item}>{item}</option>)}
+                    </select>
+                  </label>
+                  {scanButton("drivers", "Actualiser l’inventaire")}
+                </div>
               </div>
               {data.drivers ? (
                 <DataTable
-                  items={filtered(installed)}
+                  items={filtered(installed.filter((driver) =>
+                    driverCategoryFilter === "Tout" || driverCategory(driver) === driverCategoryFilter,
+                  )).map((driver) => ({ ...driver, category: driverCategory(driver) }))}
                   columns={[
+                    ["category", "Catégorie"],
                     ["name", "Périphérique"],
                     ["manufacturer", "Fabricant"],
                     ["version", "Version"],

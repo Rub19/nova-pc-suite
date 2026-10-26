@@ -246,3 +246,13 @@ export function healthScore(
     items,
   };
 }
+
+export function driverCategory(driver: Row) {
+  const value = `${driver.name ?? ""} ${driver.manufacturer ?? ""}`.toLocaleLowerCase("fr");
+  if (/nvidia|geforce|radeon|graphics|display|video|gpu/.test(value)) return "Graphique";
+  if (/ethernet|wi-?fi|wireless|network|bluetooth|realtek.*(pcie|gbe)/.test(value)) return "Réseau";
+  if (/audio|sound|speaker|microphone/.test(value)) return "Audio";
+  if (/sata|nvme|storage|disk|raid|ahci/.test(value)) return "Stockage";
+  if (/chipset|pci express|system management|i2c|smbus/.test(value)) return "Chipset";
+  return "Périphérique";
+}

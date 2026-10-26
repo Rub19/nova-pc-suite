@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { healthScore, memoryPercent, recommendations, rows, message } from "./lib";
+import { driverCategory, healthScore, memoryPercent, recommendations, rows, message } from "./lib";
 describe("diagnostics réels", () => {
   it("ne transforme pas une donnée absente en mesure rassurante", () => {
     expect(memoryPercent()).toBeNull();
@@ -46,5 +46,12 @@ describe("diagnostics réels", () => {
       "drivers",
       "security",
     ]);
+  });
+  it("classe les pilotes sans dépendre d’un fabricant précis", () => {
+    expect(driverCategory({ name: "NVIDIA GeForce RTX" })).toBe("Graphique");
+    expect(driverCategory({ name: "Realtek PCIe Ethernet" })).toBe("Réseau");
+    expect(driverCategory({ name: "USB Audio Device" })).toBe("Audio");
+    expect(driverCategory({ name: "AMD SATA Controller" })).toBe("Stockage");
+    expect(driverCategory({ name: "Unknown peripheral" })).toBe("Périphérique");
   });
 });
