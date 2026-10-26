@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7 preview — 2026-10-26
+
+- Audit local des appareils et pilotes : erreurs PnP déclarées par Windows, compteurs de signature et liste limitée des appareils à examiner.
+- Parcours explicite vers Windows Update et les supports constructeurs, sans téléchargement, remplacement ou réparation automatique de pilote.
+- Panneau Pilotes responsive et tests du nouvel audit en lecture seule.
+
 ## 0.2.6 preview — 2026-10-26
 
 - Recherche globale navigable au clavier avec les flèches et Entrée, plus annonce accessible du résultat actif.
