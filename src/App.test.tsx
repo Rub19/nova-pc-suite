@@ -82,4 +82,29 @@ describe("raccourcis d'interface", () => {
     expect(input.value).toBe("");
     expect(document.activeElement).not.toBe(input);
   });
+
+  it("permet de replier un groupe sans retirer ses pages de la recherche", async () => {
+    await act(async () => root.render(<App />));
+    const maintenance = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.trim() === "Entretien",
+    )!;
+    expect(maintenance.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => maintenance.click());
+    expect(maintenance.getAttribute("aria-expanded")).toBe("false");
+    expect(host.textContent).not.toContain("Pilotes & mises à jour");
+    const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input,
+        "pilotes",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(host.textContent).toContain("Pilotes & mises à jour");
+    const driverResult = [...host.querySelectorAll(".search-results button")].find(
+      (button) => button.textContent?.includes("Pilotes & mises à jour"),
+    )!;
+    await act(async () => (driverResult as HTMLButtonElement).click());
+    expect(maintenance.getAttribute("aria-expanded")).toBe("true");
+  });
 });

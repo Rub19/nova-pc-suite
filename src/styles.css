@@ -224,12 +224,30 @@ button svg {
   top: 10px;
   right: 8px;
 }
-.workspace-label {
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 1.8px;
+.nav-group {
+  margin-bottom: 12px;
+}
+.nav-group-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
   color: var(--muted);
-  padding: 0 16px 13px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.25px;
+  text-align: left;
+  text-transform: uppercase;
+}
+.nav-group-toggle:hover {
+  color: var(--text);
+}
+.nav-group-toggle svg {
+  transition: transform 140ms ease;
+}
+.nav-group-toggle[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
 }
 .nav-item {
   position: relative;

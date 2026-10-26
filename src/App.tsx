@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock3,
   Cpu,
@@ -51,25 +52,50 @@ import {
   text,
 } from "./lib";
 
-const nav = [
-  { id: "overview", label: "Vue d’ensemble", icon: LayoutDashboard },
-  { id: "about-pc", label: "À propos de ce PC", icon: Cpu },
-  { id: "drivers", label: "Pilotes & mises à jour", icon: Download },
-  { id: "optimize", label: "Optimisation", icon: Zap },
-  { id: "measurements", label: "Avant / après", icon: Activity },
-  { id: "network", label: "Diagnostic réseau", icon: Activity },
-  { id: "memory", label: "Mémoire intelligente", icon: MemoryStick },
-  { id: "cleanup", label: "Nettoyage récupérable", icon: HardDrive },
-  { id: "applications", label: "Applications", icon: Download },
-  { id: "storage", label: "Stockage", icon: HardDrive },
-  { id: "startup", label: "Démarrage", icon: Play },
-  { id: "processes", label: "Moniteur d’activité", icon: Activity },
-  { id: "security", label: "Sécurité", icon: ShieldCheck },
-  { id: "assistant", label: "Assistant Nova", icon: Sparkles },
-  { id: "automation", label: "Planification & Nova", icon: Clock3 },
-  { id: "driver-sources", label: "Fabricants détectés", icon: Cpu },
-  { id: "history", label: "Historique", icon: History },
+const navGroups = [
+  {
+    id: "space",
+    label: "Espace",
+    items: [
+      { id: "overview", label: "Vue d’ensemble", icon: LayoutDashboard },
+      { id: "about-pc", label: "À propos de ce PC", icon: Cpu },
+      { id: "measurements", label: "Avant / après", icon: Activity },
+    ],
+  },
+  {
+    id: "maintenance",
+    label: "Entretien",
+    items: [
+      { id: "drivers", label: "Pilotes & mises à jour", icon: Download },
+      { id: "optimize", label: "Optimisation", icon: Zap },
+      { id: "network", label: "Diagnostic réseau", icon: Activity },
+      { id: "memory", label: "Mémoire intelligente", icon: MemoryStick },
+      { id: "cleanup", label: "Nettoyage récupérable", icon: HardDrive },
+    ],
+  },
+  {
+    id: "system",
+    label: "Outils système",
+    items: [
+      { id: "applications", label: "Applications", icon: Download },
+      { id: "storage", label: "Stockage", icon: HardDrive },
+      { id: "startup", label: "Démarrage", icon: Play },
+      { id: "processes", label: "Moniteur d’activité", icon: Activity },
+      { id: "security", label: "Sécurité", icon: ShieldCheck },
+    ],
+  },
+  {
+    id: "nova",
+    label: "Nova",
+    items: [
+      { id: "assistant", label: "Assistant Nova", icon: Sparkles },
+      { id: "automation", label: "Planification & Nova", icon: Clock3 },
+      { id: "driver-sources", label: "Fabricants détectés", icon: Cpu },
+      { id: "history", label: "Historique", icon: History },
+    ],
+  },
 ];
+const nav = navGroups.flatMap((group) => group.items);
 type Confirm = {
   action: string;
   description: string;
@@ -88,6 +114,7 @@ export default function App() {
   const [page, setPage] = useState(
     nav.some((item) => item.id === savedPage) ? savedPage! : "overview",
   );
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [data, setData] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -222,6 +249,13 @@ export default function App() {
     }
   }
   function changePage(id: string) {
+    const group = navGroups.find((candidate) =>
+      candidate.items.some((item) => item.id === id),
+    );
+    if (group)
+      setCollapsedGroups((current) =>
+        current.filter((groupId) => groupId !== group.id),
+      );
     setPage(id);
     setQuery("");
     setError("");
@@ -293,22 +327,43 @@ export default function App() {
             nova<small>PC SUITE</small>
           </span>
         </a>
-        <div className="workspace-label">VOTRE ESPACE</div>
         <nav aria-label="Navigation principale">
-          {nav.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={`nav-item ${page === id ? "active" : ""}`}
-              aria-current={page === id ? "page" : undefined}
-              onClick={() => changePage(id)}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {id === "drivers" && updates.length > 0 && (
-                <span className="count">{updates.length}</span>
-              )}
-            </button>
-          ))}
+          {navGroups.map((group) => {
+            const collapsed = collapsedGroups.includes(group.id);
+            return (
+              <section className="nav-group" key={group.id}>
+                <button
+                  className="nav-group-toggle"
+                  aria-expanded={!collapsed}
+                  onClick={() =>
+                    setCollapsedGroups((current) =>
+                      current.includes(group.id)
+                        ? current.filter((id) => id !== group.id)
+                        : [...current, group.id],
+                    )
+                  }
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+                {!collapsed &&
+                  group.items.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      className={`nav-item ${page === id ? "active" : ""}`}
+                      aria-current={page === id ? "page" : undefined}
+                      onClick={() => changePage(id)}
+                    >
+                      <Icon size={19} />
+                      <span>{label}</span>
+                      {id === "drivers" && updates.length > 0 && (
+                        <span className="count">{updates.length}</span>
+                      )}
+                    </button>
+                  ))}
+              </section>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           <div className="local-badge">
