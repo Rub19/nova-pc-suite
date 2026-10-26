@@ -84,7 +84,10 @@ const settings: Record<string, string> = {
 };
 
 export default function App() {
-  const [page, setPage] = useState("overview");
+  const savedPage = localStorage.getItem("nova-last-page");
+  const [page, setPage] = useState(
+    nav.some((item) => item.id === savedPage) ? savedPage! : "overview",
+  );
   const [query, setQuery] = useState("");
   const [data, setData] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -101,6 +104,7 @@ export default function App() {
   const [answer, setAnswer] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   const operation = useRef(false);
   const snapshot = data.snapshot;
   const memory = snapshot?.memory as Row | undefined;
@@ -122,6 +126,23 @@ export default function App() {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("nova-theme", dark ? "dark" : "light");
   }, [dark]);
+  useEffect(() => {
+    localStorage.setItem("nova-last-page", page);
+  }, [page]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInput.current?.focus();
+      }
+      if (event.key === "Escape" && document.activeElement === searchInput.current) {
+        setQuery("");
+        searchInput.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   useEffect(() => {
     setAccepted(false);
     if (confirm) dialog.current?.showModal();
@@ -278,6 +299,7 @@ export default function App() {
             <button
               key={id}
               className={`nav-item ${page === id ? "active" : ""}`}
+              aria-current={page === id ? "page" : undefined}
               onClick={() => changePage(id)}
             >
               <Icon size={19} />
@@ -330,11 +352,13 @@ export default function App() {
           <div className="search-wrap">
             <Search size={17} />
             <input
+              ref={searchInput}
               aria-label="Rechercher dans Nova et les résultats"
               placeholder="Rechercher dans Nova…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            {!query && <kbd aria-hidden="true">Ctrl K</kbd>}
             {query && (
               <button
                 aria-label="Effacer la recherche"

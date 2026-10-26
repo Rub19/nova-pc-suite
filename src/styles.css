@@ -170,6 +170,7 @@ button svg {
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: var(--sidebar);
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--line) 72%, transparent);
   padding: 32px 16px 16px;
   z-index: 3;
 }
@@ -231,13 +232,14 @@ button svg {
   padding: 0 16px 13px;
 }
 .nav-item {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 13px 14px;
   text-align: left;
-  border-radius: 7px;
+  border-radius: 8px;
   margin: 2px 0;
   font-size: 12px;
   font-weight: 500;
@@ -250,6 +252,15 @@ button svg {
   color: var(--blue);
   background: var(--blue-soft);
   font-weight: 650;
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  width: 3px;
+  height: 22px;
+  border-radius: 0 3px 3px 0;
+  background: var(--blue);
 }
 .count {
   margin-left: auto;
@@ -317,13 +328,17 @@ button svg {
   width: calc(100% - 232px);
 }
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   height: 73px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 36px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(16px);
 }
 .breadcrumb {
   display: flex;
@@ -339,7 +354,7 @@ button svg {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 260px;
+  width: 286px;
   position: relative;
   color: var(--muted);
 }
@@ -350,6 +365,16 @@ button svg {
   width: 100%;
   font-size: 11px;
   padding: 8px 0;
+}
+.search-wrap kbd {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: var(--muted);
+  background: var(--bg);
+  font: 600 9px/1.2 "Segoe UI", sans-serif;
+  white-space: nowrap;
 }
 .search-wrap input:focus {
   outline: none;
@@ -365,7 +390,7 @@ button svg {
   top: 40px;
   background: var(--surface);
   border: 1px solid var(--line);
-  box-shadow: 0 8px 25px #0001;
+  box-shadow: 0 16px 34px #0002;
   width: 280px;
   border-radius: 8px;
   z-index: 5;
@@ -382,10 +407,16 @@ button svg {
 .search-results button:hover {
   background: var(--hover);
 }
+.search-results button:focus-visible {
+  outline-offset: -2px;
+}
 main {
   max-width: 1450px;
   margin: auto;
   padding: 36px 36px 20px;
+}
+.page-heading > div:first-child {
+  min-width: 0;
 }
 .page-heading {
   display: flex;
@@ -424,6 +455,13 @@ main {
 }
 .primary:hover {
   background: var(--button-hover);
+}
+.button:not(:disabled) {
+  transition: background-color 140ms ease, border-color 140ms ease,
+    transform 140ms ease;
+}
+.button:not(:disabled):active {
+  transform: translateY(1px);
 }
 .secondary {
   background: var(--surface);
@@ -996,6 +1034,17 @@ tbody tr:hover {
   font-size: 12px;
   line-height: 1.6;
   margin-bottom: 20px;
+}
+.alert button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: currentColor;
+}
+.alert button:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 .alert span {
   flex: 1;

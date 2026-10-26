@@ -28,6 +28,7 @@
   border: 1px solid var(--line, #30353d);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 8%, transparent);
 }
 .wb-row {
   display: flex;
@@ -36,6 +37,10 @@
   gap: 16px;
   padding: 18px 20px;
   border-bottom: 1px solid var(--line, #30353d);
+  transition: background-color 140ms ease;
+}
+.wb-row:hover {
+  background: color-mix(in srgb, var(--hover, #262b32) 55%, transparent);
 }
 .wb-row:last-child {
   border-bottom: 0;
@@ -80,6 +85,9 @@
 .wb-button:hover:not(:disabled) {
   background: var(--hover, #262b32);
   border-color: var(--accent-line, #34465f);
+}
+.wb-button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .wb-button:disabled {
   opacity: 0.5;
@@ -191,6 +199,10 @@
   display: grid;
   gap: 16px;
 }
+.wb-result {
+  position: sticky;
+  top: 93px;
+}
 .wb-result-body .wb-note {
   padding: 12px;
   border-radius: 6px;
@@ -290,6 +302,9 @@
 @media (max-width: 1050px) {
   .wb-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .wb-result {
+    position: static;
   }
 }
 @media (max-width: 480px) {
