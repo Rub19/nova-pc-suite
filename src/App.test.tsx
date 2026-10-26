@@ -25,6 +25,7 @@ vi.mock("./lib", () => ({
   memoryPercent: () => null,
   message: (value: unknown) => String(value ?? ""),
   recommendations: () => [],
+  healthScore: () => ({ score: 100, level: "Bon état", items: [] }),
   elevate: vi.fn(),
   openSettings: vi.fn(),
 }));
@@ -141,5 +142,12 @@ describe("raccourcis d'interface", () => {
     expect(host.textContent).toContain("Analyse requise");
     expect(host.textContent).toContain("Inventaire requis");
     expect(host.textContent).not.toContain("Stockage—");
+  });
+
+  it("affiche un bilan local sans lancer d’action de maintenance", async () => {
+    await act(async () => root.render(<App />));
+    expect(host.textContent).toContain("BILAN LOCAL");
+    expect(host.textContent).toContain("Bon état");
+    expect(mocks.action).toHaveBeenCalledTimes(1);
   });
 });

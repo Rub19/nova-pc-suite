@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { memoryPercent, recommendations, rows, message } from "./lib";
+import { healthScore, memoryPercent, recommendations, rows, message } from "./lib";
 describe("diagnostics réels", () => {
   it("ne transforme pas une donnée absente en mesure rassurante", () => {
     expect(memoryPercent()).toBeNull();
@@ -28,5 +28,23 @@ describe("diagnostics réels", () => {
     expect(message("DriverInstallationIncomplete")).toContain(
       "Certains pilotes",
     );
+  });
+  it("produit un bilan local explicable et borné", () => {
+    const health = healthScore(
+      { memory: { totalBytes: 100, freeBytes: 5 }, pendingReboot: true },
+      { volumes: [{ drive: "C:", sizeBytes: 100, freeBytes: 5 }] },
+      { issues: ["AntivirusInventoryUnavailable"] },
+      3,
+    );
+    expect(health.score).toBeGreaterThanOrEqual(0);
+    expect(health.score).toBeLessThan(100);
+    expect(health.level).toBe("À vérifier");
+    expect(health.items.map((item) => item.target)).toEqual([
+      "processes",
+      "storage",
+      "drivers",
+      "drivers",
+      "security",
+    ]);
   });
 });

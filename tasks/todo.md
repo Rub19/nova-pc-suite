@@ -1,5 +1,13 @@
 # Nova — Task List
 
+## 0.3 — Bilan guidé et centres enrichis
+
+- [x] Bilan de santé local explicable et priorités ; alertes persistantes restent à enrichir.
+- [ ] Centre logiciels enrichi avec résultats de mises à jour et actions confirmées.
+- [ ] Centre pilotes enrichi : catégories, inventaire, Windows Update et fabricants détectés.
+- [ ] Rapports locaux et parcours de restauration documenté.
+- [ ] Installer, signature et validation Windows 10/11.
+
 ## 0.2.4 — erreurs de diagnostic, nettoyage auto et instance unique
 
 - [x] Reproduire puis corriger les scripts embarqués UTF-8 ; tests des trois diagnostics par le transport réel.

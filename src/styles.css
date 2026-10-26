@@ -551,6 +551,63 @@ main {
   margin-bottom: 22px;
   gap: 20px;
 }
+.health-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(260px, 0.85fr);
+  align-items: center;
+  gap: 18px;
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.health-score {
+  display: flex;
+  align-items: baseline;
+  min-width: 84px;
+  gap: 4px;
+  color: var(--green);
+}
+.health-score.attention {
+  color: var(--amber-text);
+}
+.health-score strong {
+  font-size: 30px;
+  letter-spacing: -1.4px;
+}
+.health-score span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.health-copy h2 {
+  margin: 7px 0 4px;
+  font-size: 15px;
+}
+.health-copy p {
+  font-size: 11px;
+}
+.health-actions {
+  display: grid;
+  gap: 5px;
+}
+.health-actions button,
+.health-clear {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  color: var(--blue);
+  font-size: 11px;
+  text-align: left;
+}
+.health-actions button:hover span {
+  text-decoration: underline;
+}
+.health-clear {
+  color: var(--green);
+}
 .hero-main {
   display: flex;
   gap: 20px;
@@ -1430,6 +1487,12 @@ dialog p {
   }
 }
 @media (max-width: 900px) {
+  .health-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .health-actions {
+    grid-column: 1 / -1;
+  }
   .sidebar {
     width: 190px;
   }

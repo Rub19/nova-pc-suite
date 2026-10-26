@@ -184,3 +184,65 @@ export function recommendations(snapshot?: Row, storage?: Row) {
     });
   return items;
 }
+
+export type HealthItem = {
+  title: string;
+  detail: string;
+  target: string;
+  penalty: number;
+};
+
+export function healthScore(
+  snapshot?: Row,
+  storage?: Row,
+  security?: Row,
+  updateCount = 0,
+) {
+  const items: HealthItem[] = [];
+  const used = memoryPercent(snapshot);
+  if (used !== null && used > 80)
+    items.push({
+      title: "Mémoire sous pression",
+      detail: `${used} % de la RAM est utilisée dans le dernier relevé.`,
+      target: "processes",
+      penalty: 15,
+    });
+  if (rows(storage, "volumes").some((volume) => {
+    const total = Number(volume.sizeBytes);
+    const free = Number(volume.freeBytes);
+    return total > 0 && free / total < 0.15;
+  }))
+    items.push({
+      title: "Espace disque faible",
+      detail: "Un volume local dispose de moins de 15 % d’espace libre.",
+      target: "storage",
+      penalty: 20,
+    });
+  if (snapshot?.pendingReboot === true)
+    items.push({
+      title: "Redémarrage requis",
+      detail: "Windows attend un redémarrage pour terminer une opération.",
+      target: "drivers",
+      penalty: 10,
+    });
+  if (updateCount > 0)
+    items.push({
+      title: "Pilotes à examiner",
+      detail: `${updateCount} mise${updateCount > 1 ? "s" : ""} à jour proposée${updateCount > 1 ? "s" : ""} par Windows Update.`,
+      target: "drivers",
+      penalty: 5,
+    });
+  if (Array.isArray(security?.issues) && security.issues.length > 0)
+    items.push({
+      title: "État des protections incomplet",
+      detail: "Au moins une protection Windows n’a pas pu être vérifiée.",
+      target: "security",
+      penalty: 20,
+    });
+  const score = Math.max(0, 100 - items.reduce((total, item) => total + item.penalty, 0));
+  return {
+    score,
+    level: score >= 85 ? "Bon état" : score >= 60 ? "À surveiller" : "À vérifier",
+    items,
+  };
+}

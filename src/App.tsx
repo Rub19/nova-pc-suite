@@ -41,6 +41,7 @@ import {
   elevate,
   Event,
   getHistory,
+  healthScore,
   labels,
   memoryPercent,
   message,
@@ -162,6 +163,7 @@ export default function App() {
     driverSelection.includes(text(u.id)),
   );
   const advice = recommendations(snapshot, data.storage);
+  const health = healthScore(snapshot, data.storage, data.security, updates.length);
   const suggestionTools = [
     {
       icon: Download,
@@ -620,6 +622,31 @@ export default function App() {
                     <br />
                     <strong>Un PC qui dure.</strong>
                   </span>
+                </div>
+              </section>
+              <section className="health-summary" aria-label="Bilan de santé local">
+                <div className={`health-score ${health.score < 60 ? "attention" : ""}`}>
+                  <strong>{health.score}</strong>
+                  <span>/ 100</span>
+                </div>
+                <div className="health-copy">
+                  <span className="tag neutral">BILAN LOCAL</span>
+                  <h2>{health.level}</h2>
+                  <p>
+                    Score indicatif calculé uniquement avec les derniers diagnostics Nova. Il ne remplace pas un diagnostic matériel.
+                  </p>
+                </div>
+                <div className="health-actions">
+                  {health.items.length ? (
+                    health.items.slice(0, 2).map((item) => (
+                      <button key={item.title} onClick={() => changePage(item.target)}>
+                        <span>{item.title}</span>
+                        <ArrowRight size={15} />
+                      </button>
+                    ))
+                  ) : (
+                    <span className="health-clear"><CheckCircle2 size={16} /> Aucun point prioritaire détecté</span>
+                  )}
                 </div>
               </section>
               <section className="metrics" aria-label="Mesures système">
