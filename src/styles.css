@@ -481,6 +481,23 @@ button svg {
   padding: 12px;
   font-size: 11px;
 }
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 20;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  transform: translateY(-160%);
+  transition: transform 140ms ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
 main {
   max-width: 1450px;
   margin: auto;
@@ -634,6 +651,16 @@ main {
 .health-trend svg {
   width: 160px;
   height: 28px;
+}
+.quiet-action {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.quiet-action:hover {
+  color: var(--blue);
 }
 .hero-main {
   display: flex;

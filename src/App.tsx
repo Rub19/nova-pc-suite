@@ -184,6 +184,10 @@ export default function App() {
     link.click();
     URL.revokeObjectURL(link.href);
   }
+  function clearHealthHistory() {
+    localStorage.removeItem("nova-health-history");
+    setHealthHistory([]);
+  }
   useEffect(() => {
     if (!snapshot) return;
     setHealthHistory((previous) => {
@@ -436,6 +440,9 @@ export default function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">
+        Aller au contenu principal
+      </a>
       <aside className="sidebar">
         <a
           className="brand"
@@ -585,7 +592,7 @@ export default function App() {
             )}
           </div>
         </header>
-        <main>
+        <main id="main-content" tabIndex={-1}>
           <div className="page-heading">
             <div>
               <div className="eyebrow">
@@ -739,6 +746,9 @@ export default function App() {
                       fill="none" stroke="var(--blue)" strokeWidth="2"
                     />
                   </svg>
+                  <button className="quiet-action" onClick={clearHealthHistory}>
+                    Effacer l’historique
+                  </button>
                 </section>
               )}
               <section className="metrics" aria-label="Mesures système">

@@ -79,6 +79,14 @@ describe("raccourcis d'interface", () => {
     expect(host.textContent).toContain("FICHE_MATERIELLE_MOCK");
   });
 
+  it("offre un lien d’évitement vers le contenu principal", async () => {
+    await act(async () => root.render(<App />));
+    const skipLink = host.querySelector<HTMLAnchorElement>("a.skip-link")!;
+    expect(skipLink.textContent).toContain("Aller au contenu principal");
+    expect(skipLink.getAttribute("href")).toBe("#main-content");
+    expect(host.querySelector("main#main-content")).not.toBeNull();
+  });
+
   it("ouvre la recherche avec Ctrl+K et l'efface avec Échap", async () => {
     await act(async () => root.render(<App />));
     const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
@@ -186,5 +194,19 @@ describe("raccourcis d'interface", () => {
     expect(host.textContent).toContain("BILAN LOCAL");
     expect(host.textContent).toContain("Bon état");
     expect(mocks.action).toHaveBeenCalledTimes(1);
+  });
+
+  it("permet d’effacer uniquement l’historique local des scores", async () => {
+    localStorage.setItem(
+      "nova-health-history",
+      JSON.stringify([{ score: 72, at: 1 }, { score: 80, at: 2 }]),
+    );
+    await act(async () => root.render(<App />));
+    const clear = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Effacer l’historique"),
+    )!;
+    await act(async () => clear.click());
+    expect(localStorage.getItem("nova-health-history")).toBeNull();
+    expect(host.textContent).not.toContain("Évolution des derniers bilans");
   });
 });
