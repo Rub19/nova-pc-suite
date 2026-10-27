@@ -455,6 +455,41 @@ button svg {
 .compact-ui .about-pc {
   gap: 12px;
 }
+.attention-center {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.attention-center h2 {
+  margin-top: 6px;
+  font-size: 15px;
+}
+.attention-center button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 7px;
+  text-align: left;
+  background: var(--hover);
+}
+.attention-center button:hover {
+  outline: 1px solid var(--blue);
+}
+.attention-center button span {
+  display: grid;
+  gap: 3px;
+}
+.attention-center button small {
+  color: var(--muted);
+  font-size: 11px;
+}
 .topbar {
   position: sticky;
   top: 0;

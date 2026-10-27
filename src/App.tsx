@@ -235,6 +235,23 @@ export default function App() {
     data.security,
     updates.length,
   );
+  const attentionItems = [
+    snapshot?.pendingReboot && {
+      title: "Redémarrage recommandé",
+      detail: "Windows signale une opération en attente.",
+      target: "optimize",
+    },
+    updates.length > 0 && {
+      title: `${updates.length} pilote${updates.length > 1 ? "s" : ""} à examiner`,
+      detail: "Windows Update propose des mises à jour applicables.",
+      target: "drivers",
+    },
+    missingDriverDevices.length > 0 && {
+      title: `${missingDriverDevices.length} pilote${missingDriverDevices.length > 1 ? "s" : ""} manquant${missingDriverDevices.length > 1 ? "s" : ""}`,
+      detail: "Windows a signalé un périphérique sans pilote.",
+      target: "drivers",
+    },
+  ].filter(Boolean) as { title: string; detail: string; target: string }[];
   function downloadHealthReport(format: "txt" | "json") {
     const report = healthReport(health);
     const content = format === "txt" ? report.text : report.json;
@@ -893,6 +910,29 @@ export default function App() {
 
           {page === "overview" && (
             <>
+              {attentionItems.length > 0 && (
+                <section
+                  className="attention-center"
+                  aria-label="Points à examiner"
+                >
+                  <div>
+                    <span className="tag neutral">À EXAMINER</span>
+                    <h2>Vos priorités</h2>
+                  </div>
+                  {attentionItems.slice(0, 3).map((item) => (
+                    <button
+                      key={item.title}
+                      onClick={() => changePage(item.target)}
+                    >
+                      <span>
+                        <strong>{item.title}</strong>
+                        <small>{item.detail}</small>
+                      </span>
+                      <ArrowRight size={16} />
+                    </button>
+                  ))}
+                </section>
+              )}
               <section className="hero">
                 <div className="hero-main">
                   <div className="hero-icon">
