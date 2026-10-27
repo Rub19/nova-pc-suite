@@ -203,6 +203,19 @@ export default function App() {
   const selectedUpdates = updates.filter((u) =>
     driverSelection.includes(text(u.id)),
   );
+  const driverInstallRows = rows(data["install-drivers"], "results").map(
+    (result) => {
+      const update = rows(data["install-drivers"], "items").find(
+        (item) => text(item.id) === text(result.id),
+      );
+      return {
+        ...result,
+        source: "Windows Update",
+        title: update ? text(update.title) : "Pilote Windows Update",
+        category: update ? text(update.driverClass) : "Indisponible",
+      };
+    },
+  );
   const advice = recommendations(snapshot, data.storage);
   const health = healthScore(
     snapshot,
@@ -1369,9 +1382,11 @@ export default function App() {
                     échec, 5 = annulé.
                   </p>
                   <DataTable
-                    items={rows(data["install-drivers"], "results")}
+                    items={driverInstallRows}
                     columns={[
-                      ["id", "Identifiant"],
+                      ["title", "Pilote"],
+                      ["category", "Catégorie"],
+                      ["source", "Source"],
                       ["resultCode", "Résultat"],
                       ["hresult", "Code Windows"],
                       ["rebootRequired", "Redémarrage"],
