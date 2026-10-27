@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -6,8 +8,6 @@ import {
 } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import Workbench from "./Workbench";
-import AboutPC from "./AboutPC";
 import AutomaticCleanup from "./AutomaticCleanup";
 import { MemoryGuardian, NetworkTools } from "./HealthTools";
 import {
@@ -61,6 +61,9 @@ import {
   rows,
   text,
 } from "./lib";
+
+const Workbench = lazy(() => import("./Workbench"));
+const AboutPC = lazy(() => import("./AboutPC"));
 
 const navGroups = [
   {
@@ -523,13 +526,14 @@ export default function App() {
     }
   }
   useEffect(() => {
-    void run("snapshot");
+    const initialSnapshot = window.setTimeout(() => void run("snapshot"), 250);
     if (isTauri())
       void invoke<string>("startup_page")
         .then((id) => {
           if (nav.some((item) => item.id === id)) setPage(id);
         })
         .catch(() => {});
+    return () => window.clearTimeout(initialSnapshot);
   }, []);
   useEffect(() => {
     if (!isTauri()) return;
@@ -2075,17 +2079,25 @@ Nova <span className="version">v0.2.14</span>
           )}
           {page === "network" && <NetworkTools />}
           <MemoryGuardian visible={page === "memory"} />
-          {page === "about-pc" && <AboutPC visible />}
           <AutomaticCleanup visible={page === "cleanup"} />
-          {page === "optimize" && <Workbench section="maintenance" />}
-          {page === "startup" && <Workbench section="startup-manage" />}
-          {[
-            "cleanup",
-            "applications",
-            "automation",
-            "measurements",
-            "driver-sources",
-          ].includes(page) && <Workbench section={page} />}
+          <Suspense
+            fallback={
+              <section className="panel" role="status" aria-busy="true">
+                Chargement de cet outilâ€¦
+              </section>
+            }
+          >
+            {page === "about-pc" && <AboutPC visible />}
+            {page === "optimize" && <Workbench section="maintenance" />}
+            {page === "startup" && <Workbench section="startup-manage" />}
+            {[
+              "cleanup",
+              "applications",
+              "automation",
+              "measurements",
+              "driver-sources",
+            ].includes(page) && <Workbench section={page} />}
+          </Suspense>
           <footer className="main-footer">
             <span>
               <ShieldCheck size={14} />

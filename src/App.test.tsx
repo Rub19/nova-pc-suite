@@ -65,6 +65,18 @@ afterEach(async () => {
 });
 
 describe("raccourcis d'interface", () => {
+  it("defers the initial local snapshot so the shell can paint first", async () => {
+    vi.useFakeTimers();
+    await act(async () => root.render(<App />));
+    expect(mocks.action).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    expect(mocks.action).toHaveBeenCalledWith("snapshot", false, [], false);
+    vi.useRealTimers();
+  });
+
   it("restaure la dernière page et la conserve lors de la navigation", async () => {
     localStorage.setItem("nova-last-page", "cleanup");
     await act(async () => root.render(<App />));
@@ -178,7 +190,11 @@ describe("raccourcis d'interface", () => {
   });
 
   it("présente des suggestions sans lancer de maintenance automatiquement", async () => {
+    vi.useFakeTimers();
     await act(async () => root.render(<App />));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
     const suggestions = [...host.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("Suggestions Nova"),
     )!;
@@ -247,7 +263,11 @@ describe("raccourcis d'interface", () => {
   });
 
   it("affiche un bilan local sans lancer d’action de maintenance", async () => {
+    vi.useFakeTimers();
     await act(async () => root.render(<App />));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
     expect(host.textContent).toContain("BILAN LOCAL");
     expect(host.textContent).toContain("Bon état");
     expect(mocks.action).toHaveBeenCalledTimes(1);
