@@ -40,6 +40,9 @@ try {
                     })
                 }catch{$issues+=$query.class}
             }
+            $firmwareTargets=@()
+            try { $firmwareTargets += @(Get-CimInstance -ClassName Win32_BIOS -Property Manufacturer,SMBIOSBIOSVersion | ForEach-Object { @{ kind='BIOS / UEFI'; manufacturer=[string]$_.Manufacturer; model=[string]$_.SMBIOSBIOSVersion } }) } catch { $issues+='Win32_BIOS' }
+            try { $firmwareTargets += @(Get-CimInstance -ClassName Win32_DiskDrive -Property Manufacturer,Model,FirmwareRevision | Select-Object -First 16 | ForEach-Object { @{ kind='Firmware SSD / disque'; manufacturer=[string]$_.Manufacturer; model=([string]$_.Model+' · '+[string]$_.FirmwareRevision).Trim(' ','·') } }) } catch { $issues+='Win32_DiskDrive' }
             $patterns=@{intel='Intel';nvidia='NVIDIA';amd='\bAMD\b|Advanced Micro Devices|AuthenticAMD';dell='Dell';lenovo='Lenovo';hp='\bHP\b|Hewlett';asus='ASUS|ASUSTeK';msi='\bMSI\b|Micro-Star|Micro Star';gigabyte='Gigabyte|Giga-byte'}
             $names=@{intel='Intel';nvidia='NVIDIA';amd='AMD';dell='Dell';lenovo='Lenovo';hp='HP';asus='ASUS';msi='MSI';gigabyte='GIGABYTE'}
             $detected=@();$unmatched=@()
@@ -51,7 +54,7 @@ try {
                 $matched=$false;foreach($pattern in $patterns.Values){if($group.Name -match $pattern){$matched=$true;break}}
                 if(-not $matched){$unmatched+=@{manufacturer=$group.Name;devices=@($group.Group|ForEach-Object{$_.device}|Where-Object{$_}|Sort-Object -Unique|Select-Object -First 8)}}
             }
-            $reply.data=@{providers=$detected;otherManufacturers=$unmatched;unavailable=$issues;readOnly=$true;automaticInstall=$false;interpretation='Fabricants identifies localement. Windows Update recherche les pilotes applicables ; les supports OEM peuvent proposer des versions supplementaires. Aucun site constructeur contacte pendant cette detection.'}
+            $reply.data=@{providers=$detected;otherManufacturers=$unmatched;firmwareTargets=$firmwareTargets;unavailable=$issues;readOnly=$true;automaticInstall=$false;interpretation='Fabricants identifies localement. Windows Update recherche les pilotes applicables ; les supports OEM peuvent proposer des versions supplementaires. Aucun site constructeur contacte pendant cette detection.'}
         }
         'schedule-status' {
             $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue

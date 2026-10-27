@@ -47,6 +47,9 @@ describe("confirmations et résultats de maintenance", () => {
         otherManufacturers: [
           { manufacturer: "Other fixture", devices: ["Fixture device"] },
         ],
+        firmwareTargets: [
+          { kind: "BIOS / UEFI", manufacturer: "Fixture", model: "F1" },
+        ],
       },
     });
     await act(async () => root.render(<Workbench section="driver-sources" />));
@@ -58,6 +61,8 @@ describe("confirmations et résultats de maintenance", () => {
     });
     expect(host.textContent).toContain("Fixture chipset");
     expect(host.textContent).toContain("Other fixture");
+    expect(host.textContent).toContain("Firmware détecté");
+    expect(host.textContent).toContain("BIOS / UEFI");
     expect(
       mocks.invoke.mock.calls.some(([, args]) => args.action === "open-source"),
     ).toBe(false);
@@ -195,7 +200,12 @@ describe("confirmations et résultats de maintenance", () => {
   it("rend visible le bilan WinGet après une recherche de logiciels", async () => {
     mocks.invoke.mockResolvedValue({
       ok: true,
-      data: { available: true, exitCode: 0, output: "Fixture update", truncated: false },
+      data: {
+        available: true,
+        exitCode: 0,
+        output: "Fixture update",
+        truncated: false,
+      },
     });
     await act(async () => root.render(<Workbench section="applications" />));
     await click("Rechercher les mises à jour");

@@ -907,14 +907,17 @@ function WorkbenchView({
                         : "WinGet a terminé avec un code à vérifier."
                       : "WinGet n’est pas disponible sur ce PC."}
                   </p>
-                  {typeof upgrades.output === "string" && upgrades.output.trim() && (
-                    <details className="wb-details">
-                      <summary>Résultats proposés</summary>
-                      <pre className="wb-output">{upgrades.output}</pre>
-                    </details>
-                  )}
+                  {typeof upgrades.output === "string" &&
+                    upgrades.output.trim() && (
+                      <details className="wb-details">
+                        <summary>Résultats proposés</summary>
+                        <pre className="wb-output">{upgrades.output}</pre>
+                      </details>
+                    )}
                   {upgrades.truncated === true && (
-                    <small>Le résultat est tronqué pour préserver les performances.</small>
+                    <small>
+                      Le résultat est tronqué pour préserver les performances.
+                    </small>
                   )}
                 </section>
               )}
@@ -1176,6 +1179,32 @@ function WorkbenchView({
                   )}
                 </div>
               ))}
+              {list(results["detect-sources"], "firmwareTargets").length >
+                0 && (
+                <section className="wb-result-body">
+                  <h2>Firmware détecté</h2>
+                  <p>
+                    Ces versions sont informatives. Vérifiez la compatibilité
+                    exacte sur le support officiel avant toute mise à jour ;
+                    Nova ne flashe jamais un BIOS, GPU ou SSD automatiquement.
+                  </p>
+                  {list(results["detect-sources"], "firmwareTargets").map(
+                    (item, index) => (
+                      <div
+                        className="wb-row"
+                        key={`${display(item.kind)}-${index}`}
+                      >
+                        <div>
+                          <h3>{display(item.kind)}</h3>
+                          <p>
+                            {display(item.manufacturer)} · {display(item.model)}
+                          </p>
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </section>
+              )}
               {has("detect-sources") &&
                 !list(results["detect-sources"], "providers").length && (
                   <p>
