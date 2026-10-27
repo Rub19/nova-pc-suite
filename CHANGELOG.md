@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.14 preview — 2026-10-27
+
+- Notification-area controls for RAM measurement, opt-in supervised memory monitoring, and an explicitly approved application only.
+- Temporary-cleanup shortcut remains opt-in and safe by default; background RAM sampling reduced to once per minute.
+- Windows Update driver metadata, restore-point guard, local firmware discovery, result history, filters, and reports included.
+
 ## 0.2.13 preview — 2026-10-27
 
 - Audit Pilotes enrichi : catégories PnP, appareils sans pilote signalés par Windows (code 28) et problèmes critiques graphique/réseau/stockage/chipset.
