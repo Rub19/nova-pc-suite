@@ -156,6 +156,9 @@ export default function App() {
   const [dark, setDark] = useState(
     localStorage.getItem("nova-theme") !== "light",
   );
+  const [compact, setCompact] = useState(
+    () => localStorage.getItem("nova-compact-ui") === "enabled",
+  );
   const [lastScan, setLastScan] = useState<Date | null>(null);
   const [healthHistory, setHealthHistory] = useState<
     { score: number; at: number }[]
@@ -375,6 +378,9 @@ export default function App() {
     localStorage.setItem("nova-theme", dark ? "dark" : "light");
   }, [dark]);
   useEffect(() => {
+    localStorage.setItem("nova-compact-ui", compact ? "enabled" : "disabled");
+  }, [compact]);
+  useEffect(() => {
     localStorage.setItem("nova-last-page", page);
   }, [page]);
   useEffect(() => {
@@ -385,6 +391,10 @@ export default function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         searchInput.current?.focus();
+      }
+      if (event.key === "F5" && !(event.target instanceof HTMLInputElement)) {
+        event.preventDefault();
+        void run("snapshot");
       }
       if (
         event.key === "Escape" &&
@@ -637,7 +647,7 @@ export default function App() {
   const heading = nav.find((n) => n.id === page)?.label ?? "Nova";
 
   return (
-    <div className="app">
+    <div className={`app${compact ? " compact-ui" : ""}`}>
       <a className="skip-link" href="#main-content">
         Aller au contenu principal
       </a>
@@ -724,6 +734,16 @@ export default function App() {
               onClick={() => setDark(!dark)}
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              aria-label={
+                compact
+                  ? "Désactiver le mode compact"
+                  : "Activer le mode compact"
+              }
+              onClick={() => setCompact(!compact)}
+            >
+              <MoreHorizontal size={18} />
             </button>
           </div>
         </div>

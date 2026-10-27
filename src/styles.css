@@ -441,6 +441,20 @@ button svg {
   margin-left: 232px;
   width: calc(100% - 232px);
 }
+.compact-ui main {
+  padding-top: 18px;
+}
+.compact-ui .panel {
+  padding: 16px;
+}
+.compact-ui .page-heading {
+  margin-bottom: 22px;
+}
+.compact-ui .toolbar,
+.compact-ui .workbench,
+.compact-ui .about-pc {
+  gap: 12px;
+}
 .topbar {
   position: sticky;
   top: 0;
