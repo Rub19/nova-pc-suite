@@ -6,10 +6,17 @@ import App from "./App";
 
 const mocks = vi.hoisted(() => ({ action: vi.fn(), history: vi.fn() }));
 
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({
+  isTauri: () => false,
+  invoke: vi.fn(),
+}));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
-vi.mock("./AutomaticCleanup", () => ({ default: () => <div>Nettoyage automatique</div> }));
-vi.mock("./AboutPC", () => ({ default: () => <div>FICHE_MATERIELLE_MOCK</div> }));
+vi.mock("./AutomaticCleanup", () => ({
+  default: () => <div>Nettoyage automatique</div>,
+}));
+vi.mock("./AboutPC", () => ({
+  default: () => <div>FICHE_MATERIELLE_MOCK</div>,
+}));
 vi.mock("./HealthTools", () => ({
   MemoryGuardian: () => <div>Mémoire</div>,
   NetworkTools: () => <div>Réseau</div>,
@@ -89,41 +96,53 @@ describe("raccourcis d'interface", () => {
 
   it("ouvre la recherche avec Ctrl+K et l'efface avec Échap", async () => {
     await act(async () => root.render(<App />));
-    const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
+    const input = host.querySelector<HTMLInputElement>(
+      "input[aria-label^='Rechercher']",
+    )!;
     await act(async () =>
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true })),
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "k", ctrlKey: true }),
+      ),
     );
     expect(document.activeElement).toBe(input);
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-        input,
-        "pilotes",
-      );
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(input, "pilotes");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    await act(async () =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+    );
     expect(input.value).toBe("");
     expect(document.activeElement).not.toBe(input);
   });
 
   it("permet de choisir un résultat de recherche au clavier", async () => {
     await act(async () => root.render(<App />));
-    const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
+    const input = host.querySelector<HTMLInputElement>(
+      "input[aria-label^='Rechercher']",
+    )!;
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-        input,
-        "pilotes",
-      );
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(input, "pilotes");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await act(async () =>
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      ),
     );
-    expect(host.querySelector("[role='option'][aria-selected='true']")?.textContent).toContain(
-      "Pilotes & mises à jour",
-    );
+    expect(
+      host.querySelector("[role='option'][aria-selected='true']")?.textContent,
+    ).toContain("Pilotes & mises à jour");
     await act(async () =>
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      ),
     );
     expect(input.value).toBe("");
     expect(host.textContent).toContain("Pilotes & mises à jour");
@@ -131,26 +150,28 @@ describe("raccourcis d'interface", () => {
 
   it("permet de replier un groupe sans retirer ses pages de la recherche", async () => {
     await act(async () => root.render(<App />));
-    const maintenance = [...host.querySelectorAll("button")].find((button) =>
-      button.textContent?.trim() === "Entretien",
+    const maintenance = [...host.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Entretien",
     )!;
     expect(maintenance.getAttribute("aria-expanded")).toBe("true");
     await act(async () => maintenance.click());
     expect(maintenance.getAttribute("aria-expanded")).toBe("false");
     expect(localStorage.getItem("nova-collapsed-nav")).toBe('["maintenance"]');
     expect(host.textContent).not.toContain("Pilotes & mises à jour");
-    const input = host.querySelector<HTMLInputElement>("input[aria-label^='Rechercher']")!;
+    const input = host.querySelector<HTMLInputElement>(
+      "input[aria-label^='Rechercher']",
+    )!;
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-        input,
-        "pilotes",
-      );
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(input, "pilotes");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(host.textContent).toContain("Pilotes & mises à jour");
-    const driverResult = [...host.querySelectorAll(".search-results button")].find(
-      (button) => button.textContent?.includes("Pilotes & mises à jour"),
-    )!;
+    const driverResult = [
+      ...host.querySelectorAll(".search-results button"),
+    ].find((button) => button.textContent?.includes("Pilotes & mises à jour"))!;
     await act(async () => (driverResult as HTMLButtonElement).click());
     expect(maintenance.getAttribute("aria-expanded")).toBe("true");
     expect(localStorage.getItem("nova-collapsed-nav")).toBe("[]");
@@ -192,7 +213,30 @@ describe("raccourcis d'interface", () => {
       button.textContent?.includes("Auditer les appareils"),
     )!;
     await act(async () => audit.click());
-    expect(mocks.action).toHaveBeenLastCalledWith("driver-audit", false, [], false);
+    expect(mocks.action).toHaveBeenLastCalledWith(
+      "driver-audit",
+      false,
+      [],
+      false,
+    );
+  });
+
+  it("analyse en une fois les pilotes installés, les erreurs et les mises à jour Windows", async () => {
+    await act(async () => root.render(<App />));
+    const drivers = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Pilotes & mises à jour"),
+    )!;
+    await act(async () => drivers.click());
+    mocks.action.mockClear();
+    const completeScan = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Analyser tous les pilotes"),
+    )!;
+    await act(async () => completeScan.click());
+    expect(mocks.action.mock.calls.map(([id]) => id)).toEqual([
+      "drivers",
+      "driver-audit",
+      "updates",
+    ]);
   });
 
   it("affiche une attente explicite pour les mesures non encore analysées", async () => {
@@ -212,7 +256,10 @@ describe("raccourcis d'interface", () => {
   it("permet d’effacer uniquement l’historique local des scores", async () => {
     localStorage.setItem(
       "nova-health-history",
-      JSON.stringify([{ score: 72, at: 1 }, { score: 80, at: 2 }]),
+      JSON.stringify([
+        { score: 72, at: 1 },
+        { score: 80, at: 2 },
+      ]),
     );
     await act(async () => root.render(<App />));
     const clear = [...host.querySelectorAll("button")].find((button) =>

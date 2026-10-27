@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.12 preview — 2026-10-27
+
+- Nouveau bouton « Analyser tous les pilotes » : inventaire local, appareils en erreur et pilotes applicables via Windows Update sont vérifiés en un seul parcours lecture seule.
+- Les pilotes détectés par Windows Update restent tous présélectionnés pour l’installation groupée, qui nécessite toujours confirmation et droits administrateur.
+
 ## 0.2.11 preview — 2026-10-26
 
 - Correction de la carte « Nettoyage automatique des temporaires » : case, titre et explication sont réunis dans une zone cliquable lisible avec survol et focus cohérents.

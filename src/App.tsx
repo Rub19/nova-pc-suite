@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Workbench from "./Workbench";
@@ -104,9 +109,14 @@ const navGroupIds = new Set(navGroups.map((group) => group.id));
 
 function readCollapsedGroups() {
   try {
-    const saved = JSON.parse(localStorage.getItem("nova-collapsed-nav") ?? "[]");
+    const saved = JSON.parse(
+      localStorage.getItem("nova-collapsed-nav") ?? "[]",
+    );
     return Array.isArray(saved)
-      ? saved.filter((group): group is string => typeof group === "string" && navGroupIds.has(group))
+      ? saved.filter(
+          (group): group is string =>
+            typeof group === "string" && navGroupIds.has(group),
+        )
       : [];
   } catch {
     return [];
@@ -144,11 +154,24 @@ export default function App() {
     localStorage.getItem("nova-theme") !== "light",
   );
   const [lastScan, setLastScan] = useState<Date | null>(null);
-  const [healthHistory, setHealthHistory] = useState<{ score: number; at: number }[]>(() => {
+  const [healthHistory, setHealthHistory] = useState<
+    { score: number; at: number }[]
+  >(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("nova-health-history") ?? "[]");
-      return Array.isArray(saved) ? saved.filter((item) => typeof item?.score === "number" && typeof item?.at === "number").slice(-20) : [];
-    } catch { return []; }
+      const saved = JSON.parse(
+        localStorage.getItem("nova-health-history") ?? "[]",
+      );
+      return Array.isArray(saved)
+        ? saved
+            .filter(
+              (item) =>
+                typeof item?.score === "number" && typeof item?.at === "number",
+            )
+            .slice(-20)
+        : [];
+    } catch {
+      return [];
+    }
   });
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -175,11 +198,18 @@ export default function App() {
     driverSelection.includes(text(u.id)),
   );
   const advice = recommendations(snapshot, data.storage);
-  const health = healthScore(snapshot, data.storage, data.security, updates.length);
+  const health = healthScore(
+    snapshot,
+    data.storage,
+    data.security,
+    updates.length,
+  );
   function downloadHealthReport(format: "txt" | "json") {
     const report = healthReport(health);
     const content = format === "txt" ? report.text : report.json;
-    const blob = new Blob([content], { type: format === "txt" ? "text/plain;charset=utf-8" : "application/json" });
+    const blob = new Blob([content], {
+      type: format === "txt" ? "text/plain;charset=utf-8" : "application/json",
+    });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `nova-bilan-sante.${format}`;
@@ -193,7 +223,9 @@ export default function App() {
   useEffect(() => {
     if (!snapshot) return;
     setHealthHistory((previous) => {
-      const next = [...previous, { score: health.score, at: Date.now() }].slice(-20);
+      const next = [...previous, { score: health.score, at: Date.now() }].slice(
+        -20,
+      );
       localStorage.setItem("nova-health-history", JSON.stringify(next));
       return next;
     });
@@ -244,10 +276,30 @@ export default function App() {
     },
   ];
   const guidedSteps = [
-    { title: "Diagnostic du PC", detail: "Matériel, mémoire et état Windows", target: "overview", complete: Boolean(snapshot) },
-    { title: "Stockage", detail: "Volumes locaux et espace disponible", target: "storage", complete: Boolean(data.storage) },
-    { title: "Pilotes", detail: "Inventaire local et mises à jour applicables", target: "drivers", complete: Boolean(data.drivers || data.updates) },
-    { title: "Protections", detail: "Antivirus et profils de pare-feu", target: "security", complete: Boolean(data.security) },
+    {
+      title: "Diagnostic du PC",
+      detail: "Matériel, mémoire et état Windows",
+      target: "overview",
+      complete: Boolean(snapshot),
+    },
+    {
+      title: "Stockage",
+      detail: "Volumes locaux et espace disponible",
+      target: "storage",
+      complete: Boolean(data.storage),
+    },
+    {
+      title: "Pilotes",
+      detail: "Inventaire local et mises à jour applicables",
+      target: "drivers",
+      complete: Boolean(data.drivers || data.updates),
+    },
+    {
+      title: "Protections",
+      detail: "Antivirus et profils de pare-feu",
+      target: "security",
+      complete: Boolean(data.security),
+    },
   ];
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -265,7 +317,10 @@ export default function App() {
         event.preventDefault();
         searchInput.current?.focus();
       }
-      if (event.key === "Escape" && document.activeElement === searchInput.current) {
+      if (
+        event.key === "Escape" &&
+        document.activeElement === searchInput.current
+      ) {
         setQuery("");
         searchInput.current?.blur();
       }
@@ -297,6 +352,33 @@ export default function App() {
         if (id === "snapshot") setLastScan(new Date());
         setNotice(`${labels[id] ?? id} : terminé.`);
       }
+      setEvents(await getHistory());
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e));
+    } finally {
+      operation.current = false;
+      setBusy(null);
+    }
+  }
+  async function runCompleteDriverScan() {
+    if (operation.current) return;
+    operation.current = true;
+    setBusy("driver-complete");
+    setError("");
+    setNotice("");
+    const actions = ["drivers", "driver-audit", "updates"];
+    const failures: string[] = [];
+    try {
+      for (const id of actions) {
+        const reply = await action(id, false, [], false);
+        if (reply.data) setData((old) => ({ ...old, [id]: reply.data! }));
+        if (!reply.ok) failures.push(message(reply.error));
+      }
+      if (failures.length) setError(failures.join(" "));
+      else
+        setNotice(
+          "Analyse complète des pilotes terminée. Examinez les propositions Windows Update avant installation.",
+        );
       setEvents(await getHistory());
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
@@ -368,7 +450,9 @@ export default function App() {
   const filteredNav = query
     ? navGroups.flatMap((group) =>
         group.items
-          .filter((item) => item.label.toLowerCase().includes(query.toLowerCase()))
+          .filter((item) =>
+            item.label.toLowerCase().includes(query.toLowerCase()),
+          )
           .map((item) => ({ ...item, group: group.label })),
       )
     : [];
@@ -417,7 +501,11 @@ export default function App() {
         <span>{label}</span>
         <Icon size={18} />
       </div>
-      {pendingLabel ? <strong className="metric-pending">{pendingLabel}</strong> : <strong>{value}</strong>}
+      {pendingLabel ? (
+        <strong className="metric-pending">{pendingLabel}</strong>
+      ) : (
+        <strong>{value}</strong>
+      )}
       <span className="muted">{subtitle}</span>
       {percent != null && (
         <progress max="100" value={percent} aria-label={label} />
@@ -519,7 +607,7 @@ export default function App() {
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.2.11</span>
+              Nova <span className="version">v0.2.12</span>
             </span>
             <button
               aria-label={
@@ -569,14 +657,20 @@ export default function App() {
               </button>
             )}
             {query && (
-              <div className="search-results" id="nova-search-results" role="listbox">
+              <div
+                className="search-results"
+                id="nova-search-results"
+                role="listbox"
+              >
                 {filteredNav.map((n, index) => (
                   <button
                     id={`nova-search-result-${index}`}
                     key={n.id}
                     role="option"
                     aria-selected={activeSearchResult === index}
-                    className={activeSearchResult === index ? "active" : undefined}
+                    className={
+                      activeSearchResult === index ? "active" : undefined
+                    }
                     onMouseEnter={() => setActiveSearchResult(index)}
                     onClick={() => selectSearchResult(index)}
                   >
@@ -710,8 +804,13 @@ export default function App() {
                   </span>
                 </div>
               </section>
-              <section className="health-summary" aria-label="Bilan de santé local">
-                <div className={`health-score ${health.score < 60 ? "attention" : ""}`}>
+              <section
+                className="health-summary"
+                aria-label="Bilan de santé local"
+              >
+                <div
+                  className={`health-score ${health.score < 60 ? "attention" : ""}`}
+                >
                   <strong>{health.score}</strong>
                   <span>/ 100</span>
                 </div>
@@ -719,33 +818,57 @@ export default function App() {
                   <span className="tag neutral">BILAN LOCAL</span>
                   <h2>{health.level}</h2>
                   <p>
-                    Score indicatif calculé uniquement avec les derniers diagnostics Nova. Il ne remplace pas un diagnostic matériel.
+                    Score indicatif calculé uniquement avec les derniers
+                    diagnostics Nova. Il ne remplace pas un diagnostic matériel.
                   </p>
                 </div>
                 <div className="health-actions">
                   {health.items.length ? (
                     health.items.slice(0, 2).map((item) => (
-                      <button key={item.title} onClick={() => changePage(item.target)}>
+                      <button
+                        key={item.title}
+                        onClick={() => changePage(item.target)}
+                      >
                         <span>{item.title}</span>
                         <ArrowRight size={15} />
                       </button>
                     ))
                   ) : (
-                    <span className="health-clear"><CheckCircle2 size={16} /> Aucun point prioritaire détecté</span>
+                    <span className="health-clear">
+                      <CheckCircle2 size={16} /> Aucun point prioritaire détecté
+                    </span>
                   )}
                   <div className="health-export">
-                    <button onClick={() => downloadHealthReport("txt")}>Rapport .txt</button>
-                    <button onClick={() => downloadHealthReport("json")}>Rapport .json</button>
+                    <button onClick={() => downloadHealthReport("txt")}>
+                      Rapport .txt
+                    </button>
+                    <button onClick={() => downloadHealthReport("json")}>
+                      Rapport .json
+                    </button>
                   </div>
                 </div>
               </section>
               {healthHistory.length > 1 && (
-                <section className="health-trend" aria-label="Évolution du bilan de santé">
+                <section
+                  className="health-trend"
+                  aria-label="Évolution du bilan de santé"
+                >
                   <span>Évolution des derniers bilans</span>
-                  <svg viewBox="0 0 200 32" role="img" aria-label="Historique du score santé">
+                  <svg
+                    viewBox="0 0 200 32"
+                    role="img"
+                    aria-label="Historique du score santé"
+                  >
                     <polyline
-                      points={healthHistory.map((item, index) => `${(index * 200) / Math.max(1, healthHistory.length - 1)},${32 - item.score * 0.32}`).join(" ")}
-                      fill="none" stroke="var(--blue)" strokeWidth="2"
+                      points={healthHistory
+                        .map(
+                          (item, index) =>
+                            `${(index * 200) / Math.max(1, healthHistory.length - 1)},${32 - item.score * 0.32}`,
+                        )
+                        .join(" ")}
+                      fill="none"
+                      stroke="var(--blue)"
+                      strokeWidth="2"
                     />
                   </svg>
                   <button className="quiet-action" onClick={clearHealthHistory}>
@@ -905,11 +1028,24 @@ export default function App() {
                   <h2>Votre matériel mérite les bons pilotes.</h2>
                   <p>
                     Windows Update recherche les mises à jour applicables. Nova
-                    compare aussi votre inventaire local et détecte les fabricants
-                    présents pour vous guider vers leur support officiel.
+                    compare aussi votre inventaire local et détecte les
+                    fabricants présents pour vous guider vers leur support
+                    officiel.
                   </p>
                 </div>
                 <div className="action-banner-actions">
+                  <button
+                    className="button primary"
+                    onClick={() => void runCompleteDriverScan()}
+                    disabled={!!busy}
+                  >
+                    {busy === "driver-complete" ? (
+                      <LoaderCircle className="spin" size={16} />
+                    ) : (
+                      <Search size={16} />
+                    )}
+                    Analyser tous les pilotes
+                  </button>
                   {scanButton("updates", "Rechercher les mises à jour")}
                   <button
                     className="button secondary"
@@ -920,38 +1056,63 @@ export default function App() {
                   </button>
                 </div>
               </section>
-              <section className="panel driver-audit" aria-label="Audit local des appareils">
+              <section
+                className="panel driver-audit"
+                aria-label="Audit local des appareils"
+              >
                 <div>
                   <span className="tag neutral">LECTURE SEULE</span>
                   <h2>État des appareils et des pilotes</h2>
                   <p>
                     Vérifie les erreurs déclarées par Windows et les métadonnées
-                    de signature. Cet audit ne télécharge, n’installe ni ne remplace aucun pilote.
+                    de signature. Cet audit ne télécharge, n’installe ni ne
+                    remplace aucun pilote.
                   </p>
                 </div>
                 <div className="driver-audit-actions">
                   {scanButton("driver-audit", "Auditer les appareils")}
-                  <button className="button secondary" onClick={() => changePage("driver-sources")}>
+                  <button
+                    className="button secondary"
+                    onClick={() => changePage("driver-sources")}
+                  >
                     Supports officiels <ArrowRight size={15} />
                   </button>
                 </div>
                 {driverAudit && (
                   <div className="driver-audit-result" aria-live="polite">
-                    <span>{text(driverAudit.deviceCount)} appareils relevés</span>
-                    <span>{text(driverAudit.signedDriverCount)} pilotes déclarés signés</span>
-                    <span>{text(driverAudit.unsignedDriverCount)} à vérifier</span>
+                    <span>
+                      {text(driverAudit.deviceCount)} appareils relevés
+                    </span>
+                    <span>
+                      {text(driverAudit.signedDriverCount)} pilotes déclarés
+                      signés
+                    </span>
+                    <span>
+                      {text(driverAudit.unsignedDriverCount)} à vérifier
+                    </span>
                     {driverProblems.length ? (
                       <div className="driver-problems">
-                        <strong>{driverProblems.length} appareil{driverProblems.length > 1 ? "s" : ""} demande{driverProblems.length > 1 ? "nt" : ""} une attention</strong>
+                        <strong>
+                          {driverProblems.length} appareil
+                          {driverProblems.length > 1 ? "s" : ""} demande
+                          {driverProblems.length > 1 ? "nt" : ""} une attention
+                        </strong>
                         {driverProblems.slice(0, 5).map((device, index) => (
                           <p key={`${text(device.name)}-${index}`}>
-                            {text(device.name) || "Appareil non nommé"} · code Windows {text(device.errorCode)}
+                            {text(device.name) || "Appareil non nommé"} · code
+                            Windows {text(device.errorCode)}
                           </p>
                         ))}
-                        <small>Ouvrez les supports officiels ou recherchez les mises à jour Windows avant toute modification.</small>
+                        <small>
+                          Ouvrez les supports officiels ou recherchez les mises
+                          à jour Windows avant toute modification.
+                        </small>
                       </div>
                     ) : (
-                      <span className="health-clear"><CheckCircle2 size={16} /> Aucun appareil en erreur signalé par Windows</span>
+                      <span className="health-clear">
+                        <CheckCircle2 size={16} /> Aucun appareil en erreur
+                        signalé par Windows
+                      </span>
                     )}
                   </div>
                 )}
@@ -1044,7 +1205,9 @@ export default function App() {
               <div className="toolbar">
                 <div>
                   <h2>Pilotes installés</h2>
-                  <p>Inventaire local, catégorie, version et signature numérique.</p>
+                  <p>
+                    Inventaire local, catégorie, version et signature numérique.
+                  </p>
                 </div>
                 <div className="action-banner-actions">
                   <label className="inline-select">
@@ -1052,7 +1215,9 @@ export default function App() {
                     <select
                       className="nova-select"
                       value={driverCategoryFilter}
-                      onChange={(event) => setDriverCategoryFilter(event.target.value)}
+                      onChange={(event) =>
+                        setDriverCategoryFilter(event.target.value)
+                      }
                     >
                       {[
                         "Tout",
@@ -1062,7 +1227,9 @@ export default function App() {
                         "Stockage",
                         "Chipset",
                         "Périphérique",
-                      ].map((item) => <option key={item}>{item}</option>)}
+                      ].map((item) => (
+                        <option key={item}>{item}</option>
+                      ))}
                     </select>
                   </label>
                   {scanButton("drivers", "Actualiser l’inventaire")}
@@ -1070,9 +1237,16 @@ export default function App() {
               </div>
               {data.drivers ? (
                 <DataTable
-                  items={filtered(installed.filter((driver) =>
-                    driverCategoryFilter === "Tout" || driverCategory(driver) === driverCategoryFilter,
-                  )).map((driver) => ({ ...driver, category: driverCategory(driver) }))}
+                  items={filtered(
+                    installed.filter(
+                      (driver) =>
+                        driverCategoryFilter === "Tout" ||
+                        driverCategory(driver) === driverCategoryFilter,
+                    ),
+                  ).map((driver) => ({
+                    ...driver,
+                    category: driverCategory(driver),
+                  }))}
                   columns={[
                     ["category", "Catégorie"],
                     ["name", "Périphérique"],
@@ -1383,8 +1557,9 @@ export default function App() {
                   <span className="tag">GUIDE LOCAL</span>
                   <h2>Suggestions pour votre PC</h2>
                   <p>
-                    Une feuille de route claire pour entretenir votre ordinateur.
-                    Nova vous propose des outils ; aucune action n’est appliquée sans votre choix.
+                    Une feuille de route claire pour entretenir votre
+                    ordinateur. Nova vous propose des outils ; aucune action
+                    n’est appliquée sans votre choix.
                   </p>
                 </div>
               </section>
@@ -1395,7 +1570,9 @@ export default function App() {
                       <h2>À regarder en priorité</h2>
                       <p>Basé sur le dernier diagnostic local.</p>
                     </div>
-                    <span className="tag neutral">{advice.length} CONSEIL{advice.length > 1 ? "S" : ""}</span>
+                    <span className="tag neutral">
+                      {advice.length} CONSEIL{advice.length > 1 ? "S" : ""}
+                    </span>
                   </div>
                   {advice.map((item) => (
                     <button
@@ -1417,35 +1594,51 @@ export default function App() {
                 <div className="panel-head">
                   <div>
                     <h2>Parcours conseillé</h2>
-                    <p>{guidedSteps.filter((step) => step.complete).length} / {guidedSteps.length} vérifications effectuées dans cette session.</p>
+                    <p>
+                      {guidedSteps.filter((step) => step.complete).length} /{" "}
+                      {guidedSteps.length} vérifications effectuées dans cette
+                      session.
+                    </p>
                   </div>
                   <span className="tag neutral">À VOTRE RYTHME</span>
                 </div>
                 {guidedSteps.map((step, index) => (
-                  <button className="step" key={step.title} onClick={() => changePage(step.target)}>
-                    <span className={step.complete ? "guided-done" : "step-number"}>
+                  <button
+                    className="step"
+                    key={step.title}
+                    onClick={() => changePage(step.target)}
+                  >
+                    <span
+                      className={step.complete ? "guided-done" : "step-number"}
+                    >
                       {step.complete ? <Check size={14} /> : index + 1}
                     </span>
                     <div>
                       <strong>{step.title}</strong>
-                      <small>{step.complete ? "Vérifié dans cette session" : step.detail}</small>
+                      <small>
+                        {step.complete
+                          ? "Vérifié dans cette session"
+                          : step.detail}
+                      </small>
                     </div>
                     <ArrowRight size={17} />
                   </button>
                 ))}
               </section>
               <section className="suggestion-grid" aria-label="Outils suggérés">
-                {suggestionTools.map(({ icon: Icon, title, detail, target, label }) => (
-                  <article className="suggestion-card" key={target}>
-                    <Icon size={20} />
-                    <h2>{title}</h2>
-                    <p>{detail}</p>
-                    <button onClick={() => changePage(target)}>
-                      {label}
-                      <ArrowRight size={15} />
-                    </button>
-                  </article>
-                ))}
+                {suggestionTools.map(
+                  ({ icon: Icon, title, detail, target, label }) => (
+                    <article className="suggestion-card" key={target}>
+                      <Icon size={20} />
+                      <h2>{title}</h2>
+                      <p>{detail}</p>
+                      <button onClick={() => changePage(target)}>
+                        {label}
+                        <ArrowRight size={15} />
+                      </button>
+                    </article>
+                  ),
+                )}
               </section>
             </>
           )}
