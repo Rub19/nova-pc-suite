@@ -197,6 +197,9 @@ export default function App() {
   const driverAuditCategories = rows(driverAudit, "categories");
   const [driverSelection, setDriverSelection] = useState<string[]>([]);
   const [driverCategoryFilter, setDriverCategoryFilter] = useState("Tout");
+  const [driverAuditFilter, setDriverAuditFilter] = useState<
+    "all" | "critical" | "missing"
+  >("all");
   useEffect(() => {
     setDriverSelection(rows(data.updates).map((u) => text(u.id)));
   }, [data.updates]);
@@ -216,6 +219,12 @@ export default function App() {
       };
     },
   );
+  const visibleDriverProblems =
+    driverAuditFilter === "missing"
+      ? missingDriverDevices
+      : driverAuditFilter === "critical"
+        ? criticalDriverProblems
+        : driverProblems;
   const advice = recommendations(snapshot, data.storage);
   const health = healthScore(
     snapshot,
@@ -234,6 +243,47 @@ export default function App() {
     link.download = `nova-bilan-sante.${format}`;
     link.click();
     URL.revokeObjectURL(link.href);
+  }
+  function downloadDriverReport(format: "txt" | "json") {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      audit: driverAudit ?? {},
+      installed: installed.map((item) => ({
+        name: item.name,
+        manufacturer: item.manufacturer,
+        version: item.version,
+        date: item.date,
+        signed: item.signed,
+      })),
+      updates: updates.map((item) => ({
+        title: item.title,
+        driverClass: item.driverClass,
+        driverManufacturer: item.driverManufacturer,
+        driverModel: item.driverModel,
+        driverVerDate: item.driverVerDate,
+      })),
+      privacy: "Exclut les identifiants matériels.",
+    };
+    const content =
+      format === "json"
+        ? JSON.stringify(report, null, 2)
+        : [
+            "Rapport pilotes Nova",
+            `Généré : ${report.generatedAt}`,
+            `Appareils en erreur : ${driverProblems.length}`,
+            `Pilotes manquants : ${missingDriverDevices.length}`,
+            `Mises à jour Windows Update : ${updates.length}`,
+          ].join("\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(
+      new Blob([content], {
+        type:
+          format === "json" ? "application/json" : "text/plain;charset=utf-8",
+      }),
+    );
+    link.download = `nova-pilotes.${format}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   }
   function clearHealthHistory() {
     localStorage.removeItem("nova-health-history");
@@ -1131,6 +1181,27 @@ export default function App() {
                   {scanButton("driver-audit", "Auditer les appareils")}
                   <button
                     className="button secondary"
+                    disabled={!!busy}
+                    onClick={() => void runCompleteDriverScan()}
+                  >
+                    Réanalyser après installation
+                  </button>
+                  <button
+                    className="button secondary"
+                    disabled={!driverAudit}
+                    onClick={() => downloadDriverReport("txt")}
+                  >
+                    Rapport .txt
+                  </button>
+                  <button
+                    className="button secondary"
+                    disabled={!driverAudit}
+                    onClick={() => downloadDriverReport("json")}
+                  >
+                    Rapport .json
+                  </button>
+                  <button
+                    className="button secondary"
                     onClick={() => changePage("driver-sources")}
                   >
                     Supports officiels <ArrowRight size={15} />
@@ -1168,18 +1239,40 @@ export default function App() {
                     )}
                     {driverProblems.length ? (
                       <div className="driver-problems">
+                        <div className="driver-audit-actions">
+                          <button
+                            className="button secondary"
+                            onClick={() => setDriverAuditFilter("all")}
+                          >
+                            Tous
+                          </button>
+                          <button
+                            className="button secondary"
+                            onClick={() => setDriverAuditFilter("critical")}
+                          >
+                            Critiques
+                          </button>
+                          <button
+                            className="button secondary"
+                            onClick={() => setDriverAuditFilter("missing")}
+                          >
+                            Pilotes manquants
+                          </button>
+                        </div>
                         <strong>
                           {driverProblems.length} appareil
                           {driverProblems.length > 1 ? "s" : ""} demande
                           {driverProblems.length > 1 ? "nt" : ""} une attention
                         </strong>
-                        {driverProblems.slice(0, 5).map((device, index) => (
-                          <p key={`${text(device.name)}-${index}`}>
-                            {driverAuditCategory(device)} ·{" "}
-                            {text(device.name) || "Appareil non nommé"} · code
-                            Windows {text(device.errorCode)}
-                          </p>
-                        ))}
+                        {visibleDriverProblems
+                          .slice(0, 10)
+                          .map((device, index) => (
+                            <p key={`${text(device.name)}-${index}`}>
+                              {driverAuditCategory(device)} ·{" "}
+                              {text(device.name) || "Appareil non nommé"} · code
+                              Windows {text(device.errorCode)}
+                            </p>
+                          ))}
                         {criticalDriverProblems.length > 0 && (
                           <small>
                             Priorité : {criticalDriverProblems.length}{" "}
