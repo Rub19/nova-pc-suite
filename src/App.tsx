@@ -43,6 +43,7 @@ import {
 import {
   action,
   bytes,
+  driverAuditCategory,
   driverCategory,
   elevate,
   Event,
@@ -189,6 +190,9 @@ export default function App() {
   const updates = rows(data.updates);
   const driverAudit = data["driver-audit"];
   const driverProblems = rows(driverAudit, "problemDevices");
+  const missingDriverDevices = rows(driverAudit, "missingDriverDevices");
+  const criticalDriverProblems = rows(driverAudit, "criticalProblemDevices");
+  const driverAuditCategories = rows(driverAudit, "categories");
   const [driverSelection, setDriverSelection] = useState<string[]>([]);
   const [driverCategoryFilter, setDriverCategoryFilter] = useState("Tout");
   useEffect(() => {
@@ -607,7 +611,7 @@ export default function App() {
           </button>
           <div className="sidebar-footer">
             <span>
-              Nova <span className="version">v0.2.12</span>
+              Nova <span className="version">v0.2.13</span>
             </span>
             <button
               aria-label={
@@ -1090,6 +1094,24 @@ export default function App() {
                     <span>
                       {text(driverAudit.unsignedDriverCount)} à vérifier
                     </span>
+                    <span>
+                      {missingDriverDevices.length} pilote
+                      {missingDriverDevices.length > 1 ? "s" : ""} manquant
+                      {missingDriverDevices.length > 1 ? "s" : ""} signalé
+                      {missingDriverDevices.length > 1 ? "s" : ""}
+                    </span>
+                    {driverAuditCategories.length > 0 && (
+                      <div
+                        className="driver-category-summary"
+                        aria-label="Répartition des appareils par catégorie"
+                      >
+                        {driverAuditCategories.map((category) => (
+                          <span key={text(category.category)}>
+                            {text(category.category)} · {text(category.count)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {driverProblems.length ? (
                       <div className="driver-problems">
                         <strong>
@@ -1099,10 +1121,18 @@ export default function App() {
                         </strong>
                         {driverProblems.slice(0, 5).map((device, index) => (
                           <p key={`${text(device.name)}-${index}`}>
+                            {driverAuditCategory(device)} ·{" "}
                             {text(device.name) || "Appareil non nommé"} · code
                             Windows {text(device.errorCode)}
                           </p>
                         ))}
+                        {criticalDriverProblems.length > 0 && (
+                          <small>
+                            Priorité : {criticalDriverProblems.length}{" "}
+                            problème(s) concerne(nt) le graphique, réseau,
+                            stockage ou chipset.
+                          </small>
+                        )}
                         <small>
                           Ouvrez les supports officiels ou recherchez les mises
                           à jour Windows avant toute modification.

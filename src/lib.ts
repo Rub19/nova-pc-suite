@@ -208,11 +208,13 @@ export function healthScore(
       target: "processes",
       penalty: 15,
     });
-  if (rows(storage, "volumes").some((volume) => {
-    const total = Number(volume.sizeBytes);
-    const free = Number(volume.freeBytes);
-    return total > 0 && free / total < 0.15;
-  }))
+  if (
+    rows(storage, "volumes").some((volume) => {
+      const total = Number(volume.sizeBytes);
+      const free = Number(volume.freeBytes);
+      return total > 0 && free / total < 0.15;
+    })
+  )
     items.push({
       title: "Espace disque faible",
       detail: "Un volume local dispose de moins de 15 % d’espace libre.",
@@ -240,31 +242,60 @@ export function healthScore(
       target: "security",
       penalty: 20,
     });
-  const score = Math.max(0, 100 - items.reduce((total, item) => total + item.penalty, 0));
+  const score = Math.max(
+    0,
+    100 - items.reduce((total, item) => total + item.penalty, 0),
+  );
   return {
     score,
-    level: score >= 85 ? "Bon état" : score >= 60 ? "À surveiller" : "À vérifier",
+    level:
+      score >= 85 ? "Bon état" : score >= 60 ? "À surveiller" : "À vérifier",
     items,
   };
 }
 
 export function driverCategory(driver: Row) {
-  const value = `${driver.name ?? ""} ${driver.manufacturer ?? ""}`.toLocaleLowerCase("fr");
-  if (/nvidia|geforce|radeon|graphics|display|video|gpu/.test(value)) return "Graphique";
-  if (/ethernet|wi-?fi|wireless|network|bluetooth|realtek.*(pcie|gbe)/.test(value)) return "Réseau";
+  const value =
+    `${driver.name ?? ""} ${driver.manufacturer ?? ""}`.toLocaleLowerCase("fr");
+  if (/nvidia|geforce|radeon|graphics|display|video|gpu/.test(value))
+    return "Graphique";
+  if (
+    /ethernet|wi-?fi|wireless|network|bluetooth|realtek.*(pcie|gbe)/.test(value)
+  )
+    return "Réseau";
   if (/audio|sound|speaker|microphone/.test(value)) return "Audio";
   if (/sata|nvme|storage|disk|raid|ahci/.test(value)) return "Stockage";
-  if (/chipset|pci express|system management|i2c|smbus/.test(value)) return "Chipset";
+  if (/chipset|pci express|system management|i2c|smbus/.test(value))
+    return "Chipset";
   return "Périphérique";
 }
 
-export function healthReport(health: { score: number; level: string; items: HealthItem[] }) {
+export function driverAuditCategory(device: Row) {
+  const value = String(device.pnpClass ?? "").toLocaleLowerCase("fr");
+  if (/display|monitor/.test(value)) return "Graphique";
+  if (/net|bluetooth/.test(value)) return "Réseau";
+  if (/media|audio/.test(value)) return "Audio";
+  if (/diskdrive|scsiadapter|hided|ide|volume/.test(value)) return "Stockage";
+  if (/system|motherboard|firmware/.test(value)) return "Chipset";
+  return "Périphérique";
+}
+
+export function healthReport(health: {
+  score: number;
+  level: string;
+  items: HealthItem[];
+}) {
   const report = {
     generatedAt: new Date().toISOString(),
     score: health.score,
     level: health.level,
-    findings: health.items.map(({ title, detail, penalty }) => ({ title, detail, penalty })),
-    privacy: "Exclut les identifiants matériel, noms de processus, adresses réseau et numéros de série.",
+    findings: health.items.map(({ title, detail, penalty }) => ({
+      title,
+      detail,
+      penalty,
+    })),
+    privacy:
+      "Exclut les identifiants matériel, noms de processus, adresses réseau et numéros de série.",
   };
   return {
     json: JSON.stringify(report, null, 2),
@@ -272,7 +303,9 @@ export function healthReport(health: { score: number; level: string; items: Heal
       "Bilan Nova — local",
       `Score : ${report.score}/100 (${report.level})`,
       "",
-      ...(report.findings.length ? report.findings.map((item) => `- ${item.title} : ${item.detail}`) : ["- Aucun point prioritaire détecté."]),
+      ...(report.findings.length
+        ? report.findings.map((item) => `- ${item.title} : ${item.detail}`)
+        : ["- Aucun point prioritaire détecté."]),
       "",
       report.privacy,
     ].join("\n"),

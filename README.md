@@ -4,10 +4,10 @@ Application Windows 10/11 x64 de diagnostic, pilotes et maintenance. Interface f
 
 ## Télécharger
 
-[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.12 preview**, analyse complète des pilotes et thème sombre graphite.
+[Releases GitHub](https://github.com/Rub19/nova-pc-suite/releases) — **0.2.13 preview**, audit pilotes complet et thème sombre graphite.
 
-- `Nova-PC-Suite-0.2.12-setup.exe` : véritable installateur avec désinstallation Windows.
-- `Nova-PC-Suite-0.2.12.exe` : exécutable autonome, WebView2 requis.
+- `Nova-PC-Suite-0.2.13-setup.exe` : véritable installateur avec désinstallation Windows.
+- `Nova-PC-Suite-0.2.13.exe` : exécutable autonome, WebView2 requis.
 - `SHA256SUMS.txt` : empreintes de contrôle.
 
 Binaires non signés Authenticode : Windows peut afficher un avertissement d’éditeur inconnu. La preview doit encore être validée sur plusieurs PC et VM Windows 10 avant une version stable.
@@ -27,11 +27,11 @@ Binaires non signés Authenticode : Windows peut afficher un avertissement d’�
 - Recommandations locales ; IA optionnelle via Ollama avec le premier modèle installé sur le PC.
 - Historique local des 100 dernières opérations et export JSON ; recherche et pagination des tableaux.
 
-### Nouveautés 0.2.12
+### Nouveautés 0.2.13
 
 - Installateur Nova redessiné : identité graphite/bleu, visuel personnalisé d’accueil et de fin, icônes cohérentes et raccourcis classés dans le dossier Démarrer Nova PC Suite.
 - Même installateur par utilisateur, avec désinstallation Windows ; aucun privilège administrateur n’est imposé pour l’installation elle-même.
-- [Notes de version et limites](docs/RELEASE-NOTES-0.2.12.md).
+- [Notes de version et limites](docs/RELEASE-NOTES-0.2.13.md).
 
 ### Nouveautés 0.2.7
 

@@ -7,7 +7,7 @@ if ($parseErrors.Count) { throw 'Backend PowerShell syntax is invalid.' }
 $shapes = @{
     snapshot = @('os', 'cpu', 'memory', 'isAdmin')
     drivers = @('items')
-    'driver-audit' = @('deviceCount', 'signedDriverCount', 'unsignedDriverCount', 'problemDevices')
+    'driver-audit' = @('deviceCount', 'signedDriverCount', 'unsignedDriverCount', 'problemDevices', 'missingDriverDevices', 'criticalProblemDevices', 'categories')
     startup = @('items')
     security = @('antivirus', 'firewall')
     storage = @('volumes')

@@ -100,8 +100,8 @@ try {
             # Read-only inventory. ConfigManagerErrorCode is documented by Microsoft as
             # the PnP Configuration Manager status; hardware IDs are deliberately omitted.
             # https://learn.microsoft.com/windows/win32/cimwin32prov/win32-pnpentity
-            $devices = @(Get-CimInstance Win32_PnPEntity -Property Name,Manufacturer,ConfigManagerErrorCode | ForEach-Object {
-                @{ name = $_.Name; manufacturer = $_.Manufacturer; errorCode = [int]$_.ConfigManagerErrorCode }
+            $devices = @(Get-CimInstance Win32_PnPEntity -Property Name,Manufacturer,PNPClass,Status,ConfigManagerErrorCode | ForEach-Object {
+                @{ name = $_.Name; manufacturer = $_.Manufacturer; pnpClass = $_.PNPClass; status = $_.Status; errorCode = [int]$_.ConfigManagerErrorCode }
             })
             # Win32_PnPSignedDriver exposes signature metadata. A missing signature is
             # reported for review only; Nova never blocks or replaces a driver from it.
@@ -109,11 +109,29 @@ try {
             $signed = @(Get-CimInstance Win32_PnPSignedDriver -Property IsSigned | Where-Object { $_.IsSigned -eq $true }).Count
             $unsigned = @(Get-CimInstance Win32_PnPSignedDriver -Property IsSigned | Where-Object { $_.IsSigned -eq $false }).Count
             $problems = @($devices | Where-Object { $_.errorCode -ne 0 } | Select-Object -First 50)
+            $missing = @($devices | Where-Object { $_.errorCode -eq 28 } | Select-Object -First 50)
+            $categories = @($devices | Group-Object { switch ($_.pnpClass) {
+                'Display' { 'Graphique'; break }
+                'Monitor' { 'Graphique'; break }
+                'Net' { 'Réseau'; break }
+                'Bluetooth' { 'Réseau'; break }
+                'Media' { 'Audio'; break }
+                'AudioEndpoint' { 'Audio'; break }
+                'DiskDrive' { 'Stockage'; break }
+                'SCSIAdapter' { 'Stockage'; break }
+                'HIDClass' { 'Périphérique'; break }
+                'System' { 'Chipset'; break }
+                default { 'Périphérique' }
+            }} | ForEach-Object { @{ category = $_.Name; count = $_.Count } })
+            $critical = @($problems | Where-Object { $_.pnpClass -in @('Display','Net','DiskDrive','SCSIAdapter','System') } | Select-Object -First 25)
             $data = @{
                 deviceCount = $devices.Count
                 signedDriverCount = $signed
                 unsignedDriverCount = $unsigned
                 problemDevices = $problems
+                missingDriverDevices = $missing
+                criticalProblemDevices = $critical
+                categories = $categories
                 hasProblems = [bool]($problems.Count -gt 0)
             }
         }

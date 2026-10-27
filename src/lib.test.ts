@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { driverCategory, healthReport, healthScore, memoryPercent, recommendations, rows, message } from "./lib";
+import {
+  driverAuditCategory,
+  driverCategory,
+  healthReport,
+  healthScore,
+  memoryPercent,
+  recommendations,
+  rows,
+  message,
+} from "./lib";
 describe("diagnostics réels", () => {
   it("ne transforme pas une donnée absente en mesure rassurante", () => {
     expect(memoryPercent()).toBeNull();
@@ -54,8 +63,21 @@ describe("diagnostics réels", () => {
     expect(driverCategory({ name: "AMD SATA Controller" })).toBe("Stockage");
     expect(driverCategory({ name: "Unknown peripheral" })).toBe("Périphérique");
   });
+  it("classe les appareils PnP de l’audit dans les familles matérielles utiles", () => {
+    expect(driverAuditCategory({ pnpClass: "Display" })).toBe("Graphique");
+    expect(driverAuditCategory({ pnpClass: "Net" })).toBe("Réseau");
+    expect(driverAuditCategory({ pnpClass: "SCSIAdapter" })).toBe("Stockage");
+    expect(driverAuditCategory({ pnpClass: "System" })).toBe("Chipset");
+    expect(driverAuditCategory({ pnpClass: "Unknown" })).toBe("Périphérique");
+  });
   it("produit un rapport santé qui exclut les données non nécessaires", () => {
-    const report = healthReport({ score: 80, level: "À surveiller", items: [{ title: "Mémoire", detail: "82 %", target: "processes", penalty: 15 }] });
+    const report = healthReport({
+      score: 80,
+      level: "À surveiller",
+      items: [
+        { title: "Mémoire", detail: "82 %", target: "processes", penalty: 15 },
+      ],
+    });
     expect(report.text).toContain("Bilan Nova");
     expect(report.json).toContain('"score": 80');
     expect(report.text).not.toContain("processes");
