@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 type Result = {
   deletedCount?: number;
   preservedCount?: number;
@@ -56,6 +57,26 @@ export default function AutomaticCleanup({ visible }: { visible: boolean }) {
       clearInterval(timer);
     };
   }, [enabled]);
+  useEffect(() => {
+    let disposed = false;
+    const unlisten: Array<() => void> = [];
+    void listen("nova:temp-cleanup-toggle", () => {
+      if (!disposed) setEnabled((current) => !current);
+    }).then((stop) => {
+      if (disposed) stop();
+      else unlisten.push(stop);
+    });
+    void listen("nova:temp-clean-now", () => {
+      if (active.current) void clean();
+    }).then((stop) => {
+      if (disposed) stop();
+      else unlisten.push(stop);
+    });
+    return () => {
+      disposed = true;
+      unlisten.forEach((stop) => stop());
+    };
+  }, []);
   return (
     <section
       hidden={!visible}

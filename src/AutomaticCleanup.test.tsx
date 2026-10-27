@@ -3,15 +3,22 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
 import AutomaticCleanup from "./AutomaticCleanup";
-const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 let host: HTMLDivElement, root: Root;
+const trayHandlers = new Map<string, () => void>();
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   localStorage.clear();
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
+  trayHandlers.clear();
+  mocks.listen.mockReset().mockImplementation(async (event, handler) => {
+    trayHandlers.set(event, handler);
+    return () => trayHandlers.delete(event);
+  });
   mocks.invoke.mockReset().mockResolvedValue({
     ok: true,
     data: { deletedCount: 2, preservedCount: 0, freedBytes: 1024 },
@@ -74,4 +81,23 @@ it("keeps partial results visible and never presents failure as successful clean
     "Fixture preserved",
   );
   expect(host.textContent).toContain("1 supprimé(s), 1 conservé(s)");
+});
+
+it("accepts tray shortcuts only after automatic cleanup was explicitly enabled", async () => {
+  await act(async () => root.render(<AutomaticCleanup visible={false} />));
+  await act(async () => trayHandlers.get("nova:temp-clean-now")?.());
+  expect(mocks.invoke).not.toHaveBeenCalled();
+
+  await act(async () => trayHandlers.get("nova:temp-cleanup-toggle")?.());
+  expect(localStorage.getItem("nova-auto-temp-cleanup")).toBe("enabled");
+  expect(mocks.invoke).toHaveBeenCalledTimes(1);
+
+  mocks.invoke.mockClear();
+  await act(async () => trayHandlers.get("nova:temp-clean-now")?.());
+  expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("extended_action", {
+    module: "cleanup",
+    action: "auto-clean",
+    payload: {},
+    confirmed: true,
+  });
 });

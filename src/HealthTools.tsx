@@ -282,13 +282,19 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
     pressure = useRef(0),
     lastTrim = useRef(0),
     dialog = useRef<HTMLDialogElement>(null),
-    session = useRef(0);
+    session = useRef(0),
+    autoState = useRef(false),
+    selectedTargets = useRef<MemoryTarget[]>([]);
   useEffect(() => {
+    autoState.current = auto;
     void invoke("set_tray_memory_status", { active: auto }).catch(() => {});
   }, [auto]);
   useEffect(() => {
+    selectedTargets.current = selected;
+  }, [selected]);
+  useEffect(() => {
     let disposed = false;
-    let unlisten: (() => void) | undefined;
+    const unlisten: Array<() => void> = [];
     void listen("nova:memory-stop", () => {
       if (disposed) return;
       session.current++;
@@ -300,12 +306,49 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
     })
       .then((stop) => {
         if (disposed) stop();
-        else unlisten = stop;
+        else unlisten.push(stop);
+      })
+      .catch(() => {});
+    void listen("nova:memory-measure", () => {
+      if (!disposed) void refresh();
+    })
+      .then((stop) => {
+        if (disposed) stop();
+        else unlisten.push(stop);
+      })
+      .catch(() => {});
+    void listen("nova:memory-auto-toggle", () => {
+      if (disposed) return;
+      if (autoState.current) {
+        session.current++;
+        pressure.current = 0;
+        setAuto(false);
+      } else {
+        setClosing(false);
+        setPending("auto");
+      }
+    })
+      .then((stop) => {
+        if (disposed) stop();
+        else unlisten.push(stop);
+      })
+      .catch(() => {});
+    void listen("nova:memory-trim-approved", () => {
+      if (disposed) return;
+      const target = selectedTargets.current
+        .slice()
+        .sort((a, b) => b.workingSetBytes - a.workingSetBytes)[0];
+      if (target) void trim(target);
+      else setNotice("Aucune application n’est autorisée pour l’entretien RAM.");
+    })
+      .then((stop) => {
+        if (disposed) stop();
+        else unlisten.push(stop);
       })
       .catch(() => {});
     return () => {
       disposed = true;
-      unlisten?.();
+      unlisten.forEach((stop) => stop());
     };
   }, []);
   useEffect(() => {
@@ -363,7 +406,7 @@ export function MemoryGuardian({ visible }: { visible: boolean }) {
   useEffect(() => {
     if (!auto) return;
     void refresh(true);
-    const timer = setInterval(() => void refresh(true), 30000);
+    const timer = setInterval(() => void refresh(true), 60000);
     return () => {
       clearInterval(timer);
       session.current++;

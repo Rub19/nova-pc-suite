@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 let host: HTMLDivElement, root: Root;
-let stopFromTray: () => void;
+const trayHandlers = new Map<string, () => void>();
 async function click(label: string) {
   const b = [...host.querySelectorAll("button")].find(
     (b) => b.textContent === label,
@@ -16,9 +16,10 @@ async function click(label: string) {
   await act(async () => b.click());
 }
 beforeEach(async () => {
+  trayHandlers.clear();
   mocks.listen.mockImplementation(async (_event, handler) => {
-    stopFromTray = handler;
-    return () => {};
+    trayHandlers.set(_event, handler);
+    return () => trayHandlers.delete(_event);
   });
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   HTMLDialogElement.prototype.showModal = function () {
@@ -88,7 +89,7 @@ it("automatically trims only approved targets under sustained pressure and can p
   await click("Activer la surveillance automatique");
   await click("Confirmer");
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(60000);
+    await vi.advanceTimersByTimeAsync(120000);
   });
   const trims = mocks.invoke.mock.calls.filter(
     ([command, args]) =>
@@ -104,7 +105,7 @@ it("automatically trims only approved targets under sustained pressure and can p
       ([, args]) => args?.action === "process-close",
     ),
   ).toBe(false);
-  await act(async () => stopFromTray());
+  await act(async () => trayHandlers.get("nova:memory-stop")?.());
   const count = mocks.invoke.mock.calls.length;
   await act(async () => {
     await vi.advanceTimersByTimeAsync(600000);
@@ -113,6 +114,37 @@ it("automatically trims only approved targets under sustained pressure and can p
   expect(host.textContent).toContain(
     "suspendue depuis la zone de notification",
   );
+});
+
+it("measures RAM from the tray without trimming any process", async () => {
+  mocks.invoke.mockClear();
+  await act(async () => trayHandlers.get("nova:memory-measure")?.());
+  expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("extended_action", {
+    module: "memory",
+    action: "memory-snapshot",
+    payload: {},
+    confirmed: false,
+  });
+  expect(
+    mocks.invoke.mock.calls.some(([, args]) => args?.action === "memory-trim"),
+  ).toBe(false);
+});
+
+it("trims only an explicitly approved application from the tray", async () => {
+  const label = [...host.querySelectorAll("label")].find((item) =>
+    item.textContent?.includes("Fixture"),
+  )!;
+  await act(async () =>
+    (label.querySelector("input") as HTMLInputElement).click(),
+  );
+  mocks.invoke.mockClear();
+  await act(async () => trayHandlers.get("nova:memory-trim-approved")?.());
+  expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("extended_action", {
+    module: "memory",
+    action: "memory-trim",
+    payload: { pid: 42, started: "123" },
+    confirmed: true,
+  });
 });
 it("never requests closure on measurement, opening a dialog, or cancel", async () => {
   await click("Fermer");
