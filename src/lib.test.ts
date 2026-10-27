@@ -4,6 +4,7 @@ import {
   driverCategory,
   healthReport,
   healthScore,
+  isCriticalDriverUpdate,
   memoryPercent,
   recommendations,
   rows,
@@ -69,6 +70,12 @@ describe("diagnostics réels", () => {
     expect(driverAuditCategory({ pnpClass: "SCSIAdapter" })).toBe("Stockage");
     expect(driverAuditCategory({ pnpClass: "System" })).toBe("Chipset");
     expect(driverAuditCategory({ pnpClass: "Unknown" })).toBe("Périphérique");
+  });
+  it("identifie les mises à jour critiques sans sélectionner les périphériques secondaires", () => {
+    expect(isCriticalDriverUpdate({ driverClass: "Display" })).toBe(true);
+    expect(isCriticalDriverUpdate({ driverClass: "Net" })).toBe(true);
+    expect(isCriticalDriverUpdate({ driverClass: "SCSIAdapter" })).toBe(true);
+    expect(isCriticalDriverUpdate({ driverClass: "HIDClass" })).toBe(false);
   });
   it("produit un rapport santé qui exclut les données non nécessaires", () => {
     const report = healthReport({

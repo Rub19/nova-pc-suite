@@ -280,6 +280,12 @@ export function driverAuditCategory(device: Row) {
   return "Périphérique";
 }
 
+export function isCriticalDriverUpdate(update: Row) {
+  return /display|net|scsiadapter|diskdrive|system/.test(
+    String(update.driverClass ?? "").toLocaleLowerCase("fr"),
+  );
+}
+
 export function healthReport(health: {
   score: number;
   level: string;

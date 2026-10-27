@@ -33,6 +33,13 @@ function Convert-Update($Update) {
     return [ordered]@{
         id = [string]$Update.Identity.UpdateID
         title = [string]$Update.Title
+        driverClass = [string]$Update.DriverClass
+        driverManufacturer = [string]$Update.DriverManufacturer
+        driverModel = [string]$Update.DriverModel
+        driverProvider = [string]$Update.DriverProvider
+        driverVerDate = $(if ($null -ne $Update.DriverVerDate) { [string]$Update.DriverVerDate } else { $null })
+        deviceProblemNumber = [int]$Update.DeviceProblemNumber
+        deviceStatus = [int]$Update.DeviceStatus
         eulaAccepted = [bool]$Update.EulaAccepted
         eulaText = $(if (-not $Update.EulaAccepted) { [string]$Update.EulaText } else { $null })
         downloaded = [bool]$Update.IsDownloaded

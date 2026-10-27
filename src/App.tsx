@@ -50,6 +50,7 @@ import {
   getHistory,
   healthScore,
   healthReport,
+  isCriticalDriverUpdate,
   labels,
   memoryPercent,
   message,
@@ -1179,6 +1180,19 @@ export default function App() {
                     ? "Tout installer"
                     : `Installer la sélection (${selectedUpdates.length})`}
                 </button>
+                <button
+                  className="button secondary"
+                  disabled={!!busy || !updates.length}
+                  onClick={() =>
+                    setDriverSelection(
+                      updates
+                        .filter(isCriticalDriverUpdate)
+                        .map((u) => text(u.id)),
+                    )
+                  }
+                >
+                  Sélectionner les pilotes critiques
+                </button>
               </div>
               {data.updates ? (
                 updates.length ? (
@@ -1188,6 +1202,9 @@ export default function App() {
                         <tr>
                           <th>Sélection</th>
                           <th>Mise à jour</th>
+                          <th>Catégorie</th>
+                          <th>Fabricant / modèle</th>
+                          <th>Date proposée</th>
                           <th>Licence acceptée</th>
                           <th>Téléchargé</th>
                         </tr>
@@ -1211,6 +1228,12 @@ export default function App() {
                               />
                             </td>
                             <td>{text(u.title)}</td>
+                            <td>{text(u.driverClass)}</td>
+                            <td>
+                              {text(u.driverManufacturer)} ·{" "}
+                              {text(u.driverModel)}
+                            </td>
+                            <td>{text(u.driverVerDate)}</td>
                             <td>{text(u.eulaAccepted)}</td>
                             <td>{text(u.downloaded)}</td>
                           </tr>
