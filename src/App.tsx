@@ -152,6 +152,7 @@ export default function App() {
   const [events, setEvents] = useState<Event[]>([]);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [restoreBeforeDrivers, setRestoreBeforeDrivers] = useState(true);
   const [dark, setDark] = useState(
     localStorage.getItem("nova-theme") !== "light",
   );
@@ -383,6 +384,45 @@ export default function App() {
       else
         setNotice(
           "Analyse complète des pilotes terminée. Examinez les propositions Windows Update avant installation.",
+        );
+      setEvents(await getHistory());
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e));
+    } finally {
+      operation.current = false;
+      setBusy(null);
+    }
+  }
+  async function runProtectedDriverInstall(confirm: Confirm) {
+    if (operation.current) return;
+    operation.current = true;
+    setBusy("install-drivers");
+    setError("");
+    setNotice("");
+    try {
+      if (restoreBeforeDrivers) {
+        const restore = await action("restore", true, [], false);
+        if (!restore.ok) {
+          setError(
+            `Point de restauration non créé : ${message(restore.error)}. Aucun pilote n’a été installé.`,
+          );
+          return;
+        }
+        if (restore.data)
+          setData((old) => ({ ...old, restore: restore.data! }));
+      }
+      const installed = await action(
+        "install-drivers",
+        true,
+        confirm.ids,
+        accepted,
+      );
+      if (installed.data)
+        setData((old) => ({ ...old, "install-drivers": installed.data! }));
+      if (!installed.ok) setError(message(installed.error));
+      else
+        setNotice(
+          "Installation terminée. Consultez le bilan et redémarrez Windows si nécessaire.",
         );
       setEvents(await getHistory());
     } catch (e) {
@@ -1920,6 +1960,18 @@ export default function App() {
             </label>
           </div>
         )}
+        {confirm?.action === "install-drivers" && (
+          <label className="confirm-option">
+            <input
+              type="checkbox"
+              checked={restoreBeforeDrivers}
+              onChange={(event) =>
+                setRestoreBeforeDrivers(event.target.checked)
+              }
+            />
+            Créer et vérifier un point de restauration avant l’installation
+          </label>
+        )}
         <div className="dialog-actions">
           <button className="button secondary" onClick={() => setConfirm(null)}>
             Annuler
@@ -1931,7 +1983,9 @@ export default function App() {
               if (confirm) {
                 const c = confirm;
                 setConfirm(null);
-                void run(c.action, true, c.ids, accepted);
+                if (c.action === "install-drivers")
+                  void runProtectedDriverInstall(c);
+                else void run(c.action, true, c.ids, accepted);
               }
             }}
           >
