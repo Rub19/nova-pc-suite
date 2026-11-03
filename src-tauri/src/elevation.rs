@@ -66,23 +66,14 @@ fn event_name(token: &str) -> Result<Vec<u16>, String> {
 pub fn valid_page(page: &str) -> bool {
     matches!(
         page,
-        "overview"
-            | "about-pc"
-            | "drivers"
-            | "optimize"
-            | "measurements"
-            | "network"
-            | "memory"
-            | "cleanup"
-            | "applications"
-            | "storage"
-            | "startup"
-            | "processes"
-            | "security"
-            | "assistant"
-            | "automation"
-            | "driver-sources"
-            | "history"
+        "bilan"
+            | "pilotes"
+            | "miseajour"
+            | "nettoyage"
+            | "demarrage"
+            | "performances"
+            | "reparer"
+            | "journal"
     )
 }
 pub fn requested_token() -> Result<Option<String>, String> {
@@ -103,7 +94,18 @@ pub fn initial_page() -> String {
         .and_then(|i| args.get(i + 1))
         .filter(|page| valid_page(page))
         .cloned()
-        .unwrap_or_else(|| "overview".into())
+        .unwrap_or_else(|| "bilan".into())
+}
+#[link(name = "bcrypt")]
+extern "system" {
+    fn BCryptGenRandom(provider: *mut c_void, buffer: *mut u8, len: u32, flags: u32) -> i32;
+}
+fn uid() -> Result<String, String> {
+    let mut bytes = [0u8; 16];
+    if unsafe { BCryptGenRandom(std::ptr::null_mut(), bytes.as_mut_ptr(), 16, 2) } != 0 {
+        return Err("Aléa système indisponible".into());
+    }
+    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
 }
 pub struct Handoff {
     handle: *mut c_void,
@@ -111,7 +113,7 @@ pub struct Handoff {
 }
 impl Handoff {
     pub fn new() -> Result<Self, String> {
-        let token = super::cleanup::uid()?;
+        let token = uid()?;
         let name = event_name(&token)?;
         let handle = unsafe { CreateEventW(std::ptr::null(), 1, 0, name.as_ptr()) };
         if handle.is_null() {
@@ -165,7 +167,7 @@ mod tests {
     fn singleton_allows_only_the_authenticated_replacement_to_overlap() {
         let name = format!(
             "Local\\NovaPCSuite.Test.{}",
-            super::super::cleanup::uid().unwrap()
+            uid().unwrap()
         );
         let first = Instance::acquire_named(&name, false).unwrap().unwrap();
         assert!(Instance::acquire_named(&name, false).unwrap().is_none());
@@ -184,6 +186,6 @@ mod tests {
         assert!(event_name("../bad").is_err());
         assert!(signal("00000000000000000000000000000000").is_err());
         assert!(!valid_page("cmd.exe"));
-        assert!(valid_page("about-pc"));
+        assert!(valid_page("pilotes"));
     }
 }

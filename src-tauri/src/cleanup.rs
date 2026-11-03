@@ -1,691 +1,481 @@
-//! Restricted, recoverable cleanup. Never traverses user directories recursively.
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::HashSet,
+    env,
     ffi::c_void,
-    fs::{self, File, OpenOptions},
-    io::{Read, Write},
-    os::windows::{
-        ffi::OsStrExt,
-        fs::{MetadataExt, OpenOptionsExt},
-        io::AsRawHandle,
-    },
+    fs,
+    os::windows::{ffi::OsStrExt, fs::MetadataExt},
     path::{Path, PathBuf},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
-#[repr(C)]
-struct Blob {
+const REPARSE_POINT: u32 = 0x400;
+
+#[repr(C, packed(8))]
+struct RecycleInfo {
     size: u32,
-    bytes: *mut u8,
+    bytes: i64,
+    items: i64,
 }
-#[repr(C)]
-#[derive(Default)]
-struct FileInfo {
-    attrs: u32,
-    created: [u32; 2],
-    accessed: [u32; 2],
-    written: [u32; 2],
-    volume: u32,
-    size_high: u32,
-    size_low: u32,
-    links: u32,
-    index_high: u32,
-    index_low: u32,
-}
-#[link(name = "crypt32")]
+#[link(name = "shell32")]
 extern "system" {
-    fn CryptProtectData(
-        input: *const Blob,
-        description: *const u16,
-        entropy: *const Blob,
-        reserved: *mut c_void,
-        prompt: *mut c_void,
-        flags: u32,
-        output: *mut Blob,
-    ) -> i32;
-    fn CryptUnprotectData(
-        input: *const Blob,
-        description: *mut *mut u16,
-        entropy: *const Blob,
-        reserved: *mut c_void,
-        prompt: *mut c_void,
-        flags: u32,
-        output: *mut Blob,
-    ) -> i32;
+    fn SHQueryRecycleBinW(root: *const u16, info: *mut RecycleInfo) -> i32;
+    fn SHEmptyRecycleBinW(window: *mut c_void, root: *const u16, flags: u32) -> i32;
 }
 #[link(name = "kernel32")]
 extern "system" {
-    fn LocalFree(pointer: *mut c_void) -> *mut c_void;
-    fn GetFileInformationByHandle(handle: *mut c_void, info: *mut c_void) -> i32;
-    fn SetFileInformationByHandle(
-        handle: *mut c_void,
-        class: i32,
-        info: *const c_void,
-        size: u32,
-    ) -> i32;
-}
-#[link(name = "bcrypt")]
-extern "system" {
-    fn BCryptGenRandom(provider: *mut c_void, buffer: *mut u8, len: u32, flags: u32) -> i32;
+    fn GetDiskFreeSpaceExW(root: *const u16, free: *mut u64, total: *mut u64, all: *mut u64) -> i32;
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-struct Item {
-    id: String,
-    name: String,
+struct Root {
+    path: PathBuf,
+    prefix: Option<&'static str>,
+}
+
+struct Category {
+    id: &'static str,
+    label: &'static str,
+    detail: &'static str,
+    admin: bool,
+    selected: bool,
+    min_age_hours: u64,
+    roots: Vec<Root>,
+}
+
+fn dir(path: PathBuf) -> Root {
+    Root { path, prefix: None }
+}
+
+fn subdirs(path: &Path) -> Vec<PathBuf> {
+    fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|e| {
+                    e.metadata()
+                        .map(|m| m.is_dir() && m.file_attributes() & REPARSE_POINT == 0)
+                        .unwrap_or(false)
+                })
+                .map(|e| e.path())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn env_path(name: &str) -> Option<PathBuf> {
+    env::var_os(name).map(PathBuf::from).filter(|p| p.is_absolute())
+}
+
+fn categories() -> Vec<Category> {
+    let local = env_path("LOCALAPPDATA");
+    let windows = env_path("SystemRoot");
+    let program_data = env_path("ProgramData");
+    let on = |base: &Option<PathBuf>, rel: &str| base.as_ref().map(|b| dir(b.join(rel)));
+
+    let mut browsers = Vec::new();
+    for rel in [
+        "Google\\Chrome\\User Data",
+        "Microsoft\\Edge\\User Data",
+        "BraveSoftware\\Brave-Browser\\User Data",
+    ] {
+        if let Some(base) = &local {
+            for profile in subdirs(&base.join(rel)) {
+                for cache in ["Cache", "Code Cache", "GPUCache"] {
+                    browsers.push(dir(profile.join(cache)));
+                }
+            }
+        }
+    }
+    if let Some(base) = &local {
+        for profile in subdirs(&base.join("Mozilla\\Firefox\\Profiles")) {
+            browsers.push(dir(profile.join("cache2")));
+        }
+    }
+
+    let mut thumbs = Vec::new();
+    if let Some(base) = &local {
+        for prefix in ["thumbcache_", "iconcache_"] {
+            thumbs.push(Root {
+                path: base.join("Microsoft\\Windows\\Explorer"),
+                prefix: Some(prefix),
+            });
+        }
+    }
+
+    vec![
+        Category {
+            id: "user-temp",
+            label: "Fichiers temporaires de vos applications",
+            detail: "Seulement ceux de plus de 24 heures. Les fichiers ouverts sont laissés en place.",
+            admin: false,
+            selected: true,
+            min_age_hours: 24,
+            roots: env_path("TEMP").map(dir).into_iter().collect(),
+        },
+        Category {
+            id: "windows-temp",
+            label: "Fichiers temporaires de Windows",
+            detail: "Seulement ceux de plus de 24 heures.",
+            admin: true,
+            selected: true,
+            min_age_hours: 24,
+            roots: on(&windows, "Temp").into_iter().collect(),
+        },
+        Category {
+            id: "windows-update",
+            label: "Téléchargements de Windows Update",
+            detail: "Déjà installés. Ignorés si un redémarrage de mise à jour est en attente.",
+            admin: true,
+            selected: true,
+            min_age_hours: 0,
+            roots: on(&windows, "SoftwareDistribution\\Download").into_iter().collect(),
+        },
+        Category {
+            id: "delivery",
+            label: "Cache d'optimisation de la distribution",
+            detail: "Copies de mises à jour partagées entre PC. Windows les retélécharge au besoin.",
+            admin: true,
+            selected: true,
+            min_age_hours: 0,
+            roots: on(&windows, "ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization\\Cache").into_iter().collect(),
+        },
+        Category {
+            id: "thumbnails",
+            label: "Miniatures et icônes",
+            detail: "Windows les recrée. Les fichiers utilisés par l'Explorateur restent en place.",
+            admin: false,
+            selected: true,
+            min_age_hours: 0,
+            roots: thumbs,
+        },
+        Category {
+            id: "shaders",
+            label: "Caches de shaders des jeux",
+            detail: "Les jeux peuvent saccader le temps de les recompiler. À vider après un problème graphique.",
+            admin: false,
+            selected: false,
+            min_age_hours: 0,
+            roots: [
+                on(&local, "D3DSCache"),
+                on(&local, "NVIDIA\\DXCache"),
+                on(&local, "NVIDIA\\GLCache"),
+                on(&local, "AMD\\DxCache"),
+                on(&local, "AMD\\GLCache"),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+        },
+        Category {
+            id: "browsers",
+            label: "Caches des navigateurs",
+            detail: "Chrome, Edge, Brave et Firefox. Mots de passe, cookies et historique ne sont pas touchés. Les sites rechargeront plus lentement une fois.",
+            admin: false,
+            selected: false,
+            min_age_hours: 0,
+            roots: browsers,
+        },
+        Category {
+            id: "crash-reports",
+            label: "Rapports et vidages de plantage",
+            detail: "Utiles pour comprendre un plantage. À garder tant qu'un problème n'est pas résolu.",
+            admin: true,
+            selected: false,
+            min_age_hours: 0,
+            roots: [
+                on(&local, "CrashDumps"),
+                on(&local, "Microsoft\\Windows\\WER"),
+                on(&program_data, "Microsoft\\Windows\\WER\\ReportArchive"),
+                on(&program_data, "Microsoft\\Windows\\WER\\ReportQueue"),
+                on(&windows, "Minidump"),
+                on(&windows, "LiveKernelReports"),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+        },
+    ]
+}
+
+fn safe_root(path: &Path) -> bool {
+    path.is_absolute() && path.components().count() >= 3
+}
+
+fn matches(prefix: Option<&str>, name: &std::ffi::OsStr) -> bool {
+    prefix
+        .map(|p| name.to_string_lossy().to_lowercase().starts_with(p))
+        .unwrap_or(true)
+}
+
+fn old_enough(meta: &fs::Metadata, min_age: Duration) -> bool {
+    min_age.is_zero()
+        || meta
+            .modified()
+            .ok()
+            .and_then(|m| SystemTime::now().duration_since(m).ok())
+            .map(|age| age >= min_age)
+            .unwrap_or(false)
+}
+
+#[derive(Default, Debug)]
+struct Tally {
     bytes: u64,
-    modified: u64,
-    volume: u32,
-    index: u64,
-    age_days: u64,
+    files: u64,
+    skipped: u64,
+    denied: bool,
 }
-#[derive(Serialize, Deserialize)]
-struct Manifest {
-    version: u32,
-    root: PathBuf,
-    items: Vec<Item>,
-}
-pub(crate) fn uid() -> Result<String, String> {
-    let mut bytes = [0u8; 16];
-    if unsafe { BCryptGenRandom(std::ptr::null_mut(), bytes.as_mut_ptr(), 16, 2) } != 0 {
-        return Err("Identifiant sécurisé indisponible".into());
-    }
-    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
-}
-fn valid_id(id: &str) -> bool {
-    id.len() == 32 && id.bytes().all(|b| b.is_ascii_hexdigit())
-}
-fn leaf(name: &str) -> bool {
-    !name.is_empty()
-        && name.len() <= 255
-        && !name.contains(['/', '\\', ':', '\0'])
-        && name != "."
-        && name != ".."
-        && !name.ends_with(['.', ' '])
-}
-fn crypt(bytes: &[u8], protect: bool) -> Result<Vec<u8>, String> {
-    if bytes.len() > 1_000_000 {
-        return Err("Manifeste trop volumineux".into());
-    }
-    let input = Blob {
-        size: bytes.len() as u32,
-        bytes: bytes.as_ptr() as *mut u8,
-    };
-    let mut output = Blob {
-        size: 0,
-        bytes: std::ptr::null_mut(),
-    };
-    let ok = unsafe {
-        if protect {
-            CryptProtectData(
-                &input,
-                std::ptr::null(),
-                std::ptr::null(),
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                1,
-                &mut output,
-            )
-        } else {
-            CryptUnprotectData(
-                &input,
-                std::ptr::null_mut(),
-                std::ptr::null(),
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                1,
-                &mut output,
-            )
+
+fn walk(path: &Path, prefix: Option<&str>, min_age: Duration, delete: bool, tally: &mut Tally) {
+    let entries = match fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::PermissionDenied {
+                tally.denied = true;
+            }
+            return;
         }
     };
-    if ok == 0 {
-        return Err("Manifeste de nettoyage invalide ou appartenant à un autre utilisateur".into());
+    for entry in entries.flatten() {
+        let Ok(meta) = fs::symlink_metadata(entry.path()) else {
+            continue;
+        };
+        if meta.file_attributes() & REPARSE_POINT != 0 {
+            continue;
+        }
+        if meta.is_dir() {
+            if prefix.is_none() {
+                walk(&entry.path(), None, min_age, delete, tally);
+                if delete {
+                    let _ = fs::remove_dir(entry.path());
+                }
+            }
+            continue;
+        }
+        if !matches(prefix, &entry.file_name()) || !old_enough(&meta, min_age) {
+            continue;
+        }
+        if delete && fs::remove_file(entry.path()).is_err() {
+            tally.skipped += 1;
+            continue;
+        }
+        tally.bytes += meta.len();
+        tally.files += 1;
     }
-    let result = unsafe { std::slice::from_raw_parts(output.bytes, output.size as usize).to_vec() };
-    unsafe { LocalFree(output.bytes as *mut c_void) };
-    Ok(result)
 }
-fn temp_root() -> Result<PathBuf, String> {
-    let root = super::local_data_root()?.join("Temp");
-    let _guards = super::hold_data_root(&root)?;
-    Ok(root)
-}
-fn storage(data: &Path) -> Result<PathBuf, String> {
-    let path = data.join("cleanup-quarantine");
-    let _held = super::hold_data_root(&path)?;
-    Ok(path)
-}
-fn open_checked(path: &Path, deleting: bool) -> Result<File, String> {
-    let mut options = OpenOptions::new();
-    options
-        .access_mode(0x80000000 | if deleting { 0x00010000 } else { 0 })
-        .share_mode(1)
-        .custom_flags(0x00200000);
-    let file = options
-        .open(path)
-        .map_err(|_| "Fichier occupé ou inaccessible")?;
-    let metadata = file.metadata().map_err(|_| "Métadonnées indisponibles")?;
-    let mut info = FileInfo::default();
-    if !metadata.is_file()
-        || metadata.file_attributes() & 0x400 != 0
-        || unsafe {
-            GetFileInformationByHandle(file.as_raw_handle(), &mut info as *mut _ as *mut c_void)
-        } == 0
-        || info.links != 1
-    {
-        return Err("Lien, dossier ou fichier non pris en charge".into());
+
+fn measure(category: &Category, delete: bool) -> Tally {
+    let mut tally = Tally::default();
+    let min_age = Duration::from_secs(category.min_age_hours * 3600);
+    for root in category.roots.iter().filter(|r| safe_root(&r.path)) {
+        walk(&root.path, root.prefix, min_age, delete, &mut tally);
     }
-    Ok(file)
+    tally
 }
-fn fingerprint(file: &File) -> Result<(u64, u64, u32, u64), String> {
-    let m = file.metadata().map_err(|_| "Métadonnées indisponibles")?;
-    let mut info = FileInfo::default();
-    if unsafe {
-        GetFileInformationByHandle(file.as_raw_handle(), &mut info as *mut _ as *mut c_void)
-    } == 0
-    {
-        return Err("Identité du fichier indisponible".into());
+
+fn wide(text: &str) -> Vec<u16> {
+    std::ffi::OsStr::new(text).encode_wide().chain(Some(0)).collect()
+}
+
+fn recycle_bin() -> (u64, u64) {
+    let mut info = RecycleInfo {
+        size: std::mem::size_of::<RecycleInfo>() as u32,
+        bytes: 0,
+        items: 0,
+    };
+    if unsafe { SHQueryRecycleBinW(std::ptr::null(), &mut info) } == 0 {
+        (info.bytes as u64, info.items as u64)
+    } else {
+        (0, 0)
     }
-    Ok((
-        m.len(),
-        m.last_write_time(),
-        info.volume,
-        ((info.index_high as u64) << 32) | info.index_low as u64,
-    ))
 }
-fn same(file: &File, item: &Item) -> bool {
-    fingerprint(file)
-        .map(|x| x == (item.bytes, item.modified, item.volume, item.index))
+
+fn free_bytes(drive: &str) -> u64 {
+    let root = wide(drive);
+    let (mut free, mut total, mut all) = (0u64, 0u64, 0u64);
+    unsafe { GetDiskFreeSpaceExW(root.as_ptr(), &mut free, &mut total, &mut all) };
+    free
+}
+
+fn human(bytes: u64) -> String {
+    let value = bytes as f64;
+    let (amount, unit) = if value >= 1073741824.0 {
+        (value / 1073741824.0, "Go")
+    } else if value >= 1048576.0 {
+        (value / 1048576.0, "Mo")
+    } else {
+        (value / 1024.0, "Ko")
+    };
+    format!("{amount:.1} {unit}").replace('.', ",")
+}
+
+fn system_drive() -> String {
+    env::var("SystemDrive").unwrap_or_else(|_| "C:".into()) + "\\"
+}
+
+fn update_pending() -> bool {
+    env_path("SystemRoot")
+        .map(|w| w.join("WinSxS\\pending.xml").exists())
         .unwrap_or(false)
 }
-fn rename_handle(file: &File, destination: &Path) -> Result<(), String> {
-    let wide: Vec<u16> = destination
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    // FILE_RENAME_INFO x64: flags at 0, root at 8, byte length at 16, filename at 20.
-    let size = 20 + wide.len() * 2;
-    let mut aligned = vec![0u64; size.div_ceil(8)];
-    unsafe {
-        let ptr = aligned.as_mut_ptr() as *mut u8;
-        std::ptr::write_unaligned(ptr.add(16) as *mut u32, ((wide.len() - 1) * 2) as u32);
-        std::ptr::copy_nonoverlapping(wide.as_ptr(), ptr.add(20) as *mut u16, wide.len());
-        if SetFileInformationByHandle(file.as_raw_handle(), 3, ptr as *const c_void, size as u32)
-            == 0
-        {
-            return Err(
-                "Déplacement refusé : destination existante, fichier occupé ou autre volume".into(),
-            );
-        }
-    }
-    Ok(())
-}
-fn save_new(path: &Path, m: &Manifest) -> Result<(), String> {
-    let bytes = crypt(
-        &serde_json::to_vec(m).map_err(|_| "Manifeste invalide")?,
-        true,
-    )?;
-    let mut file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .share_mode(0)
-        .open(path)
-        .map_err(|_| "Création du manifeste impossible")?;
-    file.write_all(&bytes)
-        .and_then(|_| file.sync_all())
-        .map_err(|_| "Sauvegarde du manifeste impossible".into())
-}
-fn load(path: &Path, root: &Path) -> Result<Manifest, String> {
-    let mut file = open_checked(path, false)?;
-    if file.metadata().map_err(|_| "Manifeste inaccessible")?.len() > 1_000_000 {
-        return Err("Manifeste trop volumineux".into());
-    }
-    let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes)
-        .map_err(|_| "Manifeste illisible")?;
-    let m: Manifest =
-        serde_json::from_slice(&crypt(&bytes, false)?).map_err(|_| "Manifeste invalide")?;
-    let mut ids = HashSet::new();
-    if m.version != 1
-        || m.root != root
-        || m.items.len() > 1000
-        || m.items
-            .iter()
-            .any(|i| !valid_id(&i.id) || !leaf(&i.name) || !ids.insert(i.id.clone()))
-    {
-        return Err("Manifeste invalide".into());
-    }
-    Ok(m)
-}
-pub fn preview(data: &Path) -> Result<Value, String> {
-    preview_at(data, &temp_root()?, 7 * 86400)
-}
-fn preview_at(data: &Path, root: &Path, min_age: u64) -> Result<Value, String> {
-    let _held = super::hold_data_root(root)?;
-    let store = storage(data)?;
-    let _store = super::hold_data_root(&store)?;
+
+pub fn scan() -> Result<Value, String> {
+    let admin = super::elevation::is_admin();
     let mut items = Vec::new();
-    let mut examined = 0;
-    for entry in fs::read_dir(root).map_err(|_| "Temporaires indisponibles")? {
-        examined += 1;
-        if examined > 10_000 || items.len() >= 1000 {
-            break;
-        }
-        let Ok(entry) = entry else { continue };
-        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-            continue;
+    for category in categories() {
+        let needs_admin = category.admin && !admin;
+        let tally = if needs_admin {
+            Tally::default()
+        } else {
+            measure(&category, false)
         };
-        if !leaf(&name) {
-            continue;
-        }
-        let Ok(file) = open_checked(&entry.path(), false) else {
-            continue;
-        };
-        let m = file.metadata().map_err(|_| "Métadonnées indisponibles")?;
-        let age = SystemTime::now()
-            .duration_since(m.modified().unwrap_or(SystemTime::now()))
-            .unwrap_or_default()
-            .as_secs();
-        if age < min_age {
-            continue;
-        }
-        let (bytes, modified, volume, index) = fingerprint(&file)?;
-        items.push(Item {
-            id: uid()?,
-            name,
-            bytes,
-            modified,
-            volume,
-            index,
-            age_days: age / 86400,
-        });
+        let blocked = category.id == "windows-update" && update_pending();
+        items.push(json!({
+            "id": category.id, "label": category.label, "detail": category.detail,
+            "bytes": tally.bytes, "files": tally.files, "selected": category.selected,
+            "needsAdmin": needs_admin, "blocked": blocked,
+        }));
     }
-    let id = uid()?;
-    let manifest = Manifest {
-        version: 1,
-        root: root.to_path_buf(),
-        items,
-    };
-    save_new(&store.join(format!("preview-{id}.dat")), &manifest)?;
-    // Fixed pointer contains only a validated generated filename. Old previews remain harmless encrypted manifests.
-    let pointer = store.join("current-preview");
-    let mut handle = OpenOptions::new()
-        .write(true)
-        .read(true)
-        .create(true)
-        .truncate(false)
-        .share_mode(0)
-        .custom_flags(0x00200000)
-        .open(&pointer)
-        .map_err(|_| "Référence d’analyse inaccessible")?;
-    let mut info = FileInfo::default();
-    if handle
-        .metadata()
-        .map_err(|_| "Référence invalide")?
-        .file_attributes()
-        & 0x400
-        != 0
-        || unsafe {
-            GetFileInformationByHandle(handle.as_raw_handle(), &mut info as *mut _ as *mut c_void)
-        } == 0
-        || info.links != 1
-    {
-        return Err("Référence redirigée : opération refusée".into());
-    }
-    handle
-        .set_len(0)
-        .and_then(|_| handle.write_all(id.as_bytes()))
-        .and_then(|_| handle.sync_all())
-        .map_err(|_| "Référence d’analyse impossible")?;
-    Ok(
-        json!({"ok":true,"data":{"items":manifest.items.iter().map(|i|json!({"id":i.id,"name":i.name,"bytes":i.bytes,"ageDays":i.age_days})).collect::<Vec<_>>(),"totalBytes":manifest.items.iter().map(|i|i.bytes).sum::<u64>(),"scope":"Fichiers uniquement à la racine des temporaires utilisateur, anciens de 7 jours minimum","limit":1000,"freedBytes":0}}),
-    )
+    let (bytes, count) = recycle_bin();
+    items.push(json!({
+        "id": "recycle-bin", "label": "Corbeille",
+        "detail": "Vérifiez qu'elle ne contient rien à récupérer avant de la vider.",
+        "bytes": bytes, "files": count, "selected": false, "needsAdmin": false, "blocked": false,
+    }));
+    Ok(json!({"ok": true, "data": {"items": items, "freeBytes": free_bytes(&system_drive())}}))
 }
-pub fn quarantine(data: &Path, ids: Vec<String>) -> Result<Value, String> {
-    quarantine_at(data, &temp_root()?, ids)
-}
-pub fn delete_selected(data: &Path, ids: Vec<String>) -> Result<Value, String> {
-    delete_selected_at(data, &temp_root()?, ids)
-}
-fn delete_selected_at(data: &Path, root: &Path, ids: Vec<String>) -> Result<Value, String> {
-    let moved = quarantine_at(data, root, ids)?;
-    let batch = moved["data"]["batchId"]
-        .as_str()
-        .ok_or("Lot indisponible")?;
-    // A persisted recovery manifest exists before any deletion is requested.
-    let purged = finish(data, root, batch, true).unwrap_or_else(
-        |error| json!({"ok":false,"data":{"freedBytes":0,"results":[]},"error":error}),
-    );
-    let mut results = Vec::new();
-    for item in moved["data"]["results"]
-        .as_array()
-        .ok_or("Résultats indisponibles")?
-    {
-        if item["ok"] != true {
-            results.push(item.clone());
-            continue;
-        }
-        let deleted = purged["data"]["results"]
-            .as_array()
-            .and_then(|items| items.iter().find(|row| row["name"] == item["name"]));
-        results.push(deleted.cloned().unwrap_or_else(|| json!({"name":item["name"],"ok":false,"error":"Fichier conservé en quarantaine ; consultez ce lot pour le restaurer"})));
-    }
-    let ok = results.iter().all(|row| row["ok"] == true);
-    let deleted_count = results.iter().filter(|row| row["ok"] == true).count();
-    Ok(
-        json!({"ok":ok,"data":{"batchId":batch,"freedBytes":purged["data"]["freedBytes"],"logicalBytes":true,"deletedCount":deleted_count,"preservedCount":results.len()-deleted_count,"results":results},"error":if ok {Value::Null} else {json!("Certains temporaires ont été conservés ; consultez les résultats et les lots récupérables")}}),
-    )
-}
-pub fn automatic(data: &Path) -> Result<Value, String> {
-    automatic_at(data, &temp_root()?, 7 * 86400)
-}
-fn automatic_at(data: &Path, root: &Path, min_age: u64) -> Result<Value, String> {
-    let preview = preview_at(data, root, min_age)?;
-    let ids: Vec<String> = preview["data"]["items"]
-        .as_array()
-        .ok_or("Analyse indisponible")?
-        .iter()
-        .filter_map(|row| row["id"].as_str().map(str::to_owned))
-        .collect();
-    if ids.is_empty() {
-        return Ok(
-            json!({"ok":true,"data":{"deletedCount":0,"preservedCount":0,"freedBytes":0,"logicalBytes":true,"results":[]}}),
-        );
-    }
-    delete_selected_at(data, root, ids)
-}
-fn quarantine_at(data: &Path, root: &Path, ids: Vec<String>) -> Result<Value, String> {
-    let _root = super::hold_data_root(root)?;
-    let store = storage(data)?;
-    let _store = super::hold_data_root(&store)?;
-    if ids.is_empty() || ids.len() > 1000 || ids.iter().any(|s| !valid_id(s)) {
+
+pub fn clean(ids: Vec<String>) -> Result<Value, String> {
+    if ids.is_empty() || ids.len() > 16 {
         return Err("Sélection invalide".into());
     }
-    let mut pointer_file = open_checked(&store.join("current-preview"), false)?;
-    if pointer_file
-        .metadata()
-        .map_err(|_| "Référence invalide")?
-        .len()
-        != 32
-    {
-        return Err("Référence invalide".into());
-    }
-    let mut pointer = String::new();
-    pointer_file
-        .read_to_string(&mut pointer)
-        .map_err(|_| "Relancez l’analyse")?;
-    if !valid_id(&pointer) {
-        return Err("Référence d’analyse invalide".into());
-    }
-    let manifest = load(&store.join(format!("preview-{pointer}.dat")), root)?;
-    let approved: HashSet<_> = ids.into_iter().collect();
-    if approved
+    let admin = super::elevation::is_admin();
+    let known = categories();
+    if ids
         .iter()
-        .any(|id| !manifest.items.iter().any(|i| &i.id == id))
+        .any(|id| id != "recycle-bin" && !known.iter().any(|c| c.id == id))
     {
-        return Err("Sélection inconnue".into());
+        return Err("Catégorie inconnue".into());
     }
-    let selected: Vec<_> = manifest
-        .items
-        .into_iter()
-        .filter(|i| approved.contains(&i.id))
-        .collect();
-    let batch = uid()?;
-    let dir = store.join(&batch);
-    let _batch = super::hold_data_root(&dir)?;
-    save_new(
-        &dir.join("manifest.dat"),
-        &Manifest {
-            version: 1,
-            root: root.to_owned(),
-            items: selected.clone(),
-        },
-    )?;
+    let drive = system_drive();
+    let before = free_bytes(&drive);
     let mut results = Vec::new();
-    let mut moved = 0;
-    for item in &selected {
-        let result = open_checked(&root.join(&item.name), true).and_then(|f| {
-            if !same(&f, item) {
-                return Err("Le fichier a changé depuis l’analyse".into());
-            }
-            rename_handle(&f, &dir.join(format!("{}.bin", item.id)))
-        });
-        if result.is_ok() {
-            moved += item.bytes;
-        }
-        results.push(json!({"name":item.name,"ok":result.is_ok(),"error":result.err()}));
-    }
-    Ok(
-        json!({"ok":results.iter().all(|r|r["ok"]==true),"data":{"batchId":batch,"movedBytes":moved,"freedBytes":0,"results":results},"error":if results.iter().all(|r|r["ok"]==true){Value::Null}else{json!("Certains fichiers occupés ou modifiés ont été conservés")}}),
-    )
-}
-pub fn list_batches(data: &Path) -> Result<Value, String> {
-    let store = storage(data)?;
-    let _held = super::hold_data_root(&store)?;
-    let root = temp_root()?;
-    let mut batches = Vec::new();
-    for entry in fs::read_dir(&store)
-        .map_err(|_| "Lots indisponibles")?
-        .take(1000)
-    {
-        let Ok(entry) = entry else { continue };
-        let Some(id) = entry.file_name().to_str().map(str::to_owned) else {
-            continue;
-        };
-        if !valid_id(&id) {
+    for category in known.iter().filter(|c| ids.iter().any(|i| i == c.id)) {
+        if category.id == "windows-update" && update_pending() {
+            results.push(json!({"id": category.id, "label": category.label, "bytes": 0, "files": 0, "skipped": 0, "note": "Reporté : une mise à jour attend un redémarrage."}));
             continue;
         }
-        let Ok(_batch) = super::hold_data_root(&entry.path()) else {
-            continue;
-        };
-        let Ok(m) = load(&entry.path().join("manifest.dat"), &root) else {
-            continue;
-        };
-        let active: Vec<_> = m
-            .items
-            .iter()
-            .filter(|i| {
-                open_checked(&entry.path().join(format!("{}.bin", i.id)), false)
-                    .map(|f| same(&f, i))
-                    .unwrap_or(false)
-            })
-            .collect();
-        if !active.is_empty() {
-            batches.push(json!({"id":id,"totalBytes":active.iter().map(|i|i.bytes).sum::<u64>(),"count":active.len(),"freedBytes":0}));
-        }
-    }
-    Ok(json!({"ok":true,"data":{"batches":batches}}))
-}
-pub fn restore(data: &Path, batch: String) -> Result<Value, String> {
-    finish(data, &temp_root()?, &batch, false)
-}
-pub fn purge(data: &Path, batch: String) -> Result<Value, String> {
-    finish(data, &temp_root()?, &batch, true)
-}
-fn finish(data: &Path, root: &Path, batch: &str, purge: bool) -> Result<Value, String> {
-    if !valid_id(batch) {
-        return Err("Lot invalide".into());
-    }
-    let store = storage(data)?;
-    let dir = store.join(batch);
-    if !dir.is_dir() {
-        return Err("Lot introuvable".into());
-    }
-    let _data = super::hold_data_root(&dir)?;
-    let _root = super::hold_data_root(root)?;
-    let m = load(&dir.join("manifest.dat"), root)?;
-    let mut results = Vec::new();
-    let mut freed = 0;
-    for item in m.items {
-        let path = dir.join(format!("{}.bin", item.id));
-        if !path.exists() {
+        if category.admin && !admin {
+            results.push(json!({"id": category.id, "label": category.label, "bytes": 0, "files": 0, "skipped": 0, "note": "Droits administrateur requis."}));
             continue;
         }
-        let result = open_checked(&path, true).and_then(|f| {
-            if !same(&f, &item) {
-                return Err("Identité du fichier modifiée : opération refusée".into());
-            }
-            if purge {
-                let delete: u8 = 1;
-                if unsafe {
-                    SetFileInformationByHandle(
-                        f.as_raw_handle(),
-                        4,
-                        &delete as *const _ as *const c_void,
-                        1,
-                    )
-                } == 0
-                {
-                    return Err("Suppression refusée".into());
-                }
-                Ok(())
-            } else {
-                rename_handle(&f, &root.join(&item.name))
-            }
-        });
-        if purge && result.is_ok() {
-            freed += item.bytes;
-        }
-        results.push(json!({"name":item.name,"ok":result.is_ok(),"error":result.err()}));
+        let tally = measure(category, true);
+        let note = tally
+            .denied
+            .then_some("Windows a refusé l'accès à une partie des fichiers.");
+        results.push(json!({"id": category.id, "label": category.label, "bytes": tally.bytes, "files": tally.files, "skipped": tally.skipped, "note": note}));
     }
-    let ok = results.iter().all(|v| v["ok"] == true);
-    Ok(
-        json!({"ok":ok,"data":{"batchId":batch,"freedBytes":freed,"logicalBytes":true,"results":results},"error":if ok{Value::Null}else{json!("Certains fichiers ont été conservés ; consultez les résultats")}}),
-    )
+    if ids.iter().any(|i| i == "recycle-bin") {
+        let (bytes, count) = recycle_bin();
+        let cleared = bytes == 0 || unsafe { SHEmptyRecycleBinW(std::ptr::null_mut(), std::ptr::null(), 0x7) } == 0;
+        results.push(json!({"id": "recycle-bin", "label": "Corbeille", "bytes": if cleared { bytes } else { 0 }, "files": if cleared { count } else { 0 }, "skipped": 0, "note": if cleared { Value::Null } else { json!("Windows a refusé de vider la corbeille.") }}));
+    }
+    let after = free_bytes(&drive);
+    let removed: u64 = results.iter().filter_map(|r| r["bytes"].as_u64()).sum();
+    let skipped: u64 = results.iter().filter_map(|r| r["skipped"].as_u64()).sum();
+    Ok(json!({"ok": true, "data": {
+        "summary": format!("Nettoyage terminé : {} supprimés", human(removed)),
+        "removedBytes": removed, "skippedFiles": skipped, "results": results,
+        "measures": [{"label": format!("Espace libre sur {}", drive.trim_end_matches('\\')), "before": before, "after": after, "unit": "bytes"}],
+    }}))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn fixture() -> (PathBuf, PathBuf, PathBuf) {
-        let base = std::env::current_dir()
-            .unwrap()
-            .join("target/cleanup-tests")
-            .join(uid().unwrap());
-        let data = base.join("data");
-        let temp = base.join("temp");
-        fs::create_dir_all(&data).unwrap();
-        fs::create_dir(&temp).unwrap();
-        (base, data, temp)
+
+    fn fixture(name: &str) -> PathBuf {
+        let root = env::temp_dir().join(format!("nova-clean-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("sub")).unwrap();
+        root
     }
+
     #[test]
-    fn direct_cleanup_only_deletes_selected_owned_unchanged_files() {
-        let (_base, data, temp) = fixture();
-        fs::write(temp.join("selected.tmp"), b"selected").unwrap();
-        fs::write(temp.join("keep.tmp"), b"keep").unwrap();
-        let preview = preview_at(&data, &temp, 0).unwrap();
-        let id = preview["data"]["items"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|row| row["name"] == "selected.tmp")
-            .unwrap()["id"]
-            .as_str()
-            .unwrap()
-            .to_owned();
-        let result = delete_selected_at(&data, &temp, vec![id]).unwrap();
-        assert_eq!(result["ok"], true);
-        assert_eq!(result["data"]["freedBytes"], 8);
-        assert!(!temp.join("selected.tmp").exists());
-        assert_eq!(fs::read(temp.join("keep.tmp")).unwrap(), b"keep");
+    fn age_filter_keeps_recent_files_and_counts_nothing() {
+        let root = fixture("age");
+        fs::write(root.join("new.tmp"), b"12345").unwrap();
+        let mut tally = Tally::default();
+        walk(&root, None, Duration::from_secs(3600), true, &mut tally);
+        assert_eq!(tally.files, 0);
+        assert!(root.join("new.tmp").exists());
+        fs::remove_dir_all(root).unwrap();
     }
+
     #[test]
-    fn automatic_cleanup_skips_recent_files_and_handles_empty_sweeps() {
-        let (_base, data, temp) = fixture();
-        fs::write(temp.join("recent.tmp"), b"recent").unwrap();
-        let skipped = automatic_at(&data, &temp, 7 * 86400).unwrap();
-        assert_eq!(skipped["data"]["deletedCount"], 0);
-        assert!(temp.join("recent.tmp").exists());
-        let removed = automatic_at(&data, &temp, 0).unwrap();
-        assert_eq!(removed["data"]["deletedCount"], 1);
-        assert_eq!(removed["data"]["freedBytes"], 6);
-        assert!(!temp.join("recent.tmp").exists());
-        assert_eq!(
-            automatic_at(&data, &temp, 0).unwrap()["data"]["deletedCount"],
-            0
-        );
+    fn delete_counts_real_bytes_and_removes_empty_folders_but_not_the_root() {
+        let root = fixture("delete");
+        fs::write(root.join("a.tmp"), b"12345").unwrap();
+        fs::write(root.join("sub").join("b.tmp"), b"123").unwrap();
+        let mut scan = Tally::default();
+        walk(&root, None, Duration::ZERO, false, &mut scan);
+        assert_eq!((scan.bytes, scan.files), (8, 2));
+        assert!(root.join("a.tmp").exists());
+        let mut tally = Tally::default();
+        walk(&root, None, Duration::ZERO, true, &mut tally);
+        assert_eq!((tally.bytes, tally.files), (8, 2));
+        assert!(root.exists() && !root.join("sub").exists());
+        fs::remove_dir_all(root).unwrap();
     }
+
     #[test]
-    fn direct_cleanup_preserves_changed_preview_files() {
-        let (_base, data, temp) = fixture();
-        fs::write(temp.join("changed.tmp"), b"old").unwrap();
-        let preview = preview_at(&data, &temp, 0).unwrap();
-        let id = preview["data"]["items"][0]["id"]
-            .as_str()
-            .unwrap()
-            .to_owned();
-        fs::write(temp.join("changed.tmp"), b"new contents").unwrap();
-        let result = delete_selected_at(&data, &temp, vec![id]).unwrap();
-        assert_eq!(result["ok"], false);
-        assert_eq!(result["data"]["preservedCount"], 1);
-        assert_eq!(result["data"]["freedBytes"], 0);
-        assert_eq!(fs::read(temp.join("changed.tmp")).unwrap(), b"new contents");
+    fn locked_files_are_skipped_not_counted() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = fixture("locked");
+        let path = root.join("locked.tmp");
+        fs::write(&path, b"12345").unwrap();
+        let held = fs::OpenOptions::new().read(true).share_mode(0).open(&path).unwrap();
+        let mut tally = Tally::default();
+        walk(&root, None, Duration::ZERO, true, &mut tally);
+        assert_eq!((tally.bytes, tally.skipped), (0, 1));
+        drop(held);
+        fs::remove_dir_all(root).unwrap();
     }
+
     #[test]
-    fn rejects_paths() {
-        for s in ["../file", "x:y", "..", "a\\b", "x/../b", "a."] {
-            assert!(!leaf(s));
-        }
-        assert!(!valid_id("../"));
+    fn junctions_are_never_followed() {
+        let root = fixture("junction");
+        let outside = fixture("outside");
+        fs::write(outside.join("keep.txt"), b"keep").unwrap();
+        let link = root.join("link");
+        let made = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J", link.to_str().unwrap(), outside.to_str().unwrap()])
+            .output()
+            .unwrap();
+        assert!(made.status.success());
+        let mut tally = Tally::default();
+        walk(&root, None, Duration::ZERO, true, &mut tally);
+        assert!(outside.join("keep.txt").exists());
+        let _ = fs::remove_dir(&link);
+        fs::remove_dir_all(root).unwrap();
+        fs::remove_dir_all(outside).unwrap();
     }
+
     #[test]
-    fn protect_rejects_tamper() {
-        let mut b = crypt(b"fixture", true).unwrap();
-        let n = b.len() - 1;
-        b[n] ^= 1;
-        assert!(crypt(&b, false).is_err());
+    fn prefix_roots_only_touch_matching_files() {
+        let root = fixture("prefix");
+        fs::write(root.join("thumbcache_1.db"), b"x").unwrap();
+        fs::write(root.join("other.db"), b"x").unwrap();
+        fs::write(root.join("sub").join("thumbcache_2.db"), b"x").unwrap();
+        let mut tally = Tally::default();
+        walk(&root, Some("thumbcache_"), Duration::ZERO, true, &mut tally);
+        assert_eq!(tally.files, 1);
+        assert!(root.join("other.db").exists() && root.join("sub").join("thumbcache_2.db").exists());
+        fs::remove_dir_all(root).unwrap();
     }
+
     #[test]
-    fn quarantine_restore_purge_are_owned_and_no_overwrite() {
-        let (_base, data, temp) = fixture();
-        fs::write(temp.join("sample.tmp"), b"test fixture").unwrap();
-        let p = preview_at(&data, &temp, 0).unwrap();
-        let id = p["data"]["items"][0]["id"].as_str().unwrap().to_owned();
-        let q = quarantine_at(&data, &temp, vec![id]).unwrap();
-        assert_eq!(q["ok"], true);
-        assert_eq!(q["data"]["freedBytes"], 0);
-        assert!(!temp.join("sample.tmp").exists());
-        let batch = q["data"]["batchId"].as_str().unwrap();
-        fs::write(temp.join("sample.tmp"), b"keep existing").unwrap();
-        let conflict = finish(&data, &temp, batch, false).unwrap();
-        assert_eq!(conflict["ok"], false);
-        assert_eq!(fs::read(temp.join("sample.tmp")).unwrap(), b"keep existing");
-        // Purge only the fixture quarantine; original conflict remains intact.
-        let removed = finish(&data, &temp, batch, true).unwrap();
-        assert_eq!(removed["data"]["freedBytes"], 12);
-        assert_eq!(fs::read(temp.join("sample.tmp")).unwrap(), b"keep existing");
-    }
-    #[test]
-    fn changed_preview_file_is_preserved() {
-        let (_, data, temp) = fixture();
-        fs::write(temp.join("a.tmp"), b"first").unwrap();
-        let p = preview_at(&data, &temp, 0).unwrap();
-        let id = p["data"]["items"][0]["id"].as_str().unwrap().to_owned();
-        fs::write(temp.join("a.tmp"), b"changed longer").unwrap();
-        let q = quarantine_at(&data, &temp, vec![id]).unwrap();
-        assert_eq!(q["ok"], false);
-        assert!(temp.join("a.tmp").is_file());
-    }
-    #[test]
-    fn restore_preserves_bytes() {
-        let (_, data, temp) = fixture();
-        fs::write(temp.join("sample.tmp"), b"restore me").unwrap();
-        let p = preview_at(&data, &temp, 0).unwrap();
-        let id = p["data"]["items"][0]["id"].as_str().unwrap().to_owned();
-        let q = quarantine_at(&data, &temp, vec![id]).unwrap();
-        let r = finish(&data, &temp, q["data"]["batchId"].as_str().unwrap(), false).unwrap();
-        assert_eq!(r["ok"], true);
-        assert_eq!(fs::read(temp.join("sample.tmp")).unwrap(), b"restore me");
-    }
-    #[test]
-    fn excludes_hardlinks() {
-        let (_, data, temp) = fixture();
-        fs::write(temp.join("a.tmp"), b"same").unwrap();
-        fs::hard_link(temp.join("a.tmp"), temp.join("b.tmp")).unwrap();
-        let p = preview_at(&data, &temp, 0).unwrap();
-        assert_eq!(p["data"]["items"].as_array().unwrap().len(), 0);
+    fn shallow_roots_are_refused() {
+        assert!(!safe_root(Path::new("C:\\")));
+        assert!(!safe_root(Path::new("relative\\path")));
+        assert!(safe_root(Path::new("C:\\Windows\\Temp")));
     }
 }

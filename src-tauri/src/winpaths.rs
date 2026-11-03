@@ -1,8 +1,4 @@
-use std::{
-    ffi::{c_void, OsString},
-    os::windows::ffi::OsStringExt,
-    path::PathBuf,
-};
+use std::ffi::c_void;
 use std::{
     fs::{File, OpenOptions},
     io::{Seek, SeekFrom, Write},
@@ -51,55 +47,4 @@ pub fn write_owned(path: &Path, bytes: &[u8], append: bool) -> Result<(), String
     file.write_all(bytes)
         .and_then(|_| file.sync_all())
         .map_err(|_| "Écriture impossible".into())
-}
-#[repr(C)]
-struct Guid {
-    a: u32,
-    b: u16,
-    c: u16,
-    d: [u8; 8],
-}
-#[link(name = "shell32")]
-extern "system" {
-    fn SHGetKnownFolderPath(
-        id: *const Guid,
-        flags: u32,
-        token: *mut c_void,
-        path: *mut *mut u16,
-    ) -> i32;
-}
-#[link(name = "ole32")]
-extern "system" {
-    fn CoTaskMemFree(pointer: *mut c_void);
-}
-pub fn local_data() -> Result<PathBuf, String> {
-    let id = Guid {
-        a: 0xF1B32785,
-        b: 0x6FBA,
-        c: 0x4FCF,
-        d: [0x9D, 0x55, 0x7B, 0x8E, 0x7F, 0x15, 0x70, 0x91],
-    };
-    let mut pointer = std::ptr::null_mut();
-    if unsafe { SHGetKnownFolderPath(&id, 0, std::ptr::null_mut(), &mut pointer) } < 0
-        || pointer.is_null()
-    {
-        return Err("Dossier utilisateur Windows indisponible".into());
-    }
-    let path = unsafe {
-        let mut len = 0;
-        while *pointer.add(len) != 0 {
-            len += 1;
-            if len > 32767 {
-                CoTaskMemFree(pointer as *mut c_void);
-                return Err("Chemin utilisateur invalide".into());
-            }
-        }
-        let value = OsString::from_wide(std::slice::from_raw_parts(pointer, len));
-        CoTaskMemFree(pointer as *mut c_void);
-        PathBuf::from(value)
-    };
-    if !path.is_absolute() {
-        return Err("Dossier utilisateur Windows invalide".into());
-    }
-    Ok(path)
 }

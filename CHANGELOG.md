@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — refonte complète
+
+- Interface entièrement refaite : huit écrans, activité du PC en direct, thème selon Windows.
+- Bilan factuel sans note : blocages GPU, arrêts brutaux, écrans bleus, disques, antivirus, mises à jour.
+- Windows Update complet (pas seulement les pilotes), avec point de restauration automatique.
+- Nettoyage réel, récursif et étendu : cache Windows Update, optimisation de la distribution, miniatures, shaders, navigateurs, rapports de plantage, corbeille.
+- Démarrage complet : registre machine et utilisateur, dossiers, tâches à l'ouverture de session, désactivation identique au Gestionnaire des tâches.
+- Mesures avant et après sur chaque action, journal avec annulation.
+- Supprimé : réduction de RAM et sa surveillance, assistant IA Ollama, audit planifié et notifications, icône de zone de notification, score de santé, quarantaine des temporaires, rapports énergie et batterie, comparaison manuelle de mesures, analyse des connexions réseau.
+
 ## 0.2.14 preview — 2026-10-27
 
 - Notification-area controls for RAM measurement, opt-in supervised memory monitoring, and an explicitly approved application only.

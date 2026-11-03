@@ -1,319 +1,277 @@
-import { invoke, isTauri } from "@tauri-apps/api/core";
+export type Page =
+  | "bilan"
+  | "pilotes"
+  | "miseajour"
+  | "nettoyage"
+  | "demarrage"
+  | "performances"
+  | "reparer"
+  | "journal";
 
-export type Row = Record<string, unknown>;
-export type Reply = { ok: boolean; data?: Row; error?: string };
-export type Event = {
-  timestamp: number;
+export type Unit = "bytes" | "count" | "number" | "percent" | "text" | "date";
+export type Measure = {
+  label: string;
+  before: number | string | null;
+  after: number | string | null;
+  unit: Unit;
+};
+export type Undo = {
+  module: string;
   action: string;
-  ok: boolean;
-  result?: Reply;
+  payload?: Record<string, unknown>;
+  label: string;
 };
-export const labels: Record<string, string> = {
-  snapshot: "Diagnostic système",
-  drivers: "Inventaire des pilotes",
-  "driver-audit": "Audit des appareils et pilotes",
-  updates: "Recherche des mises à jour",
-  "install-drivers": "Installation groupée des pilotes",
-  startup: "Applications au démarrage",
-  security: "État des protections",
-  storage: "Analyse du stockage",
-  processes: "Processus actifs",
-  restore: "Point de restauration",
-  repair: "Réparation Windows",
-  trim: "Optimisation TRIM du SSD",
-  "energy-balanced": "Mode équilibré",
-  "energy-performance": "Mode performances élevées",
+export type ActionResult = {
+  summary?: string;
+  measures?: Measure[];
+  undo?: Undo | null;
+  [key: string]: unknown;
 };
-const errors: Record<string, string> = {
-  AutomationUnavailable:
-    "Windows n’a pas pu appliquer ce réglage de planification ou contacter GitHub.",
-  MaintenanceBusy: "Une maintenance est déjà en cours dans Nova.",
-  BaselineMissing: "Enregistrez d’abord une mesure de référence.",
-  StorageVolumeUnsupported:
-    "L’outil prend en charge le volume système fixe NTFS déclaré sain par Windows. Aucun autre volume n’a été modifié.",
-  BootDiagnosticsUnavailable:
-    "Le journal de performance du démarrage est indisponible ou son accès est refusé. Cela ne signifie pas que le démarrage est sain.",
-  NativeCommandFailed:
-    "Windows a signalé une erreur. Consultez le code et les diagnostics retournés.",
-  MaintenanceFailed:
-    "Cette opération n’est pas disponible ou n’a pas abouti sur ce PC.",
-  InvalidBaseline:
-    "La référence enregistrée est invalide. Enregistrez une nouvelle mesure.",
-  WingetUnavailable:
-    "WinGet est indisponible. Vérifiez l’installation de Programme d’installation d’application Microsoft.",
-  WingetOperationFailed:
-    "WinGet n’a pas terminé la demande. Consultez sa réponse ; des licences ou sources peuvent demander une intervention.",
-  AppsOperationFailed:
-    "Windows n’a pas pu terminer l’opération sur les applications.",
-  StartupConflict:
-    "Une entrée de démarrage du même nom existe déjà. Nova la conserve.",
-  StartupChanged: "L’entrée a changé depuis la lecture. Actualisez la liste.",
-  InvalidBackup:
-    "La sauvegarde ne peut pas être validée. L’opération a été refusée.",
-  OperationInProgress: "Une autre opération sur les applications est en cours.",
-  PackageNotInstalledOrQueryFailed:
-    "WinGet n’a pas confirmé ce paquet installé. Vérifiez l’identifiant exact et les sources.",
-  MaintenanceAlreadyRunning:
-    "Une autre fenêtre Nova effectue déjà une maintenance. Attendez sa fin.",
-  PreviousMaintenanceInterrupted:
-    "Une précédente maintenance a été interrompue. Vérifiez Windows Update et les journaux Windows avant de relancer.",
-  AdministratorRequired:
-    "Ouvrez Nova en administrateur avec le bouton en bas à gauche, puis relancez cette action.",
-  DriverSearchIncomplete:
-    "Windows Update n’a pas terminé la recherche. Vérifiez votre connexion et réessayez.",
-  UnacceptedDriverEula:
-    "Certains pilotes nécessitent une acceptation de licence. Installez-les depuis Windows Update.",
-  DriverDownloadFailed:
-    "Le téléchargement de certains pilotes a échoué. Aucune installation n’a été lancée.",
-  RebootRequiredBeforeInstallation:
-    "Windows attend un redémarrage avant de pouvoir installer les pilotes.",
-  DriverInstallationIncomplete:
-    "Certains pilotes n’ont pas pu être installés. Consultez les résultats individuels.",
-  RepairCommandFailed:
-    "La réparation Windows a signalé une erreur. Consultez les codes de résultat.",
-  UnsupportedSystemVolume: "Ce volume ne permet pas cette opération TRIM.",
-  PowerSchemeUnavailable:
-    "Ce profil d’alimentation n’est pas disponible sur ce PC.",
-  RestorePointNotCreated:
-    "Le point de restauration n’a pas été confirmé. Vérifiez la protection du système ou la limite de fréquence Windows.",
-  ApprovedUpdatesUnavailable:
-    "La liste des mises à jour a changé. Relancez une recherche avant de confirmer.",
-  InvalidApprovedIds:
-    "Relancez une recherche et sélectionnez les pilotes proposés.",
-  ApprovedDriverUnavailable:
-    "La liste des mises à jour a changé. Relancez la recherche avant de confirmer.",
-  ApprovedIdsRequired:
-    "Relancez une recherche pour confirmer la liste de pilotes à installer.",
-  TooManyApprovedIds:
-    "La liste dépasse 200 pilotes. Utilisez Windows Update pour cette opération.",
-  InvalidApprovedId:
-    "Un identifiant de mise à jour est invalide. Relancez une recherche.",
-  ActionFailed:
-    "Windows n’a pas pu terminer cette opération. Vérifiez les permissions et la disponibilité du service.",
-};
-export function message(error?: string) {
-  return errors[error ?? ""] ?? error ?? "Opération indisponible.";
-}
-export function rows(data: Row | undefined, key = "items"): Row[] {
-  const value = data?.[key];
-  return Array.isArray(value)
-    ? value.filter((x): x is Row => typeof x === "object" && x !== null)
-    : [];
-}
-export function text(value: unknown): string {
-  return value === null || value === undefined
-    ? "Indisponible"
-    : typeof value === "boolean"
-      ? value
-        ? "Oui"
-        : "Non"
-      : typeof value === "object"
-        ? JSON.stringify(value)
-        : String(value);
-}
-export function bytes(value: unknown) {
-  const n = Number(value);
-  if (!Number.isFinite(n) || value == null) return "Indisponible";
-  return (
-    new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(
-      n / 1024 ** 3,
-    ) + " Go"
-  );
-}
-export function memoryPercent(data?: Row) {
-  const memory = data?.memory as Row | undefined;
-  const total = Number(memory?.totalBytes);
-  const free = Number(memory?.freeBytes);
-  return total > 0 && Number.isFinite(free)
-    ? Math.max(0, Math.min(100, Math.round((1 - free / total) * 100)))
-    : null;
-}
-export async function action(
-  action: string,
-  confirmed = false,
-  approvedIds: string[] = [],
-  acceptEulas = false,
-): Promise<Reply> {
-  if (!isTauri())
-    throw new Error(
-      "Les diagnostics nécessitent l’application Windows. Cet aperçu affiche uniquement l’interface.",
-    );
-  return invoke("system_action", {
-    action,
-    confirmed,
-    approvedIds,
-    acceptEulas,
-  });
-}
-export async function getHistory(): Promise<Event[]> {
-  return isTauri() ? invoke("history") : [];
-}
-export async function openSettings(target: string) {
-  if (!isTauri()) throw new Error("Disponible dans l’application Windows.");
-  const reply = await invoke<Reply>("open_settings", { target });
-  if (!reply.ok) throw new Error("Impossible d’ouvrir ce panneau Windows.");
-}
-export async function elevate(page = "overview"): Promise<Reply> {
-  if (!isTauri()) throw new Error("Disponible dans l’application Windows.");
-  return invoke("elevate", { page });
-}
-export function recommendations(snapshot?: Row, storage?: Row) {
-  const items: { title: string; detail: string; target: string }[] = [];
-  const used = memoryPercent(snapshot);
-  if (used !== null && used > 80)
-    items.push({
-      title: "Mémoire fortement sollicitée",
-      detail: `${used} % de la mémoire est utilisée. Identifiez les applications les plus gourmandes.`,
-      target: "processes",
-    });
-  for (const v of rows(storage, "volumes")) {
-    const total = Number(v.sizeBytes);
-    const free = Number(v.freeBytes);
-    if (total > 0 && free / total < 0.15)
-      items.push({
-        title: `Espace faible sur ${text(v.drive)}`,
-        detail: `${bytes(free)} disponibles. Examinez les catégories de stockage avant de nettoyer.`,
-        target: "storage",
-      });
-  }
-  if (snapshot?.pendingReboot === true)
-    items.push({
-      title: "Un redémarrage est en attente",
-      detail:
-        "Enregistrez votre travail et redémarrez depuis Windows pour terminer les mises à jour.",
-      target: "drivers",
-    });
-  return items;
-}
 
-export type HealthItem = {
+export type Scan = {
+  isAdmin: boolean;
+  timestamp: string;
+  os: { name: string; release: string; build: string };
+  computer: { manufacturer: string; model: string; board: string; bios: string };
+  cpu: { name: string; cores: number; threads: number };
+  memory: {
+    totalBytes: number;
+    freeBytes: number;
+    modules: number;
+    speedMHz: number | null;
+  };
+  gpus: { name: string; driverVersion: string; driverDate: string | null }[];
+  uptimeSeconds: number;
+  pendingReboot: boolean;
+  systemDrive: string;
+  volumes: { drive: string; label: string; sizeBytes: number; freeBytes: number }[];
+  disks: {
+    name: string;
+    media: string;
+    bus: string;
+    sizeBytes: number;
+    health: string;
+    temperature: number | null;
+    wear: number | null;
+    errors: number | null;
+  }[];
+  deviceProblems: number;
+  security: {
+    defender: { running: boolean; realtime: boolean; signatureAgeDays: number } | null;
+    otherAntivirus: string[];
+    firewallOff: string[] | null;
+  };
+  stability: {
+    unexpectedShutdowns: number;
+    blueScreens: number;
+    gpuHangs: number;
+    gpuCodes: { code: string; count: number }[];
+    appCrashes: number;
+    topCrashes: { name: string; count: number }[];
+    lastIncident: string | null;
+  };
+  lastUpdate: string | null;
+  boots: { available: boolean; items: { date: string; ms: number }[] };
+};
+
+export type Level = "alert" | "warn" | "ok";
+export type Finding = {
+  id: string;
+  level: Level;
   title: string;
   detail: string;
-  target: string;
-  penalty: number;
+  page?: Page;
+  cta?: string;
 };
 
-export function healthScore(
-  snapshot?: Row,
-  storage?: Row,
-  security?: Row,
-  updateCount = 0,
-) {
-  const items: HealthItem[] = [];
-  const used = memoryPercent(snapshot);
-  if (used !== null && used > 80)
-    items.push({
-      title: "Mémoire sous pression",
-      detail: `${used} % de la RAM est utilisée dans le dernier relevé.`,
-      target: "processes",
-      penalty: 15,
-    });
-  if (
-    rows(storage, "volumes").some((volume) => {
-      const total = Number(volume.sizeBytes);
-      const free = Number(volume.freeBytes);
-      return total > 0 && free / total < 0.15;
-    })
-  )
-    items.push({
-      title: "Espace disque faible",
-      detail: "Un volume local dispose de moins de 15 % d’espace libre.",
-      target: "storage",
-      penalty: 20,
-    });
-  if (snapshot?.pendingReboot === true)
-    items.push({
-      title: "Redémarrage requis",
-      detail: "Windows attend un redémarrage pour terminer une opération.",
-      target: "drivers",
-      penalty: 10,
-    });
-  if (updateCount > 0)
-    items.push({
-      title: "Pilotes à examiner",
-      detail: `${updateCount} mise${updateCount > 1 ? "s" : ""} à jour proposée${updateCount > 1 ? "s" : ""} par Windows Update.`,
-      target: "drivers",
-      penalty: 5,
-    });
-  if (Array.isArray(security?.issues) && security.issues.length > 0)
-    items.push({
-      title: "État des protections incomplet",
-      detail: "Au moins une protection Windows n’a pas pu être vérifiée.",
-      target: "security",
-      penalty: 20,
-    });
-  const score = Math.max(
-    0,
-    100 - items.reduce((total, item) => total + item.penalty, 0),
-  );
-  return {
-    score,
-    level:
-      score >= 85 ? "Bon état" : score >= 60 ? "À surveiller" : "À vérifier",
-    items,
-  };
+export const plural = (count: number, one: string, many: string) => `${count} ${count > 1 ? many : one}`;
+
+const fr = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
+
+export function formatBytes(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "inconnu";
+  const units = ["o", "Ko", "Mo", "Go", "To"];
+  let size = Math.abs(value);
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit++;
+  }
+  const digits = unit >= 3 && size < 100 ? 1 : 0;
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: digits }).format(size)} ${units[unit]}`;
 }
 
-export function driverCategory(driver: Row) {
-  const value =
-    `${driver.name ?? ""} ${driver.manufacturer ?? ""}`.toLocaleLowerCase("fr");
-  if (/nvidia|geforce|radeon|graphics|display|video|gpu/.test(value))
-    return "Graphique";
-  if (
-    /ethernet|wi-?fi|wireless|network|bluetooth|realtek.*(pcie|gbe)/.test(value)
-  )
-    return "Réseau";
-  if (/audio|sound|speaker|microphone/.test(value)) return "Audio";
-  if (/sata|nvme|storage|disk|raid|ahci/.test(value)) return "Stockage";
-  if (/chipset|pci express|system management|i2c|smbus/.test(value))
-    return "Chipset";
-  return "Périphérique";
+export function formatDuration(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days} j ${hours} h`;
+  if (hours > 0) return `${hours} h ${minutes} min`;
+  return `${minutes} min`;
 }
 
-export function driverAuditCategory(device: Row) {
-  const value = String(device.pnpClass ?? "").toLocaleLowerCase("fr");
-  if (/display|monitor/.test(value)) return "Graphique";
-  if (/net|bluetooth/.test(value)) return "Réseau";
-  if (/media|audio/.test(value)) return "Audio";
-  if (/diskdrive|scsiadapter|hided|ide|volume/.test(value)) return "Stockage";
-  if (/system|motherboard|firmware/.test(value)) return "Chipset";
-  return "Périphérique";
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "inconnue";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function isCriticalDriverUpdate(update: Row) {
-  return /display|net|scsiadapter|diskdrive|system/.test(
-    String(update.driverClass ?? "").toLocaleLowerCase("fr"),
-  );
+export function formatDateTime(iso: string | number): string {
+  const date = new Date(iso);
+  return `${date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export function healthReport(health: {
-  score: number;
-  level: string;
-  items: HealthItem[];
-}) {
-  const report = {
-    generatedAt: new Date().toISOString(),
-    score: health.score,
-    level: health.level,
-    findings: health.items.map(({ title, detail, penalty }) => ({
-      title,
-      detail,
-      penalty,
-    })),
-    privacy:
-      "Exclut les identifiants matériel, noms de processus, adresses réseau et numéros de série.",
-  };
-  return {
-    json: JSON.stringify(report, null, 2),
-    text: [
-      "Bilan Nova — local",
-      `Score : ${report.score}/100 (${report.level})`,
-      "",
-      ...(report.findings.length
-        ? report.findings.map((item) => `- ${item.title} : ${item.detail}`)
-        : ["- Aucun point prioritaire détecté."]),
-      "",
-      report.privacy,
-    ].join("\n"),
-  };
+export function formatMeasureValue(value: number | string | null, unit: Unit): string {
+  if (value === null || value === undefined) return "inconnu";
+  if (typeof value === "string" && unit !== "date") return value;
+  switch (unit) {
+    case "bytes":
+      return formatBytes(Number(value));
+    case "percent":
+      return `${fr.format(Number(value))} %`;
+    case "date":
+      return typeof value === "string" && !/^\d{4}-/.test(value) ? value : formatDateTime(String(value));
+    default:
+      return fr.format(Number(value));
+  }
+}
+
+export function measureDelta(measure: Measure): string | null {
+  const { before, after, unit } = measure;
+  if (typeof before !== "number" || typeof after !== "number" || unit === "text" || unit === "date") return null;
+  const delta = after - before;
+  if (Math.abs(delta) < (unit === "bytes" ? 1024 * 1024 : 0.5)) return "sans changement";
+  const sign = delta > 0 ? "+" : "−";
+  return `${sign}${formatMeasureValue(Math.abs(delta), unit)}`;
+}
+
+export const GPU_CODES: Record<string, string> = {
+  "117": "pilote relancé après un blocage (TDR)",
+  "141": "moteur graphique bloqué",
+  "142": "délai dépassé par le pilote",
+  "193": "capture de diagnostic graphique",
+  "1a1": "blocage graphique en cours de fonctionnement",
+  "1a8": "écran noir détecté par Windows",
+  "1b8": "écran noir détecté dans le pilote",
+};
+
+export const DEVICE_CODES: Record<number, string> = {
+  1: "Mal configuré. Réinstallez le pilote.",
+  3: "Le pilote est peut-être endommagé, ou la mémoire manque.",
+  10: "L'appareil ne peut pas démarrer. Mettez à jour son pilote.",
+  12: "Pas assez de ressources libres pour cet appareil.",
+  14: "Redémarrez le PC pour terminer l'installation.",
+  18: "Réinstallez le pilote de cet appareil.",
+  19: "Sa configuration dans le registre est endommagée.",
+  21: "Windows est en train de retirer cet appareil. Redémarrez.",
+  24: "Appareil absent, ou mal branché.",
+  28: "Aucun pilote n'est installé pour cet appareil.",
+  31: "Windows ne parvient pas à charger le pilote.",
+  32: "Le service de cet appareil est désactivé.",
+  37: "Le pilote a refusé de démarrer.",
+  39: "Le pilote est absent ou endommagé.",
+  41: "Le pilote est chargé mais l'appareil est introuvable.",
+  43: "Windows a arrêté cet appareil après un problème signalé.",
+  45: "Appareil débranché.",
+  48: "Pilote bloqué car incompatible avec Windows.",
+  52: "La signature du pilote n'a pas pu être vérifiée.",
+};
+
+export function findings(scan: Scan): Finding[] {
+  const list: Finding[] = [];
+  const push = (id: string, level: Level, title: string, detail: string, page?: Page, cta?: string) =>
+    list.push({ id, level, title, detail, page, cta });
+
+  const system = scan.volumes.find((v) => v.drive === scan.systemDrive);
+  if (system && system.sizeBytes > 0) {
+    const ratio = system.freeBytes / system.sizeBytes;
+    const text = `${formatBytes(system.freeBytes)} libres sur ${formatBytes(system.sizeBytes)}.`;
+    if (ratio < 0.1) push("space", "alert", `Le disque ${system.drive} est presque plein`, `${text} Windows ralentit et les mises à jour peuvent échouer.`, "nettoyage", "Nettoyer");
+    else if (ratio < 0.2) push("space", "warn", `Le disque ${system.drive} se remplit`, text, "nettoyage", "Nettoyer");
+    else push("space", "ok", `Espace disponible sur ${system.drive}`, text);
+  }
+
+  const badDisk = scan.disks.find((d) => d.health && d.health !== "Healthy");
+  const errorDisk = scan.disks.find((d) => (d.errors ?? 0) > 0);
+  const hotDisk = scan.disks.find((d) => (d.temperature ?? 0) >= 70);
+  const wornDisk = scan.disks.find((d) => (d.wear ?? 0) >= 90);
+  if (badDisk) push("disk", "alert", `${badDisk.name} signale un problème`, "Windows ne le considère plus comme sain. Sauvegardez vos fichiers maintenant.", "reparer", "Analyser");
+  else if (errorDisk) push("disk", "alert", `${errorDisk.name} a des erreurs de lecture`, `${errorDisk.errors} erreurs non corrigées. Sauvegardez vos fichiers.`, "reparer", "Analyser");
+  else if (hotDisk) push("disk", "warn", `${hotDisk.name} chauffe`, `${hotDisk.temperature} °C. Vérifiez la ventilation du boîtier.`);
+  else if (wornDisk) push("disk", "warn", `${wornDisk.name} est usé`, `${wornDisk.wear} % de sa durée de vie consommée. Prévoyez son remplacement.`);
+  else if (scan.disks.length) push("disk", "ok", "Disques sains", `${plural(scan.disks.length, "disque déclaré sain", "disques déclarés sains")} par Windows.`);
+
+  const s = scan.stability;
+  if (s.gpuHangs > 0) {
+    const top = s.gpuCodes[0];
+    const named = top ? ` Le plus fréquent : ${GPU_CODES[top.code] ?? `code ${top.code}`}.` : "";
+    push("gpu", s.gpuHangs >= 5 ? "alert" : "warn", `La carte graphique a décroché ${s.gpuHangs} fois en 30 jours`, `Windows a enregistré ces blocages.${named} Essayez d'abord le dernier pilote du fabricant.`, "pilotes", "Voir les pilotes");
+  }
+  if (s.blueScreens > 0) push("bsod", "alert", `${plural(s.blueScreens, "écran bleu", "écrans bleus")} en 30 jours`, "Vérifiez les pilotes et les fichiers système.", "reparer", "Vérifier Windows");
+  if (s.unexpectedShutdowns > 0) push("power", s.unexpectedShutdowns >= 3 ? "alert" : "warn", `${plural(s.unexpectedShutdowns, "arrêt brutal", "arrêts brutaux")} en 30 jours`, "Le PC s'est éteint sans passer par l'arrêt normal, à cause d'un plantage ou d'une coupure.", "reparer", "Vérifier Windows");
+  if (!s.gpuHangs && !s.blueScreens && !s.unexpectedShutdowns) push("stable", "ok", "Aucun plantage système", "Aucun écran bleu ni arrêt brutal en 30 jours.");
+  if (s.appCrashes >= 10) {
+    const top = s.topCrashes[0];
+    push("apps", "warn", `${s.appCrashes} plantages d'applications en 30 jours`, top ? `${top.name} revient le plus souvent (${top.count} fois).` : "");
+  }
+
+  if (scan.deviceProblems > 0) push("devices", "warn", `${plural(scan.deviceProblems, "appareil", "appareils")} en erreur`, "Windows ne les fait pas fonctionner correctement.", "pilotes", "Voir les appareils");
+  else push("devices", "ok", "Tous les appareils fonctionnent", "Aucun appareil signalé en erreur.");
+
+  if (scan.pendingReboot) push("reboot", "warn", "Un redémarrage est en attente", "Une mise à jour ne sera terminée qu'après le redémarrage.", "miseajour", "Voir les mises à jour");
+  else if (scan.uptimeSeconds > 14 * 86400) push("uptime", "warn", `Allumé depuis ${formatDuration(scan.uptimeSeconds)}`, "Un redémarrage libère la mémoire et termine les opérations en attente.");
+
+  if (scan.lastUpdate) {
+    const days = (Date.now() - new Date(scan.lastUpdate).getTime()) / 86400000;
+    if (days > 30) push("updates", "warn", "Windows n'a rien installé depuis plus d'un mois", `Dernière installation : ${formatDate(scan.lastUpdate)}.`, "miseajour", "Chercher");
+    else push("updates", "ok", "Windows à jour récemment", `Dernière installation : ${formatDate(scan.lastUpdate)}.`);
+  }
+
+  const d = scan.security.defender;
+  const third = scan.security.otherAntivirus.length > 0;
+  if (!third && (!d || !d.running || !d.realtime)) push("av", "alert", "Protection antivirus inactive", "Aucun antivirus ne surveille ce PC en temps réel.");
+  else if (d && d.realtime && d.signatureAgeDays > 7) push("av", "warn", "Définitions antivirus anciennes", `Dernière mise à jour il y a ${d.signatureAgeDays} jours.`, "miseajour", "Chercher");
+  else push("av", "ok", "Antivirus actif", third ? scan.security.otherAntivirus.join(", ") : "Microsoft Defender surveille ce PC.");
+  if (scan.security.firewallOff?.length) push("firewall", "warn", "Pare-feu partiellement coupé", `Profil désactivé : ${scan.security.firewallOff.join(", ")}.`);
+
+  const used = 1 - scan.memory.freeBytes / scan.memory.totalBytes;
+  if (used >= 0.9) push("memory", "warn", `Mémoire utilisée à ${Math.round(used * 100)} %`, "Fermez ce qui ne sert pas pour éviter les ralentissements.", "performances", "Voir les programmes");
+
+  const boot = scan.boots.items[0];
+  if (boot && boot.ms > 60000) push("boot", "warn", `Démarrage en ${Math.round(boot.ms / 1000)} s`, "Réduisez les programmes lancés au démarrage.", "demarrage", "Voir le démarrage");
+
+  const order: Record<Level, number> = { alert: 0, warn: 1, ok: 2 };
+  return list.sort((a, b) => order[a.level] - order[b.level]);
+}
+
+export function headline(items: Finding[]): string {
+  const issues = items.filter((f) => f.level !== "ok").length;
+  if (issues === 0) return "Rien à signaler sur ce PC.";
+  return issues === 1 ? "Un point à traiter sur ce PC." : `${issues} points à traiter sur ce PC.`;
+}
+
+export function reportText(scan: Scan, items: Finding[]): string {
+  return [
+    `Nova PC Suite, bilan du ${formatDateTime(scan.timestamp)}`,
+    `${scan.computer.manufacturer} ${scan.computer.model}`,
+    `${scan.os.name} ${scan.os.release} (build ${scan.os.build})`,
+    `${scan.cpu.name}, ${formatBytes(scan.memory.totalBytes)} de mémoire`,
+    ...scan.gpus.map((g) => `${g.name}, pilote ${g.driverVersion}`),
+    "",
+    ...items.map((f) => `[${f.level === "ok" ? "OK" : f.level === "warn" ? "À voir" : "Urgent"}] ${f.title}. ${f.detail}`),
+  ].join("\n");
+}
+
+export function bootComparison(
+  boots: { date: string; ms: number }[],
+  changes: { timestamp: number }[],
+): { before: number; after: number } | null {
+  if (!changes.length) return null;
+  const change = Math.max(...changes.map((c) => c.timestamp * 1000));
+  const average = (list: { ms: number }[]) => list.reduce((sum, b) => sum + b.ms, 0) / list.length;
+  const before = boots.filter((b) => new Date(b.date).getTime() < change);
+  const after = boots.filter((b) => new Date(b.date).getTime() > change);
+  if (!before.length || !after.length) return null;
+  return { before: average(before), after: average(after) };
 }
