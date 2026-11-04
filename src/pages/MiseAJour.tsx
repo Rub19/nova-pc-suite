@@ -44,6 +44,7 @@ function Software() {
       }
     >
       {list.error && <Failure text={list.error} retry={() => void list.reload()} />}
+      {!list.data && list.loading && <Elapsed label="WinGet lit vos logiciels. Cela peut prendre une minute." />}
       {queue && <Elapsed label={`Mise à jour de ${queue}.`} />}
       {list.data && !items.length && <Empty>Vos logiciels connus de WinGet sont à jour.</Empty>}
       {items.length > 0 && (
