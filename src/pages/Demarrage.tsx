@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { bootComparison, formatBytes, formatDate, plural } from "../lib";
+import { arr, bootComparison, formatBytes, formatDate, plural } from "../lib";
 import { call, errorText, Failure, Head, Section, Skeleton, useApp, useResource } from "../ui";
 
 type Entry = { source: string; sourceLabel: string; name: string; enabled: boolean; path: string | null; publisher: string | null; exists: boolean; ramBytes: number; running: boolean; protected: boolean; manageable: boolean };
@@ -17,8 +17,8 @@ function BootChart({ boots, changes }: { boots: Boots; changes: { timestamp: num
       </p>
     );
   }
-  if (!boots.items.length) return <p className="note">Windows n'a pas encore enregistré de temps de démarrage.</p>;
-  const ordered = [...boots.items].reverse();
+  if (!arr(boots.items).length) return <p className="note">Windows n'a pas encore enregistré de temps de démarrage.</p>;
+  const ordered = [...arr(boots.items)].reverse();
   const top = Math.max(...ordered.map((b) => b.ms));
   const compare = bootComparison(boots.items, changes);
   return (
@@ -59,7 +59,7 @@ export default function Demarrage() {
     window.addEventListener("nova:changed", listener);
     return () => window.removeEventListener("nova:changed", listener);
   }, []);
-  const items = list.data?.items ?? [];
+  const items = arr(list.data?.items);
   const active = useMemo(() => items.filter((i) => i.enabled), [items]);
   const key = (i: Entry) => `${i.source}|${i.name}`;
   const toggle = async (i: Entry) => {

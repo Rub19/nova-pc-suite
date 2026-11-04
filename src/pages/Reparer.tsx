@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActionResult, formatDateTime } from "../lib";
+import { arr, ActionResult, formatDateTime } from "../lib";
 import { AdminButton, call, Elapsed, errorText, Failure, Head, Measures, Section, useAction, useApp, useResource } from "../ui";
 
 type Restore = { needsAdmin: boolean; items: { sequence: number; description: string; date: string }[]; protectionOn?: boolean | null };
@@ -59,7 +59,7 @@ export default function Reparer() {
         <div className="ticket" role="status">
           <p><strong>{outcome.label} : {VERDICT[outcome.verdict ?? ""] ?? outcome.summary}</strong></p>
           <Measures items={outcome.measures} />
-          {!!outcome.output?.length && <pre className="log">{outcome.output.join("\n")}</pre>}
+          {!!arr(outcome.output).length && <pre className="log">{arr(outcome.output).join("\n")}</pre>}
         </div>
       )}
       <Section title="Vérifications">
@@ -95,15 +95,15 @@ export default function Reparer() {
       >
         {points.error && <Failure text={points.error} retry={() => void points.reload()} />}
         {points.data?.needsAdmin && <p className="note">La liste s'affiche en mode administrateur.</p>}
-        {points.data && !points.data.needsAdmin && points.data.items.length === 0 && (
+        {points.data && !points.data.needsAdmin && arr(points.data.items).length === 0 && (
           <div className="failure">
             <span>Aucun point de restauration. Si la protection du système est coupée, Nova ne peut pas installer de pilote ou de mise à jour en sécurité.</span>
             <AdminButton disabled={!!busy} onRun={() => void launch("protection-enable", "Protection du système")}>Activer la protection</AdminButton>
           </div>
         )}
-        {!!points.data?.items.length && (
+        {!!arr(points.data?.items).length && (
           <ul className="panel">
-            {points.data.items.map((p) => (
+            {arr(points.data?.items).map((p) => (
               <li className="row" key={p.sequence}>
                 <div className="grow">
                   <strong>{p.description}</strong>

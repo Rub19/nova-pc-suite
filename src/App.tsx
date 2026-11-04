@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { ComponentType, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatBytes, Page } from "./lib";
-import { AppProvider, useApp } from "./ui";
+import { AppProvider, ScreenGuard, useApp } from "./ui";
 import Bilan from "./pages/Bilan";
 import Pilotes from "./pages/Pilotes";
 import MiseAJour from "./pages/MiseAJour";
@@ -175,7 +175,9 @@ function Shell() {
       </nav>
       <main ref={main} className="content">
         <div className="content-inner" key={page}>
-          <Screen />
+          <ScreenGuard>
+            <Screen />
+          </ScreenGuard>
         </div>
       </main>
     </div>

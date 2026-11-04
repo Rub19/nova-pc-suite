@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { formatDate, plural } from "../lib";
+import { arr, formatDate, plural } from "../lib";
 import { AdminButton, call, Elapsed, Empty, errorText, Failure, Head, Measures, Section, useAction, useApp, useResource } from "../ui";
 import { WuList } from "./Pilotes";
 
@@ -10,7 +10,7 @@ function Software() {
   const list = useResource<{ items: Upgrade[] }>("winget", () => call("updates", "winget-list"));
   const { busy, result, run } = useAction();
   const [queue, setQueue] = useState<string | null>(null);
-  const items = list.data?.items ?? [];
+  const items = arr(list.data?.items);
   const upgrade = async (item: Upgrade) => {
     setQueue(item.name);
     await run("updates", "winget-upgrade", { id: item.id }, { key: item.id });
@@ -71,7 +71,7 @@ function History() {
       {history.error && <Failure text={history.error} retry={() => void history.reload()} />}
       {history.data && (
         <ul className="panel">
-          {history.data.items.map((h, i) => (
+          {arr(history.data.items).map((h, i) => (
             <li className="row" key={i}>
               <div className="grow">
                 <strong>{h.title}</strong>

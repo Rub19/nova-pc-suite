@@ -117,6 +117,11 @@ export function formatDate(iso: string | null | undefined): string {
   return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
+export function arr<T>(value: T[] | T | null | undefined): T[] {
+  if (value === null || value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 export function compareFindings(previous: string[] | null, items: Finding[]) {
   const now = items.filter((item) => item.level !== "ok").map((item) => item.id);
   if (!previous) return { fresh: [] as string[], solved: 0 };

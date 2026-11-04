@@ -1,4 +1,4 @@
-import { formatBytes, formatDate } from "../lib";
+import { arr, formatBytes, formatDate } from "../lib";
 import { AdminButton, call, Elapsed, Failure, Head, Measures, Section, Skeleton, useAction, useApp, useResource } from "../ui";
 
 type Overview = {
@@ -32,7 +32,7 @@ function Processes() {
               <tr><th>Programme</th><th className="num">Processeur</th><th className="num">Mémoire</th><th aria-label="Action" /></tr>
             </thead>
             <tbody>
-              {list.data.items.map((p) => (
+              {arr(list.data.items).map((p) => (
                 <tr key={p.name}>
                   <td>{p.name}{p.count > 1 && <span className="muted"> ({p.count} processus)</span>}</td>
                   <td className="num tabular">{p.cpuPercent.toLocaleString("fr-FR")} %</td>
@@ -66,7 +66,7 @@ function Network() {
       {test.error && <Failure text={test.error} />}
       {test.data && (
         <ul className="panel">
-          {test.data.probes.map((p) => (
+          {arr(test.data.probes).map((p) => (
             <li className="row" key={p.target}>
               <div className="grow"><strong>{p.role}</strong></div>
               <span className="tabular">{p.averageMs === null ? "aucune réponse" : `${p.averageMs.toLocaleString("fr-FR")} ms, ${p.lossPercent} % de perte`}</span>
@@ -114,7 +114,7 @@ export default function Performances() {
         <>
           <Section title="Mode d'alimentation" note="Nova mesure le calcul du processeur avant et après. Sur un PC de bureau récent, l'écart est souvent faible.">
             <div className="segments" role="radiogroup" aria-label="Mode d'alimentation">
-              {data.plans.map((p) => (
+              {arr(data.plans).map((p) => (
                 <button key={p.guid} role="radio" aria-checked={p.active} className={p.active ? "on" : ""} disabled={!!busy} onClick={() => !p.active && void setPlan(p.guid)}>
                   {p.name}
                 </button>
@@ -133,7 +133,7 @@ export default function Performances() {
           )}
           <Section title="Disques" note="Windows choisit lui-même : TRIM pour un SSD, défragmentation pour un disque dur.">
             <ul className="panel">
-              {data.volumes.map((v) => (
+              {arr(data.volumes).map((v) => (
                 <li className="row" key={v.letter}>
                   <div className="grow">
                     <strong>{v.letter}:{v.label ? ` ${v.label}` : ""}</strong>

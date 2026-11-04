@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
-import { DEVICE_CODES, formatBytes, formatDate, plural } from "../lib";
+import { arr, DEVICE_CODES, formatBytes, formatDate, plural } from "../lib";
 import { AdminButton, call, Elapsed, Empty, errorText, Failure, Head, Measures, Section, Skeleton, useAction, useApp, useResource } from "../ui";
 
 type Devices = {
@@ -38,13 +38,13 @@ export function WuOutcome({ data }: { data: WuResults }) {
         </p>
       )}
       <ul className="plain">
-        {data.results?.map((r) => (
+        {arr(data.results).map((r) => (
           <li key={r.id} className={r.ok ? "good" : "bad"}>
             {r.ok ? "Installé" : `Échec ${r.hresult}`} : {r.title}
           </li>
         ))}
       </ul>
-      {data.changedDrivers?.map((d) => (
+      {arr(data.changedDrivers).map((d) => (
         <p key={d.name}>
           {d.name} : {d.before} › <strong>{d.after}</strong>
         </p>
@@ -59,7 +59,7 @@ export function WuList({ kind, cacheKey }: { kind: "Driver" | "Software"; cacheK
   const search = useResource<{ items: WuItem[]; searchedAt: string }>(cacheKey, () => call("updates", "wu-search", { kind }), false);
   const [selected, setSelected] = useState<string[]>([]);
   const { busy, result, run } = useAction();
-  const items = search.data?.items ?? [];
+  const items = arr(search.data?.items);
   const chosen = items.filter((i) => selected.includes(i.id));
 
   const install = async () => {
@@ -124,7 +124,7 @@ export function WuList({ kind, cacheKey }: { kind: "Driver" | "Software"; cacheK
                 <span>
                   <strong>{i.title}</strong>
                   <small>
-                    {[i.driverProvider, i.driverDate && `pilote du ${formatDate(i.driverDate)}`, i.kb.join(", "), i.severity, i.sizeBytes ? formatBytes(i.sizeBytes) : "", i.rebootLikely ? "redémarrage probable" : ""].filter(Boolean).join(", ")}
+                    {[i.driverProvider, i.driverDate && `pilote du ${formatDate(i.driverDate)}`, arr(i.kb).join(", "), i.severity, i.sizeBytes ? formatBytes(i.sizeBytes) : "", i.rebootLikely ? "redémarrage probable" : ""].filter(Boolean).join(", ")}
                   </small>
                 </span>
               </label>
@@ -148,7 +148,7 @@ function Inventory({ drivers }: { drivers: Devices["drivers"] }) {
   const rows = useMemo(() => {
     const seen = new Set<string>();
     const q = query.trim().toLowerCase();
-    return drivers
+    return arr(drivers)
       .filter((d) => all || !/^(microsoft|\(standard|standard|\(générique|generic)/i.test(d.manufacturer ?? ""))
       .filter((d) => !q || `${d.name} ${d.manufacturer} ${d.version}`.toLowerCase().includes(q))
       .filter((d) => {
@@ -192,6 +192,8 @@ function Inventory({ drivers }: { drivers: Devices["drivers"] }) {
 export default function Pilotes() {
   const { toast } = useApp();
   const { data, loading, error, reload } = useResource<Devices>("devices", () => call<Devices>("updates", "devices"));
+  const problems = arr(data?.problems);
+  const vendors = arr(data?.vendors);
   const openVendor = async (id: string) => {
     try {
       await call("updates", "open-vendor", { id });
@@ -206,11 +208,11 @@ export default function Pilotes() {
       {!data && loading && <Skeleton />}
       {data && (
         <Section title="Appareils en erreur" actions={<button disabled={loading} onClick={() => void reload()}>{loading ? "Lecture…" : "Actualiser"}</button>}>
-          {data.problems.length === 0 ? (
+          {problems.length === 0 ? (
             <Empty>Tous les appareils fonctionnent.</Empty>
           ) : (
             <ul className="panel">
-              {data.problems.map((p, i) => (
+              {problems.map((p, i) => (
                 <li className="row" key={i}>
                   <div className="grow">
                     <strong>{p.name || "Appareil sans nom"}</strong>
@@ -225,10 +227,10 @@ export default function Pilotes() {
       <Section title="Mises à jour proposées par Windows" note="Sources officielles Microsoft. Elles peuvent être plus anciennes que celles du fabricant.">
         <WuList kind="Driver" cacheKey="wu-driver" />
       </Section>
-      {data && data.vendors.length > 0 && (
+      {vendors.length > 0 && (
         <Section title="Sites des fabricants de ce PC" note="Pour la version la plus récente, surtout pour la carte graphique. S'ouvre dans votre navigateur.">
           <div className="toolbar">
-            {data.vendors.map((v) => (
+            {vendors.map((v) => (
               <button key={v.id} onClick={() => void openVendor(v.id)}>
                 {v.name} <ExternalLink size={14} aria-hidden />
               </button>

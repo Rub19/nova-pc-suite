@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ShieldCheck, Undo2, X } from "lucide-react";
 import {
+  Component,
   createContext,
   ReactNode,
   useCallback,
@@ -28,6 +29,7 @@ export function errorText(error: unknown): string {
 }
 
 const cache = new Map<string, unknown>();
+const clearResources = () => cache.clear();
 
 export function useResource<T>(key: string, loader: () => Promise<T>, auto = true) {
   const [data, setData] = useState<T | null>((cache.get(key) as T) ?? null);
@@ -242,6 +244,21 @@ export function Section({
       {children}
     </section>
   );
+}
+
+export class ScreenGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  retry = () => {
+    clearResources();
+    this.setState({ failed: false });
+  };
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <Failure text="Cet écran a reçu des données illisibles. Le reste de Nova fonctionne : changez d'écran ou réessayez." retry={this.retry} />;
+  }
 }
 
 export function Elapsed({ label }: { label: string }) {

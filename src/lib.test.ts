@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { bySizeThenUsable, compareFindings, journalDay, bootComparison, findings, formatBytes, formatMeasureValue, headline, measureDelta, Scan } from "./lib";
+import { arr, bySizeThenUsable, compareFindings, journalDay, bootComparison, findings, formatBytes, formatMeasureValue, headline, measureDelta, Scan } from "./lib";
 
 describe("repères ajoutés", () => {
+  it("rend toujours une liste, même si le moteur renvoie autre chose", () => {
+    expect(arr(undefined)).toEqual([]);
+    expect(arr(null)).toEqual([]);
+    expect(arr({ a: 1 })).toEqual([{ a: 1 }]);
+    expect(arr([1, 2])).toEqual([1, 2]);
+  });
   const finding = (id: string, level: "ok" | "warn" | "alert") => ({ id, level, title: id, detail: "" }) as never;
   it("compare deux analyses sans inventer de nouveauté au premier passage", () => {
     expect(compareFindings(null, [finding("a", "alert")])).toEqual({ fresh: [], solved: 0 });
