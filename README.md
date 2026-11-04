@@ -12,7 +12,7 @@ Nova ne montre que des mesures réelles. Chaque changement est mesuré avant et 
 - **Nettoyage** : temporaires, cache Windows Update, optimisation de la distribution, miniatures, shaders, caches des navigateurs, rapports de plantage, corbeille. Taille réelle avant, espace libre avant et après.
 - **Démarrage** : registre, dossiers Démarrage et tâches à l'ouverture de session. Désactivation identique à celle du Gestionnaire des tâches, annulable d'un clic. Mémoire utilisée par programme, durée des derniers démarrages.
 - **Performances** : mode d'alimentation avec mesure du calcul processeur avant et après, état de la carte NVIDIA, optimisation des disques, veille prolongée, programmes qui consomment, test de connexion, cache DNS.
-- **Réparer** : DISM, SFC, chkdsk, anciens composants, points de restauration.
+- **Réparer** : DISM, SFC, analyse du disque, anciens composants, points de restauration.
 - **Journal** : toutes les modifications de Nova, avec leurs mesures et l'annulation.
 
 Toute installation de pilote ou de mise à jour Windows, et toute réparation, est précédée d'un point de restauration. Si Windows ne peut pas en créer, Nova s'arrête sans rien modifier.

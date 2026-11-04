@@ -1,11 +1,9 @@
 function Get-Verdict([string]$Text, [int]$Code) {
+    if ($Text -match '(?i)a réparé|successfully repaired') { return 'repaired' }
     if ($Text -match '(?i)aucune violation|did not find any integrity|aucun endommagement|no component store corruption') { return 'ok' }
-    if ($Text -match '(?i)a trouvé des fichiers (endommagés|corrompus)|found (integrity violations|corrupt)|réparable|repairable|corruption') {
-        if ($Text -match '(?i)a réparé|successfully repaired|opération de restauration.*réussi|restore operation completed successfully') { return 'repaired' }
-        return 'problem'
-    }
-    if ($Code -eq 0) { return 'ok' }
-    'problem'
+    if ($Text -match '(?i)violations? de l.intégrité|integrity violations|fichiers (endommagés|corrompus)|found corrupt|repairable|réparable|corruption') { return 'problem' }
+    if ($Code -ne 0) { return 'problem' }
+    'done'
 }
 
 function Result-From($Run, [string]$Summary) {
@@ -44,7 +42,7 @@ function Invoke-Module([string]$Action) {
         }
         'dism-repair' {
             $restore = Ensure-RestorePoint 'Nova PC Suite : avant réparation Windows'
-            $r = Result-From (Invoke-Native 'Dism.exe' @('/Online', '/Cleanup-Image', '/RestoreHealth', '/NoRestart')) 'Réparation de l''image Windows terminée'
+            $r = Result-From (Invoke-Native 'Dism.exe' @('/Online', '/Cleanup-Image', '/RestoreHealth', '/NoRestart', '/English')) 'Réparation de l''image Windows terminée'
             $r.restorePoint = $restore
             $r
         }
@@ -60,8 +58,8 @@ function Invoke-Module([string]$Action) {
         }
         'chkdsk-scan' {
             Require-Admin
-            $run = Invoke-Native 'chkdsk.exe' @($env:SystemDrive, '/scan')
-            @{ summary = "Analyse du disque $env:SystemDrive terminée"; exitCode = $run.exitCode; output = @($run.tail); verdict = $(if ($run.exitCode -eq 0) { 'ok' } else { 'problem' }) }
+            $status = [string](Repair-Volume -DriveLetter $env:SystemDrive[0] -Scan)
+            @{ summary = "Analyse du disque $env:SystemDrive terminée"; output = @("Résultat de Windows : $status"); verdict = $(if ($status -eq 'NoErrorsFound') { 'ok' } else { 'problem' }) }
         }
         'store-cleanup' {
             Require-Admin

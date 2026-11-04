@@ -21,6 +21,8 @@ function Invoke-Native([string]$Name, [string[]]$Arguments, [switch]$Utf16) {
     try {
         $text = (& (Sys32 $Name) @Arguments 2>&1 | ForEach-Object { [string]$_ }) -join "`n"
         $code = $LASTEXITCODE
+    } catch [Management.Automation.ApplicationFailedException] {
+        throw "Windows a refusé de lancer $Name."
     } finally {
         [Console]::OutputEncoding = $previous
         $ErrorActionPreference = 'Stop'

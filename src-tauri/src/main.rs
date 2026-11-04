@@ -516,6 +516,20 @@ mod tests {
     }
 
     #[test]
+    fn repair_verdicts_never_hide_a_problem() {
+        let script = format!(
+            "{}
+@{{ ok = $true; v = @(Get-Verdict 'La Protection des ressources Windows a détecté des violations de l''intégrité.' 0; Get-Verdict 'Windows Resource Protection found integrity violations.' 0; Get-Verdict 'La protection n''a trouvé aucune violation d''intégrité.' 0; Get-Verdict 'No component store corruption detected.' 0; Get-Verdict 'The component store is repairable.' 0; Get-Verdict 'a trouvé des fichiers endommagés et les a réparés.' 0; Get-Verdict 'Texte inconnu' 0; Get-Verdict 'Texte inconnu' 5) }} | ConvertTo-Json -Compress",
+            include_str!("../scripts/repair.ps1")
+        );
+        let value = powershell(&script, 30).unwrap();
+        assert_eq!(
+            value["v"],
+            json!(["problem", "problem", "ok", "ok", "problem", "repaired", "done", "problem"])
+        );
+    }
+
+    #[test]
     fn scan_runs_through_the_real_transport() {
         let value = powershell(&build_script("diag", "scan", &json!({})).unwrap(), 120).unwrap();
         assert_eq!(value["ok"], true, "{value}");

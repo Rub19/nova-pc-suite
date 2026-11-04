@@ -159,7 +159,7 @@ export const GPU_CODES: Record<string, string> = {
 export const DEVICE_CODES: Record<number, string> = {
   1: "Mal configuré. Réinstallez le pilote.",
   3: "Le pilote est peut-être endommagé, ou la mémoire manque.",
-  10: "L'appareil ne peut pas démarrer. Mettez à jour son pilote.",
+  10: "L'appareil ne démarre pas. Éteignez complètement le PC 30 secondes. Si l'erreur revient, mettez à jour son pilote.",
   12: "Pas assez de ressources libres pour cet appareil.",
   14: "Redémarrez le PC pour terminer l'installation.",
   18: "Réinstallez le pilote de cet appareil.",

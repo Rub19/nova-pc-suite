@@ -94,7 +94,7 @@ export function AppProvider({
   const toast = useCallback<Ctx["toast"]>((text, tone = "ok", undo) => {
     const id = nextId.current++;
     setToasts((all) => [...all.slice(-2), { id, text, tone, undo }]);
-    window.setTimeout(() => dismiss(id), undo ? 12000 : tone === "alert" ? 9000 : 5000);
+    if (tone !== "alert") window.setTimeout(() => dismiss(id), undo ? 12000 : 5000);
   }, []);
   const ask = useCallback<Ctx["ask"]>(
     (options) => new Promise((resolve) => setDialog({ ...options, resolve })),
