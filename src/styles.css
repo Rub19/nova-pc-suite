@@ -522,3 +522,17 @@ summary { cursor: default; }
 @media (prefers-contrast: more) {
   :root { --line: var(--muted); --control-line: var(--ink); }
 }
+
+@keyframes bar-rise { from { transform: scaleY(0.04); } }
+.bar-fill { transform-origin: bottom center; animation: bar-rise 420ms var(--ease-out) backwards; }
+.bars li:nth-child(2) .bar-fill { animation-delay: 30ms; }
+.bars li:nth-child(3) .bar-fill { animation-delay: 60ms; }
+.bars li:nth-child(n + 4) .bar-fill { animation-delay: 90ms; }
+.total .big { display: inline-block; animation: fade 160ms ease-out; }
+.rail li button svg { transition: transform 140ms var(--ease-out); }
+.rail li button:active svg { transform: scale(0.88); }
+.measures strong { animation: fade 260ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill { animation: none; }
+  .rail li button:active svg { transform: none; }
+}

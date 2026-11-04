@@ -54,7 +54,7 @@ export default function Nettoyage() {
         <>
           <div className="total">
             <div>
-              <strong className="big tabular">{formatBytes(total)}</strong>
+              <strong key={total} className="big tabular">{formatBytes(total)}</strong>
               <span>à libérer sur {formatBytes(scan.data.freeBytes)} déjà libres</span>
             </div>
             <div className="head-actions">
