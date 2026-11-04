@@ -59,7 +59,7 @@ function Invoke-Module([string]$Action) {
         'chkdsk-scan' {
             Require-Admin
             $status = [string](Repair-Volume -DriveLetter $env:SystemDrive[0] -Scan)
-            @{ summary = "Analyse du disque $env:SystemDrive terminée"; output = @("Résultat de Windows : $status"); verdict = $(if ($status -eq 'NoErrorsFound') { 'ok' } else { 'problem' }) }
+            @{ summary = "Analyse du disque $env:SystemDrive terminée"; output = @("Résultat de Windows : $status"); verdict = $(if ($status -in 'NoErrorsFound', 'ScanNoErrorsFound') { 'ok' } else { 'problem' }) }
         }
         'store-cleanup' {
             Require-Admin
