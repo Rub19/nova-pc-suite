@@ -117,6 +117,21 @@ export function formatDate(iso: string | null | undefined): string {
   return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
+export function compareFindings(previous: string[] | null, items: Finding[]) {
+  const now = items.filter((item) => item.level !== "ok").map((item) => item.id);
+  if (!previous) return { fresh: [] as string[], solved: 0 };
+  return { fresh: now.filter((id) => !previous.includes(id)), solved: previous.filter((id) => !now.includes(id)).length };
+}
+
+export function journalDay(seconds: number): string {
+  return new Date(seconds * 1000).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+export function bySizeThenUsable<T extends { bytes: number; needsAdmin: boolean; blocked: boolean }>(list: T[]): T[] {
+  const rank = (item: T) => (item.needsAdmin || item.blocked || item.bytes === 0 ? 1 : 0);
+  return [...list].sort((a, b) => rank(a) - rank(b) || b.bytes - a.bytes);
+}
+
 export function formatDateTime(iso: string | number): string {
   const date = new Date(iso);
   return `${date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;

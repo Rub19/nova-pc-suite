@@ -10,7 +10,7 @@ import {
   Stethoscope,
   Wrench,
 } from "lucide-react";
-import { ComponentType, useEffect, useRef, useState } from "react";
+import { ComponentType, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatBytes, Page } from "./lib";
 import { AppProvider, useApp } from "./ui";
 import Bilan from "./pages/Bilan";
@@ -124,9 +124,33 @@ function Shell() {
   const { page, go } = useApp();
   const Screen = SCREENS[page];
   const main = useRef<HTMLElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const pill = useRef<HTMLSpanElement>(null);
+  const [issues, setIssues] = useState(0);
   useEffect(() => {
     main.current?.scrollTo(0, 0);
   }, [page]);
+  useLayoutEffect(() => {
+    const current = list.current?.querySelector<HTMLElement>("button.active");
+    if (current && pill.current) {
+      pill.current.style.height = `${current.offsetHeight}px`;
+      pill.current.style.transform = `translateY(${current.parentElement!.offsetTop}px)`;
+    }
+  }, [page]);
+  useEffect(() => {
+    const onIssues = (event: Event) => setIssues((event as CustomEvent<number>).detail);
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || !/^[1-8]$/.test(event.key)) return;
+      event.preventDefault();
+      go(NAV[Number(event.key) - 1].id);
+    };
+    window.addEventListener("nova:issues", onIssues);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("nova:issues", onIssues);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [go]);
   return (
     <div className="app">
       <nav className="rail" aria-label="Navigation principale">
@@ -134,12 +158,14 @@ function Shell() {
           <span className="brand-mark" aria-hidden />
           Nova
         </div>
-        <ul>
-          {NAV.map(({ id, label, icon: Icon }) => (
+        <ul ref={list}>
+          <span className="rail-pill" ref={pill} aria-hidden />
+          {NAV.map(({ id, label, icon: Icon }, index) => (
             <li key={id}>
-              <button className={page === id ? "active" : ""} aria-current={page === id ? "page" : undefined} onClick={() => go(id)}>
+              <button className={page === id ? "active" : ""} aria-current={page === id ? "page" : undefined} title={`${label} (Ctrl+${index + 1})`} onClick={() => go(id)}>
                 <Icon size={17} aria-hidden />
                 {label}
+                {id === "bilan" && issues > 0 && <span className="rail-badge" key={issues} aria-label={`${issues} à traiter`}>{issues}</span>}
               </button>
             </li>
           ))}
@@ -148,13 +174,16 @@ function Shell() {
         <AdminStatus />
       </nav>
       <main ref={main} className="content">
-        <div className="content-inner">
+        <div className="content-inner" key={page}>
           <Screen />
         </div>
       </main>
     </div>
   );
 }
+
+window.addEventListener("keydown", () => document.documentElement.setAttribute("data-keynav", ""), true);
+window.addEventListener("pointerdown", () => document.documentElement.removeAttribute("data-keynav"), true);
 
 export default function App() {
   const [page, setPage] = useState<Page>("bilan");

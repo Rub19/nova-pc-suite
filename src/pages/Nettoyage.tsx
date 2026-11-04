@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActionResult, formatBytes, plural } from "../lib";
+import { ActionResult, bySizeThenUsable, formatBytes, plural } from "../lib";
 import { call, Elapsed, Failure, Head, Measures, Skeleton, useAction, useApp, useResource, AdminButton } from "../ui";
 
 type Category = { id: string; label: string; detail: string; bytes: number; files: number; selected: boolean; needsAdmin: boolean; blocked: boolean };
@@ -16,7 +16,7 @@ export default function Nettoyage() {
   const { busy, result, run } = useAction();
   const [chosen, setChosen] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
-  const items = scan.data?.items ?? [];
+  const items = bySizeThenUsable(scan.data?.items ?? []);
   const usable = items.filter((c) => !c.needsAdmin && !c.blocked && c.bytes > 0);
   useEffect(() => {
     if (!touched) setChosen(usable.filter((c) => c.selected).map((c) => c.id));
@@ -77,6 +77,12 @@ export default function Nettoyage() {
               Certains emplacements de Windows demandent les droits administrateur.
               <AdminButton className="link" onRun={() => void elevate()}>Les inclure</AdminButton>
             </p>
+          )}
+          {usable.length > 1 && (
+            <div className="panel-tools">
+              <button className="link" disabled={!!busy || picked.length === usable.length} onClick={() => { setTouched(true); setChosen(usable.map((c) => c.id)); }}>Tout cocher</button>
+              <button className="link" disabled={!!busy || picked.length === 0} onClick={() => { setTouched(true); setChosen([]); }}>Tout décocher</button>
+            </div>
           )}
           <ul className="panel">
             {items.map((c) => {

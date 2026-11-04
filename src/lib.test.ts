@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { bootComparison, findings, formatBytes, formatMeasureValue, headline, measureDelta, Scan } from "./lib";
+import { bySizeThenUsable, compareFindings, journalDay, bootComparison, findings, formatBytes, formatMeasureValue, headline, measureDelta, Scan } from "./lib";
+
+describe("repères ajoutés", () => {
+  const finding = (id: string, level: "ok" | "warn" | "alert") => ({ id, level, title: id, detail: "" }) as never;
+  it("compare deux analyses sans inventer de nouveauté au premier passage", () => {
+    expect(compareFindings(null, [finding("a", "alert")])).toEqual({ fresh: [], solved: 0 });
+    expect(compareFindings(["a", "b"], [finding("a", "alert"), finding("c", "warn"), finding("d", "ok")])).toEqual({ fresh: ["c"], solved: 1 });
+  });
+  it("met les plus gros nettoyages en tête et les indisponibles à la fin", () => {
+    const row = (bytes: number, needsAdmin = false) => ({ bytes, needsAdmin, blocked: false });
+    expect(bySizeThenUsable([row(5), row(100, true), row(0), row(50)]).map((c) => c.bytes)).toEqual([50, 5, 100, 0]);
+  });
+  it("écrit le jour du journal en français", () => {
+    expect(journalDay(Date.UTC(2026, 10, 4, 12) / 1000)).toContain("novembre");
+  });
+});
 
 const healthy: Scan = {
   isAdmin: true,

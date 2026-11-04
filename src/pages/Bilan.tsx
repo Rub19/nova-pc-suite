@@ -1,18 +1,33 @@
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
-import { useMemo } from "react";
-import { Finding, findings, formatBytes, formatDate, formatDuration, headline, plural, reportText, Scan } from "../lib";
+import { useEffect, useMemo } from "react";
+import { compareFindings, Finding, findings, formatBytes, formatDate, formatDateTime, formatDuration, headline, plural, reportText, Scan } from "../lib";
 import { call, errorText, Failure, Section, Skeleton, useApp, useResource } from "../ui";
 
 const ICON = { alert: CircleAlert, warn: TriangleAlert, ok: CircleCheck };
+const MEMORY_KEY = "nova-last-scan";
+type Memory = { timestamp: string; ids: string[]; fresh: string[]; solved: number };
 
-function Row({ item }: { item: Finding }) {
+function remember(scan: Scan, items: Finding[]): Memory {
+  let saved: Memory | null = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(MEMORY_KEY) || "null");
+  } catch {}
+  if (saved?.timestamp === scan.timestamp) return saved;
+  const next: Memory = { timestamp: scan.timestamp, ids: items.filter((f) => f.level !== "ok").map((f) => f.id), ...compareFindings(saved?.ids ?? null, items) };
+  try {
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
+}
+
+function Row({ item, fresh }: { item: Finding; fresh?: boolean }) {
   const { go } = useApp();
   const Icon = ICON[item.level];
   return (
     <li className={`row finding ${item.level}`}>
       <Icon size={18} aria-hidden className="finding-icon" />
       <div className="grow">
-        <strong>{item.title}</strong>
+        <strong>{item.title}{fresh && <span className="tag-new">Nouveau</span>}</strong>
         <p>{item.detail}</p>
       </div>
       {item.page && <button onClick={() => go(item.page!)}>{item.cta}</button>}
@@ -48,6 +63,10 @@ export default function Bilan() {
   const items = useMemo(() => (data ? findings(data) : []), [data]);
   const issues = items.filter((f) => f.level !== "ok");
   const fine = items.filter((f) => f.level === "ok");
+  const memory = useMemo(() => (data ? remember(data, items) : null), [data, items]);
+  useEffect(() => {
+    if (data) window.dispatchEvent(new CustomEvent("nova:issues", { detail: issues.length }));
+  }, [data, issues.length]);
   const copy = async () => {
     if (!data) return;
     try {
@@ -68,12 +87,18 @@ export default function Bilan() {
           </button>
         </div>
       </header>
+      {data && (
+        <p className="scan-meta">
+          Analyse du {formatDateTime(data.timestamp)}
+          {memory && memory.solved > 0 ? `. ${plural(memory.solved, "point réglé", "points réglés")} depuis la précédente.` : "."}
+        </p>
+      )}
       {error && <Failure text={error} retry={() => void reload()} />}
       {!data && loading && <Skeleton rows={5} />}
       {issues.length > 0 && (
         <ul className="panel reveal">
           {issues.map((f) => (
-            <Row item={f} key={f.id} />
+            <Row item={f} fresh={memory?.fresh.includes(f.id)} key={f.id} />
           ))}
         </ul>
       )}

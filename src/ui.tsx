@@ -56,7 +56,7 @@ export function useResource<T>(key: string, loader: () => Promise<T>, auto = tru
   return { data, loading, error, reload, setData };
 }
 
-type Toast = { id: number; text: string; tone: "ok" | "alert"; undo?: Undo | null };
+type Toast = { id: number; text: string; tone: "ok" | "alert"; undo?: Undo | null; leaving?: boolean };
 type ConfirmOptions = {
   title: string;
   body: ReactNode;
@@ -90,7 +90,10 @@ export function AppProvider({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const nextId = useRef(1);
 
-  const dismiss = (id: number) => setToasts((all) => all.filter((t) => t.id !== id));
+  const dismiss = (id: number) => {
+    setToasts((all) => all.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+    window.setTimeout(() => setToasts((all) => all.filter((t) => t.id !== id)), 170);
+  };
   const toast = useCallback<Ctx["toast"]>((text, tone = "ok", undo) => {
     const id = nextId.current++;
     setToasts((all) => [...all.slice(-2), { id, text, tone, undo }]);
@@ -105,8 +108,14 @@ export function AppProvider({
   }, [dialog]);
   const close = (value: boolean) => {
     dialog?.resolve(value);
-    dialogRef.current?.close();
-    setDialog(null);
+    const node = dialogRef.current;
+    const finish = () => {
+      node?.close();
+      setDialog(null);
+    };
+    if (!node || document.documentElement.hasAttribute("data-keynav")) return finish();
+    node.classList.add("closing");
+    window.setTimeout(finish, 120);
   };
   const elevate = useCallback(async () => {
     const yes = await ask({
@@ -139,7 +148,7 @@ export function AppProvider({
       {children}
       <div className="toasts" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div className={`toast ${t.tone}`} key={t.id}>
+          <div className={`toast ${t.tone}${t.leaving ? " leaving" : ""}`} key={t.id}>
             <span>{t.text}</span>
             {t.undo && (
               <button className="link" onClick={() => void applyUndo(t)}>
