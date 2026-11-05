@@ -318,7 +318,7 @@ fn update_pending() -> bool {
 }
 
 pub fn scan() -> Result<Value, String> {
-    let admin = super::elevation::is_admin();
+    let admin = crate::elevation::is_admin();
     let mut items = Vec::new();
     for category in categories() {
         let needs_admin = category.admin && !admin;
@@ -347,7 +347,7 @@ pub fn clean(ids: Vec<String>) -> Result<Value, String> {
     if ids.is_empty() || ids.len() > 16 {
         return Err("Sélection invalide".into());
     }
-    let admin = super::elevation::is_admin();
+    let admin = crate::elevation::is_admin();
     let known = categories();
     if ids
         .iter()

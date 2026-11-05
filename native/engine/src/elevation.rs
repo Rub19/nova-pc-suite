@@ -160,6 +160,23 @@ pub fn complete(token: &str) -> Result<(), String> {
     }
     signal(token)
 }
+pub fn relaunch_as_admin(handoff: &Handoff, page: &str) -> bool {
+    let Ok(exe) = std::env::current_exe() else {
+        return false;
+    };
+    let arguments = format!("--elevated-handoff {} --start-page {page}", handoff.token);
+    let done = unsafe {
+        windows::Win32::UI::Shell::ShellExecuteW(
+            None,
+            &windows::core::HSTRING::from("runas"),
+            &windows::core::HSTRING::from(exe.as_os_str()),
+            &windows::core::HSTRING::from(arguments),
+            windows::core::PCWSTR::null(),
+            windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
+        )
+    };
+    done.0 as isize > 32
+}
 #[cfg(test)]
 mod tests {
     use super::*;

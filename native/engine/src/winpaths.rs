@@ -14,7 +14,7 @@ extern "system" {
 }
 pub fn write_owned(path: &Path, bytes: &[u8], append: bool) -> Result<(), String> {
     let parent = path.parent().ok_or("Dossier manquant")?;
-    let _held = super::hold_data_root(parent)?;
+    let _held = crate::hold_data_root(parent)?;
     let mut file: File = OpenOptions::new()
         .create(true)
         .read(true)

@@ -33,6 +33,6 @@ npm run tauri:build
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-Les scripts PowerShell de `src-tauri/scripts` sont intégrés au binaire et n'acceptent que les actions listées dans `policy()` de `src-tauri/src/main.rs`.
+Le moteur est dans `native/engine`, sans dépendance à Tauri. Les scripts PowerShell de `native/engine/scripts` sont intégrés au binaire et n'acceptent que les actions listées dans `policy()` de `native/engine/src/lib.rs`.
 
 Les binaires ne sont pas signés Authenticode : Windows peut afficher un avertissement d'éditeur inconnu.
