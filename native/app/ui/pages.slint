@@ -1,0 +1,1248 @@
+import { Theme, Icons, Measure, Btn, AdminBtn, Muted, Strong, Rise, Page, Head, SectionHead, Panel, Row, Grow, Tag, NewTag, Failure, Empty, Note, Skeleton, Elapsed, Measures, Ticket, Check, Switch, Segment, Segments, Shell } from "kit.slint";
+
+export struct FindingRow {
+    id: string,
+    level: string,
+    title: string,
+    detail: string,
+    page: int,
+    cta: string,
+    fresh: bool,
+}
+export struct Fact { key: string, value: string }
+
+export global BilanState {
+    in-out property <string> headline: "Analyse de ce PC en cours.";
+    in-out property <string> meta;
+    in-out property <string> error;
+    in-out property <bool> loading;
+    in-out property <bool> has-data;
+    in-out property <bool> admin-note;
+    in-out property <[FindingRow]> issues;
+    in-out property <[FindingRow]> fine;
+    in-out property <[Fact]> facts;
+    callback rescan();
+    callback copy();
+    callback go(int);
+}
+
+component FindingLine {
+    in property <FindingRow> item;
+    in property <bool> first;
+    Row {
+        first: root.first;
+        Image {
+            source: item.level == "alert" ? Icons.alert : item.level == "warn" ? Icons.warn : Icons.check;
+            colorize: item.level == "alert" ? Theme.alert : item.level == "warn" ? Theme.warn : Theme.ok;
+            width: 18px;
+            height: 18px;
+        }
+        Grow {
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Strong { text: item.title; }
+                if item.fresh: NewTag {}
+            }
+            Muted { text: item.detail; }
+        }
+        if item.page >= 0: Btn {
+            text: item.cta;
+            clicked => { BilanState.go(item.page); }
+        }
+    }
+}
+
+export component BilanPage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        HorizontalLayout {
+            padding-bottom: 24px;
+            spacing: 20px;
+            Text {
+                text: BilanState.headline;
+                color: Theme.ink;
+                font-family: Theme.display;
+                font-size: 38px;
+                font-weight: 600;
+                wrap: word-wrap;
+                horizontal-stretch: 1;
+            }
+            HorizontalLayout {
+                horizontal-stretch: 0;
+                spacing: 8px;
+                alignment: end;
+                if BilanState.has-data && !BilanState.loading: Btn {
+                    text: "Copier le bilan";
+                    clicked => { BilanState.copy(); }
+                }
+                Btn {
+                    text: BilanState.loading ? "Analyse…" : "Relancer l'analyse";
+                    enabled: !BilanState.loading;
+                    clicked => { BilanState.rescan(); }
+                }
+            }
+        }
+        if BilanState.has-data: VerticalLayout {
+            padding-bottom: 18px;
+            Muted { text: BilanState.meta; }
+        }
+        if BilanState.error != "": Failure {
+            text: BilanState.error;
+            retried => { BilanState.rescan(); }
+        }
+        if !BilanState.has-data && BilanState.loading: Skeleton { rows: 5; }
+        if BilanState.issues.length > 0: Panel {
+            for f[i] in BilanState.issues: Rise {
+                index: i;
+                FindingLine { item: f; first: i == 0; }
+            }
+        }
+        if BilanState.admin-note: Note { text: "Le temps de démarrage et l'état détaillé des disques ne sont lisibles qu'en mode administrateur."; }
+        if BilanState.fine.length > 0: SectionHead { title: "Ce qui va bien"; }
+        if BilanState.fine.length > 0: Panel {
+            for f[i] in BilanState.fine: FindingLine { item: f; first: i == 0; }
+        }
+        if BilanState.has-data: SectionHead { title: "Ce PC"; }
+        if BilanState.has-data: Panel {
+            for fact[i] in BilanState.facts: VerticalLayout {
+                if i > 0: Rectangle { height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 6px;
+                    padding-bottom: 6px;
+                    spacing: 12px;
+                    Muted { text: fact.key; width: 130px; }
+                    Text { text: fact.value; color: Theme.ink; wrap: word-wrap; horizontal-stretch: 1; }
+                }
+            }
+        }
+    }
+}
+
+export struct WuItem {
+    id: string,
+    title: string,
+    detail: string,
+    selected: bool,
+}
+export struct WuState {
+    searched: bool,
+    loading: bool,
+    busy: bool,
+    error: string,
+    selected-count: int,
+    all-selected: bool,
+    restore-note: string,
+    reboot: bool,
+}
+export struct WuLine { ok: bool, text: string }
+
+component WuList {
+    in property <[WuItem]> items;
+    in property <WuState> state;
+    in property <[Measure]> measures;
+    in property <[WuLine]> lines;
+    callback search();
+    callback install();
+    callback toggle-all();
+    callback toggle(string);
+    VerticalLayout {
+        HorizontalLayout {
+            padding-bottom: 12px;
+            spacing: 8px;
+            alignment: start;
+            Btn {
+                kind: state.searched ? "" : "primary";
+                enabled: !state.loading && !state.busy;
+                text: state.loading ? "Recherche…" : state.searched ? "Chercher à nouveau" : "Chercher sur Windows Update";
+                clicked => { root.search(); }
+            }
+            if items.length > 0: AdminBtn {
+                kind: "primary";
+                enabled: state.selected-count > 0 && !state.busy;
+                text: "Installer la sélection (" + state.selected-count + ")";
+                clicked => { root.install(); }
+            }
+            if items.length > 1: Btn {
+                enabled: !state.busy;
+                text: state.all-selected ? "Tout décocher" : "Tout cocher";
+                clicked => { root.toggle-all(); }
+            }
+        }
+        if state.loading: Elapsed { label: "Windows Update cherche. Cela peut prendre quelques minutes."; }
+        if state.busy: Elapsed { label: "Point de restauration, téléchargement puis installation. Laissez le PC allumé."; }
+        if state.error != "": Failure {
+            text: state.error;
+            retried => { root.search(); }
+        }
+        if state.searched && !state.loading && items.length == 0: Empty { text: "Windows Update ne propose rien pour le moment."; }
+        if items.length > 0: Panel {
+            for item[i] in items: Row {
+                first: i == 0;
+                Check {
+                    horizontal-stretch: 1;
+                    checked: item.selected;
+                    enabled: !state.busy;
+                    label: item.title;
+                    detail: item.detail;
+                    toggled => { root.toggle(item.id); }
+                }
+            }
+        }
+        if measures.length > 0 || lines.length > 0 || state.restore-note != "": Ticket {
+            if state.restore-note != "": Muted { text: state.restore-note; }
+            Measures { items: measures; }
+            for line in lines: Text {
+                text: line.text;
+                color: line.ok ? Theme.ink : Theme.alert;
+                wrap: word-wrap;
+            }
+            if state.reboot: Strong { text: "Redémarrez le PC pour terminer."; }
+        }
+    }
+}
+
+export struct Problem { name: string, advice: string }
+export struct Vendor { id: string, name: string }
+export struct DriverRow {
+    name: string,
+    manufacturer: string,
+    version: string,
+    date: string,
+    signed: bool,
+}
+
+export global PilotesState {
+    in-out property <bool> loading;
+    in-out property <bool> has-data;
+    in-out property <string> error;
+    in-out property <[Problem]> problems;
+    in-out property <[Vendor]> vendors;
+    in-out property <[DriverRow]> drivers;
+    in-out property <string> query;
+    in-out property <bool> include-microsoft;
+    in-out property <[WuItem]> wu-items;
+    in-out property <WuState> wu;
+    in-out property <[Measure]> wu-measures;
+    in-out property <[WuLine]> wu-lines;
+    callback reload();
+    callback filter();
+    callback open-vendor(string);
+    callback wu-search();
+    callback wu-install();
+    callback wu-toggle-all();
+    callback wu-toggle(string);
+}
+
+component Cell inherits Text {
+    color: Theme.ink;
+    font-size: 13.5px;
+    wrap: word-wrap;
+}
+
+export component SearchField {
+    in-out property <string> text;
+    in property <string> placeholder;
+    callback edited;
+    min-width: 300px;
+    horizontal-stretch: 0;
+    forward-focus: input;
+    Rectangle {
+        background: Theme.control;
+        border-radius: 7px;
+        border-width: input.has-focus ? 2px : 1px;
+        border-color: input.has-focus ? Theme.focus : Theme.control-line;
+        HorizontalLayout {
+            padding-left: 11px;
+            padding-right: 11px;
+            padding-top: 7px;
+            padding-bottom: 7px;
+            input := TextInput {
+                text <=> root.text;
+                color: Theme.ink;
+                accessible-label: root.placeholder;
+                edited => { root.edited(); }
+            }
+        }
+        if input.text == "": Text {
+            x: 11px;
+            text: root.placeholder;
+            color: Theme.muted;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component PilotesPage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Pilotes";
+            intro: "Les pilotes font le lien entre Windows et le matériel. Installez seulement ce que Windows Update ou le fabricant proposent.";
+        }
+        if PilotesState.error != "": Failure {
+            text: PilotesState.error;
+            retried => { PilotesState.reload(); }
+        }
+        if !PilotesState.has-data && PilotesState.loading: Skeleton {}
+        if PilotesState.has-data: SectionHead {
+            title: "Appareils en erreur";
+            Btn {
+                enabled: !PilotesState.loading;
+                text: PilotesState.loading ? "Lecture…" : "Actualiser";
+                clicked => { PilotesState.reload(); }
+            }
+        }
+        if PilotesState.has-data && PilotesState.problems.length == 0: Empty { text: "Tous les appareils fonctionnent."; }
+        if PilotesState.problems.length > 0: Panel {
+            for p[i] in PilotesState.problems: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: p.name == "" ? "Appareil sans nom" : p.name; }
+                    Muted { text: p.advice; }
+                }
+            }
+        }
+        SectionHead {
+            title: "Mises à jour proposées par Windows";
+            note: "Sources officielles Microsoft. Elles peuvent être plus anciennes que celles du fabricant.";
+        }
+        WuList {
+            items: PilotesState.wu-items;
+            state: PilotesState.wu;
+            measures: PilotesState.wu-measures;
+            lines: PilotesState.wu-lines;
+            search => { PilotesState.wu-search(); }
+            install => { PilotesState.wu-install(); }
+            toggle-all => { PilotesState.wu-toggle-all(); }
+            toggle(id) => { PilotesState.wu-toggle(id); }
+        }
+        if PilotesState.vendors.length > 0: SectionHead {
+            title: "Sites des fabricants de ce PC";
+            note: "Pour la version la plus récente, surtout pour la carte graphique. S'ouvre dans votre navigateur.";
+        }
+        if PilotesState.vendors.length > 0: HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            for v in PilotesState.vendors: Btn {
+                text: v.name;
+                icon: Icons.external;
+                clicked => { PilotesState.open-vendor(v.id); }
+            }
+        }
+        if PilotesState.has-data: SectionHead {
+            title: "Pilotes installés";
+            note: "Du plus ancien au plus récent.";
+        }
+        if PilotesState.has-data: HorizontalLayout {
+            padding-bottom: 12px;
+            spacing: 12px;
+            alignment: start;
+            SearchField {
+                text <=> PilotesState.query;
+                placeholder: "Filtrer par nom, fabricant, version";
+                edited => { PilotesState.filter(); }
+            }
+            Check {
+                label: "Inclure les pilotes de Microsoft";
+                checked: PilotesState.include-microsoft;
+                toggled => {
+                    PilotesState.include-microsoft = !PilotesState.include-microsoft;
+                    PilotesState.filter();
+                }
+            }
+        }
+        if PilotesState.has-data: Panel {
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 9px;
+                padding-bottom: 9px;
+                spacing: 16px;
+                Muted { text: "Appareil"; horizontal-stretch: 4; }
+                Muted { text: "Fabricant"; horizontal-stretch: 3; }
+                Muted { text: "Version"; horizontal-stretch: 2; }
+                Muted { text: "Date"; horizontal-stretch: 2; }
+            }
+            for d in PilotesState.drivers: VerticalLayout {
+                Rectangle { height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 8px;
+                    padding-bottom: 8px;
+                    spacing: 16px;
+                    VerticalLayout {
+                        horizontal-stretch: 4;
+                        preferred-width: 0px;
+                        min-width: 0px;
+                        spacing: 2px;
+                        Cell { text: d.name; }
+                        if !d.signed: Tag { text: "non signé"; tint: Theme.warn; }
+                    }
+                    Cell { text: d.manufacturer; horizontal-stretch: 3; preferred-width: 0px; min-width: 0px; }
+                    Cell { text: d.version; horizontal-stretch: 2; preferred-width: 0px; min-width: 0px; }
+                    Cell { text: d.date; horizontal-stretch: 2; preferred-width: 0px; min-width: 0px; }
+                }
+            }
+        }
+    }
+}
+
+export struct Upgrade { id: string, name: string, versions: string }
+export struct HistoryRow { title: string, detail: string }
+
+export global MajState {
+    in-out property <[WuItem]> wu-items;
+    in-out property <WuState> wu;
+    in-out property <[Measure]> wu-measures;
+    in-out property <[WuLine]> wu-lines;
+    in-out property <bool> rebooting;
+    in-out property <bool> winget-loading;
+    in-out property <bool> winget-loaded;
+    in-out property <string> winget-error;
+    in-out property <[Upgrade]> upgrades;
+    in-out property <string> queue;
+    in-out property <[Measure]> winget-measures;
+    in-out property <string> history-error;
+    in-out property <[HistoryRow]> history;
+    callback reboot();
+    callback wu-search();
+    callback wu-install();
+    callback wu-toggle-all();
+    callback wu-toggle(string);
+    callback winget-reload();
+    callback upgrade(string);
+    callback upgrade-all();
+    callback history-reload();
+}
+
+export component MajPage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Mises à jour";
+            intro: "Correctifs de Windows et de vos logiciels, avec un point de restauration avant toute installation Windows.";
+            Btn {
+                text: "Redémarrer le PC";
+                enabled: !MajState.rebooting;
+                clicked => { MajState.reboot(); }
+            }
+        }
+        SectionHead { title: "Windows"; }
+        WuList {
+            items: MajState.wu-items;
+            state: MajState.wu;
+            measures: MajState.wu-measures;
+            lines: MajState.wu-lines;
+            search => { MajState.wu-search(); }
+            install => { MajState.wu-install(); }
+            toggle-all => { MajState.wu-toggle-all(); }
+            toggle(id) => { MajState.wu-toggle(id); }
+        }
+        SectionHead {
+            title: "Logiciels";
+            note: "Via WinGet, le gestionnaire de Microsoft. Les licences des logiciels mis à jour sont acceptées.";
+            Btn {
+                enabled: !MajState.winget-loading && MajState.queue == "";
+                text: MajState.winget-loading ? "Lecture…" : "Actualiser";
+                clicked => { MajState.winget-reload(); }
+            }
+            if MajState.upgrades.length > 1: Btn {
+                enabled: MajState.queue == "";
+                text: "Tout mettre à jour (" + MajState.upgrades.length + ")";
+                clicked => { MajState.upgrade-all(); }
+            }
+        }
+        if MajState.winget-error != "": Failure {
+            text: MajState.winget-error;
+            retried => { MajState.winget-reload(); }
+        }
+        if !MajState.winget-loaded && MajState.winget-loading: Elapsed { label: "WinGet lit vos logiciels. Cela peut prendre une minute."; }
+        if MajState.queue != "": Elapsed { label: "Mise à jour de " + MajState.queue + "."; }
+        if MajState.winget-loaded && MajState.upgrades.length == 0: Empty { text: "Vos logiciels connus de WinGet sont à jour."; }
+        if MajState.upgrades.length > 0: Panel {
+            for u[i] in MajState.upgrades: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: u.name; }
+                    Muted { text: u.versions; }
+                }
+                Btn {
+                    enabled: MajState.queue == "";
+                    text: "Mettre à jour";
+                    clicked => { MajState.upgrade(u.id); }
+                }
+            }
+        }
+        Measures { items: MajState.winget-measures; }
+        SectionHead { title: "Dernières installations de Windows"; }
+        if MajState.history-error != "": Failure {
+            text: MajState.history-error;
+            retried => { MajState.history-reload(); }
+        }
+        if MajState.history.length > 0: Panel {
+            for h[i] in MajState.history: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: h.title; }
+                    Muted { text: h.detail; }
+                }
+            }
+        }
+    }
+}
+
+export struct CleanRow {
+    id: string,
+    label: string,
+    detail: string,
+    size: string,
+    off: bool,
+    checked: bool,
+}
+
+export global NettoyageState {
+    in-out property <bool> loading;
+    in-out property <bool> has-data;
+    in-out property <bool> busy;
+    in-out property <string> error;
+    in-out property <string> total: "0 o";
+    in-out property <string> free;
+    in-out property <bool> can-clean;
+    in-out property <bool> locked;
+    in-out property <bool> tools;
+    in-out property <bool> all-picked;
+    in-out property <bool> none-picked;
+    in-out property <[CleanRow]> rows;
+    in-out property <string> done-text;
+    in-out property <[Measure]> done-measures;
+    in-out property <[string]> done-notes;
+    callback rescan();
+    callback clean();
+    callback toggle(string);
+    callback pick-all();
+    callback pick-none();
+}
+
+export component NettoyagePage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Nettoyage";
+            intro: "Seulement ce que Windows et vos applications savent recréer. Vos documents ne sont jamais touchés.";
+        }
+        if NettoyageState.error != "": Failure {
+            text: NettoyageState.error;
+            retried => { NettoyageState.rescan(); }
+        }
+        if !NettoyageState.has-data && NettoyageState.loading: Skeleton { rows: 7; }
+        if NettoyageState.has-data: VerticalLayout {
+            padding-bottom: 14px;
+            Rectangle {
+                background: Theme.panel;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: Theme.line;
+                HorizontalLayout {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 16px;
+                    padding-bottom: 16px;
+                    spacing: 12px;
+                    for t in [NettoyageState.total]: Rise {
+                        horizontal-stretch: 0;
+                        Text {
+                            text: t;
+                            color: Theme.ink;
+                            font-family: Theme.display;
+                            font-size: 34px;
+                            font-weight: 600;
+                        }
+                    }
+                    Text {
+                        text: "à libérer sur " + NettoyageState.free + " déjà libres";
+                        color: Theme.muted;
+                        wrap: word-wrap;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                    Btn {
+                        enabled: !NettoyageState.loading && !NettoyageState.busy;
+                        text: NettoyageState.loading ? "Analyse…" : "Analyser à nouveau";
+                        clicked => { NettoyageState.rescan(); }
+                    }
+                    Btn {
+                        kind: "primary";
+                        enabled: NettoyageState.can-clean && !NettoyageState.busy;
+                        text: "Nettoyer";
+                        clicked => { NettoyageState.clean(); }
+                    }
+                }
+            }
+        }
+        if NettoyageState.busy: Elapsed { label: "Suppression en cours."; }
+        if NettoyageState.done-text != "": Ticket {
+            Strong { text: NettoyageState.done-text; }
+            Measures { items: NettoyageState.done-measures; }
+            for note in NettoyageState.done-notes: Text { text: note; color: Theme.ink; wrap: word-wrap; }
+        }
+        if NettoyageState.locked: HorizontalLayout {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            spacing: 6px;
+            Muted { text: "Certains emplacements de Windows demandent les droits administrateur."; wrap: no-wrap; vertical-alignment: center; horizontal-stretch: 0; }
+            Btn {
+                kind: "link";
+                tint: Theme.muted;
+                text: "Les inclure";
+                clicked => { Shell.elevate(); }
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
+        if NettoyageState.tools: HorizontalLayout {
+            padding-bottom: 6px;
+            spacing: 14px;
+            alignment: end;
+            Btn {
+                kind: "link";
+                text: "Tout cocher";
+                enabled: !NettoyageState.busy && !NettoyageState.all-picked;
+                clicked => { NettoyageState.pick-all(); }
+            }
+            Btn {
+                kind: "link";
+                text: "Tout décocher";
+                enabled: !NettoyageState.busy && !NettoyageState.none-picked;
+                clicked => { NettoyageState.pick-none(); }
+            }
+        }
+        if NettoyageState.has-data: Panel {
+            for c[i] in NettoyageState.rows: Row {
+                first: i == 0;
+                Check {
+                    horizontal-stretch: 1;
+                    checked: c.checked;
+                    enabled: !c.off && !NettoyageState.busy;
+                    label: c.label;
+                    detail: c.detail;
+                    toggled => { NettoyageState.toggle(c.id); }
+                }
+                Text {
+                    horizontal-stretch: 0;
+                    text: c.size;
+                    color: Theme.muted;
+                    font-family: Theme.display;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+export struct BootBar { value: string, date: string, ratio: float }
+export struct StartupRow {
+    source: string,
+    name: string,
+    display: string,
+    detail: string,
+    missing: bool,
+    enabled: bool,
+    protected: bool,
+    manageable: bool,
+}
+
+export global DemarrageState {
+    in-out property <bool> loading;
+    in-out property <bool> has-data;
+    in-out property <string> error;
+    in-out property <string> count-title;
+    in-out property <bool> boots-known;
+    in-out property <bool> boots-available;
+    in-out property <[BootBar]> bars;
+    in-out property <string> compare;
+    in-out property <[StartupRow]> rows;
+    in-out property <string> pending;
+    callback reload();
+    callback toggle(string, string);
+}
+
+export component DemarragePage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Démarrage";
+            intro: "Chaque programme lancé avec Windows allonge le démarrage et occupe de la mémoire. Le désactiver ne le désinstalle pas : vous pouvez toujours le lancer à la main ou le réactiver ici.";
+        }
+        if DemarrageState.boots-known: SectionHead { title: "Durée des derniers démarrages"; }
+        if DemarrageState.boots-known && !DemarrageState.boots-available: HorizontalLayout {
+            spacing: 6px;
+            Muted {
+                text: "Le temps de démarrage est enregistré par Windows, mais il faut les droits administrateur pour le lire.";
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Btn {
+                kind: "link";
+                tint: Theme.muted;
+                text: "Relancer en administrateur";
+                clicked => { Shell.elevate(); }
+            }
+        }
+        if DemarrageState.boots-known && DemarrageState.boots-available && DemarrageState.bars.length == 0: Note { text: "Windows n'a pas encore enregistré de temps de démarrage."; }
+        if DemarrageState.bars.length > 0: Rectangle {
+            height: 130px;
+            background: Theme.panel;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.line;
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 12px;
+                padding-bottom: 8px;
+                spacing: 14px;
+                alignment: start;
+                for b[i] in DemarrageState.bars: VerticalLayout {
+                    width: 72px;
+                    spacing: 4px;
+                    alignment: end;
+                    property <bool> shown: false;
+                    init => { shown = true; }
+                    Text {
+                        text: b.value;
+                        color: Theme.ink;
+                        font-family: Theme.display;
+                        font-size: 12.5px;
+                        font-weight: 500;
+                        horizontal-alignment: center;
+                    }
+                    Rectangle {
+                        height: shown ? max(3px, b.ratio * 62px) : 3px;
+                        border-top-left-radius: 3px;
+                        border-top-right-radius: 3px;
+                        background: Theme.primary;
+                        animate height { duration: Theme.rise; easing: cubic-bezier(0.23, 1, 0.32, 1); delay: Theme.rise == 0ms ? 0ms : min(i, 3) * 30ms; }
+                    }
+                    Text {
+                        text: b.date;
+                        color: Theme.muted;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+        }
+        if DemarrageState.compare != "": Note { text: DemarrageState.compare; }
+        if DemarrageState.error != "": Failure {
+            text: DemarrageState.error;
+            retried => { DemarrageState.reload(); }
+        }
+        if !DemarrageState.has-data && DemarrageState.loading: Skeleton { rows: 7; }
+        if DemarrageState.has-data: SectionHead {
+            title: DemarrageState.count-title;
+            note: Shell.is-admin ? "" : "Les éléments communs à tous les utilisateurs demandent les droits administrateur.";
+            Btn {
+                enabled: !DemarrageState.loading;
+                text: DemarrageState.loading ? "Lecture…" : "Actualiser";
+                clicked => { DemarrageState.reload(); }
+            }
+        }
+        if DemarrageState.has-data: Panel {
+            for s[i] in DemarrageState.rows: Row {
+                first: i == 0;
+                Grow {
+                    Text {
+                        text: s.display;
+                        color: s.enabled ? Theme.ink : Theme.muted;
+                        font-weight: 600;
+                        wrap: word-wrap;
+                    }
+                    Muted { text: s.detail; }
+                    if s.missing: Muted {
+                        color: Theme.warn;
+                        text: "Le programme n'existe plus sur le disque. Cette entrée ne sert à rien.";
+                    }
+                }
+                if s.protected: Tag {
+                    text: "Protégé";
+                    icon: Icons.lock;
+                }
+                if !s.protected && s.manageable: Switch {
+                    checked: s.enabled;
+                    label: s.name + " au démarrage";
+                    enabled: DemarrageState.pending == "";
+                    toggled => { DemarrageState.toggle(s.source, s.name); }
+                }
+                if !s.protected && !s.manageable: Btn {
+                    kind: "link";
+                    text: "Droits requis";
+                    clicked => { Shell.elevate(); }
+                }
+            }
+        }
+    }
+}
+
+export struct Plan { guid: string, name: string, active: bool }
+export struct Stat { label: string, value: string }
+export struct VolumeRow { letter: string, title: string, detail: string }
+export struct ProcRow { name: string, cpu: string, ram: string, closable: bool, muted: string }
+export struct Probe { role: string, result: string }
+
+export global PerfState {
+    in-out property <bool> loading;
+    in-out property <bool> has-data;
+    in-out property <string> error;
+    in-out property <string> busy;
+    in-out property <[Measure]> measures;
+    in-out property <[Plan]> plans;
+    in-out property <string> gpu-title;
+    in-out property <string> gpu-note;
+    in-out property <[Stat]> gpu-stats;
+    in-out property <[VolumeRow]> volumes;
+    in-out property <bool> hibernation-on;
+    in-out property <string> hibernation-text;
+    in-out property <bool> procs-loading;
+    in-out property <bool> procs-loaded;
+    in-out property <string> procs-error;
+    in-out property <string> proc-busy;
+    in-out property <[ProcRow]> procs;
+    in-out property <[Measure]> proc-measures;
+    in-out property <bool> net-loading;
+    in-out property <bool> net-tested;
+    in-out property <string> net-error;
+    in-out property <[Probe]> probes;
+    in-out property <string> net-busy;
+    in-out property <[Measure]> net-measures;
+    callback reload();
+    callback set-plan(string);
+    callback optimize(string);
+    callback hibernate(bool);
+    callback procs-reload();
+    callback close-process(string);
+    callback net-test();
+    callback dns-flush();
+}
+
+export component PerfPage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Performances";
+            intro: "Les réglages qui changent vraiment quelque chose, et ce qui consomme vos ressources.";
+        }
+        if PerfState.error != "": Failure {
+            text: PerfState.error;
+            retried => { PerfState.reload(); }
+        }
+        if !PerfState.has-data && PerfState.loading: Skeleton { rows: 5; }
+        if PerfState.busy != "": Elapsed { label: "Opération en cours."; }
+        if PerfState.measures.length > 0: VerticalLayout {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            Measures { items: PerfState.measures; }
+        }
+        if PerfState.has-data: SectionHead {
+            title: "Mode d'alimentation";
+            note: "Nova mesure le calcul du processeur avant et après. Sur un PC de bureau récent, l'écart est souvent faible.";
+        }
+        if PerfState.has-data: HorizontalLayout {
+            alignment: start;
+            Segments {
+                for p in PerfState.plans: Segment {
+                    text: p.name;
+                    on: p.active;
+                    enabled: PerfState.busy == "";
+                    clicked => {
+                        if !p.active { PerfState.set-plan(p.guid); }
+                    }
+                }
+            }
+        }
+        if PerfState.gpu-title != "": SectionHead {
+            title: PerfState.gpu-title;
+            note: PerfState.gpu-note;
+        }
+        if PerfState.gpu-title != "": Panel {
+            HorizontalLayout {
+                for s[i] in PerfState.gpu-stats: VerticalLayout {
+                    horizontal-stretch: 1;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 12px;
+                    padding-bottom: 12px;
+                    spacing: 2px;
+                    Muted { text: s.label; }
+                    Text {
+                        text: s.value;
+                        color: Theme.ink;
+                        font-family: Theme.display;
+                        font-size: 19px;
+                        font-weight: 600;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+        if PerfState.has-data: SectionHead {
+            title: "Disques";
+            note: "Windows choisit lui-même : TRIM pour un SSD, défragmentation pour un disque dur.";
+        }
+        if PerfState.has-data: Panel {
+            for v[i] in PerfState.volumes: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: v.title; }
+                    Muted { text: v.detail; }
+                }
+                AdminBtn {
+                    enabled: PerfState.busy == "";
+                    text: PerfState.busy == v.letter ? "Optimisation…" : "Optimiser";
+                    clicked => { PerfState.optimize(v.letter); }
+                }
+            }
+        }
+        if PerfState.has-data: SectionHead { title: "Veille prolongée"; }
+        if PerfState.has-data: Panel {
+            Row {
+                first: true;
+                Grow {
+                    Strong { text: PerfState.hibernation-on ? "Activée" : "Désactivée"; }
+                    Muted { text: PerfState.hibernation-text; }
+                }
+                AdminBtn {
+                    enabled: PerfState.busy == "";
+                    text: PerfState.hibernation-on ? "Désactiver" : "Réactiver";
+                    clicked => { PerfState.hibernate(!PerfState.hibernation-on); }
+                }
+            }
+        }
+        SectionHead {
+            title: "Ce qui occupe le PC en ce moment";
+            note: "Fermer revient à cliquer sur la croix du programme : il peut demander d'enregistrer. Nova n'arrête jamais un programme de force.";
+            Btn {
+                enabled: !PerfState.procs-loading;
+                text: PerfState.procs-loading ? "Mesure…" : "Mesurer à nouveau";
+                clicked => { PerfState.procs-reload(); }
+            }
+        }
+        if PerfState.procs-error != "": Failure {
+            text: PerfState.procs-error;
+            retried => { PerfState.procs-reload(); }
+        }
+        if !PerfState.procs-loaded && PerfState.procs-loading: Skeleton { rows: 6; }
+        if PerfState.procs-loaded: Panel {
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 9px;
+                padding-bottom: 9px;
+                spacing: 16px;
+                Muted { text: "Programme"; horizontal-stretch: 1; }
+                Muted { text: "Processeur"; width: 80px; horizontal-alignment: right; }
+                Muted { text: "Mémoire"; width: 80px; horizontal-alignment: right; }
+                Rectangle { width: 86px; }
+            }
+            for p in PerfState.procs: VerticalLayout {
+                Rectangle { height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 6px;
+                    padding-bottom: 6px;
+                    spacing: 16px;
+                    min-height: 36px;
+                    HorizontalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 6px;
+                        Text { text: p.name; color: Theme.ink; font-size: 13.5px; vertical-alignment: center; horizontal-stretch: 0; overflow: elide; }
+                        Muted { text: p.muted; vertical-alignment: center; wrap: no-wrap; horizontal-stretch: 1; }
+                    }
+                    Text { text: p.cpu; color: Theme.ink; font-size: 13.5px; width: 80px; horizontal-alignment: right; vertical-alignment: center; }
+                    Text { text: p.ram; color: Theme.ink; font-size: 13.5px; width: 80px; horizontal-alignment: right; vertical-alignment: center; }
+                    HorizontalLayout {
+                        width: 86px;
+                        alignment: end;
+                        if p.closable: Btn {
+                            enabled: PerfState.proc-busy == "";
+                            text: PerfState.proc-busy == p.name ? "Fermeture…" : "Fermer";
+                            clicked => { PerfState.close-process(p.name); }
+                        }
+                    }
+                }
+            }
+        }
+        if PerfState.proc-measures.length > 0: VerticalLayout {
+            padding-top: 12px;
+            Measures { items: PerfState.proc-measures; }
+        }
+        SectionHead {
+            title: "Connexion";
+            note: "Cinq envois vers votre box et vers Internet. Ne mesure pas le débit.";
+            AdminBtn {
+                enabled: PerfState.net-busy == "";
+                text: "Vider le cache DNS";
+                clicked => { PerfState.dns-flush(); }
+            }
+            Btn {
+                kind: PerfState.net-tested ? "" : "primary";
+                enabled: !PerfState.net-loading;
+                text: PerfState.net-loading ? "Test…" : "Tester";
+                clicked => { PerfState.net-test(); }
+            }
+        }
+        if PerfState.net-error != "": Failure {
+            text: PerfState.net-error;
+            retry: false;
+        }
+        if PerfState.net-tested: Panel {
+            for p[i] in PerfState.probes: Row {
+                first: i == 0;
+                Grow { Strong { text: p.role; } }
+                Text { text: p.result; color: Theme.ink; vertical-alignment: center; horizontal-stretch: 0; }
+            }
+        }
+        if PerfState.net-measures.length > 0: VerticalLayout {
+            padding-top: 12px;
+            Measures { items: PerfState.net-measures; }
+        }
+    }
+}
+
+export struct Tool {
+    title: string,
+    detail: string,
+    check: string,
+    check-label: string,
+    repair: string,
+    time: string,
+}
+export struct RestoreRow { title: string, date: string }
+
+export global ReparerState {
+    in-out property <bool> busy;
+    in-out property <string> outcome-title;
+    in-out property <[Measure]> outcome-measures;
+    in-out property <string> outcome-log;
+    in-out property <bool> restore-loaded;
+    in-out property <bool> needs-admin;
+    in-out property <string> restore-error;
+    in-out property <[RestoreRow]> restore;
+    out property <[Tool]> tools: [
+        { title: "Image de Windows", detail: "La copie de référence dont Windows se sert pour se réparer. Durée : 10 à 30 minutes.", check: "dism-check", check-label: "Analyser", repair: "dism-repair", time: "10 à 30 minutes" },
+        { title: "Fichiers système", detail: "Compare les fichiers de Windows à leur version d'origine. Durée : 5 à 15 minutes.", check: "sfc-check", check-label: "Vérifier", repair: "sfc-repair", time: "5 à 15 minutes" },
+        { title: "Disque système", detail: "Cherche les erreurs du système de fichiers, sans arrêter le PC. Durée : quelques minutes.", check: "chkdsk-scan", check-label: "Analyser", repair: "", time: "quelques minutes" },
+    ];
+    callback check(string, string);
+    callback repair(string, string, string);
+    callback clean-store();
+    callback open-restore();
+    callback create-point();
+    callback enable-protection();
+    callback restore-reload();
+}
+
+export component ReparerPage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Réparer";
+            intro: "Quand Windows plante ou se comporte mal. Commencez par une analyse : elle ne modifie rien.";
+        }
+        if ReparerState.busy: Elapsed { label: "Windows travaille. Vous pouvez continuer à utiliser le PC."; }
+        if ReparerState.outcome-title != "": Ticket {
+            Strong { text: ReparerState.outcome-title; }
+            Measures { items: ReparerState.outcome-measures; }
+            if ReparerState.outcome-log != "": Rectangle {
+                background: Theme.page;
+                border-radius: 7px;
+                HorizontalLayout {
+                    padding: 10px;
+                    Text {
+                        text: ReparerState.outcome-log;
+                        color: Theme.ink;
+                        font-family: "Cascadia Mono";
+                        font-size: 12.5px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+        SectionHead { title: "Vérifications"; }
+        Panel {
+            for t[i] in ReparerState.tools: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: t.title; }
+                    Muted { text: t.detail; }
+                }
+                AdminBtn {
+                    enabled: !ReparerState.busy;
+                    text: t.check-label;
+                    clicked => { ReparerState.check(t.check, t.title); }
+                }
+                if t.repair != "": AdminBtn {
+                    enabled: !ReparerState.busy;
+                    text: "Réparer";
+                    clicked => { ReparerState.repair(t.repair, t.title, t.time); }
+                }
+            }
+            Row {
+                Grow {
+                    Strong { text: "Anciens composants de Windows"; }
+                    Muted { text: "Libère l'espace pris par les versions remplacées par des mises à jour."; }
+                }
+                AdminBtn {
+                    enabled: !ReparerState.busy;
+                    text: "Supprimer";
+                    clicked => { ReparerState.clean-store(); }
+                }
+            }
+        }
+        SectionHead {
+            title: "Points de restauration";
+            note: "Ils ramènent Windows, ses pilotes et ses réglages à une date passée, sans toucher à vos documents.";
+            Btn {
+                text: "Restaurer le système…";
+                clicked => { ReparerState.open-restore(); }
+            }
+            AdminBtn {
+                enabled: !ReparerState.busy;
+                text: "Créer un point";
+                clicked => { ReparerState.create-point(); }
+            }
+        }
+        if ReparerState.restore-error != "": Failure {
+            text: ReparerState.restore-error;
+            retried => { ReparerState.restore-reload(); }
+        }
+        if ReparerState.needs-admin: Note { text: "La liste s'affiche en mode administrateur."; }
+        if ReparerState.restore-loaded && !ReparerState.needs-admin && ReparerState.restore.length == 0: Rectangle {
+            background: Theme.alert-soft;
+            border-radius: 10px;
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 11px;
+                padding-bottom: 11px;
+                spacing: 16px;
+                Text {
+                    text: "Aucun point de restauration. Si la protection du système est coupée, Nova ne peut pas installer de pilote ou de mise à jour en sécurité.";
+                    color: Theme.ink;
+                    wrap: word-wrap;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+                AdminBtn {
+                    enabled: !ReparerState.busy;
+                    text: "Activer la protection";
+                    clicked => { ReparerState.enable-protection(); }
+                }
+            }
+        }
+        if ReparerState.restore.length > 0: Panel {
+            for p[i] in ReparerState.restore: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: p.title; }
+                    Muted { text: p.date; }
+                }
+            }
+        }
+    }
+}
+
+export struct JournalRow {
+    day: string,
+    time: string,
+    title: string,
+    failed: bool,
+    restore: string,
+    measures: [Measure],
+    undo-label: string,
+    index: int,
+}
+
+export global JournalState {
+    in-out property <int> filter: 0;
+    in-out property <bool> has-entries;
+    in-out property <[JournalRow]> rows;
+    callback set-filter(int);
+    callback copy();
+    callback undo(int);
+}
+
+export component JournalPage {
+    in property <length> area;
+    Page {
+        area: root.area;
+        Head {
+            title: "Journal";
+            intro: "Tout ce que Nova a changé sur ce PC, avec les mesures avant et après. Ce journal reste sur ce PC.";
+            if JournalState.has-entries: Btn {
+                enabled: JournalState.rows.length > 0;
+                text: "Copier";
+                clicked => { JournalState.copy(); }
+            }
+        }
+        if JournalState.has-entries: HorizontalLayout {
+            padding-bottom: 14px;
+            alignment: start;
+            Segments {
+                Segment { text: "Tout"; pad: 12px; size: 13px; on: JournalState.filter == 0; clicked => { JournalState.set-filter(0); } }
+                Segment { text: "Échecs"; pad: 12px; size: 13px; on: JournalState.filter == 1; clicked => { JournalState.set-filter(1); } }
+                Segment { text: "Annulables"; pad: 12px; size: 13px; on: JournalState.filter == 2; clicked => { JournalState.set-filter(2); } }
+            }
+        }
+        if !JournalState.has-entries: Empty { text: "Nova n'a encore rien changé sur ce PC."; }
+        if JournalState.has-entries && JournalState.rows.length == 0: Empty { text: "Rien pour ce filtre."; }
+        if JournalState.rows.length > 0: Panel {
+            for e[i] in JournalState.rows: VerticalLayout {
+                if i > 0 && e.day == "": Rectangle { height: 1px; background: Theme.line; }
+                if e.day != "": VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 10px;
+                    padding-bottom: 6px;
+                    Muted { text: e.day; font-size: 12.5px; font-weight: 600; }
+                }
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: e.day != "" ? 4px : 12px;
+                    padding-bottom: 12px;
+                    spacing: 16px;
+                    Muted { text: e.time; width: 118px; }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 6px;
+                        Text {
+                            text: e.title;
+                            color: e.failed ? Theme.alert : Theme.ink;
+                            font-weight: 600;
+                            wrap: word-wrap;
+                        }
+                        if e.restore != "": Muted { text: "Point de restauration : " + e.restore; }
+                        if e.measures.length > 0: Measures { items: e.measures; }
+                    }
+                    if e.undo-label != "": Btn {
+                        text: e.undo-label;
+                        icon: Icons.undo;
+                        clicked => { JournalState.undo(e.index); }
+                    }
+                }
+            }
+        }
+    }
+}

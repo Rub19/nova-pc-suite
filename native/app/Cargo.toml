@@ -1,0 +1,19 @@
+[package]
+name = "nova-native"
+version = "0.3.0"
+edition = "2021"
+description = "Entretien et réparation de Windows"
+license = "MIT"
+
+[features]
+headless = ["slint/renderer-software"]
+
+[dependencies]
+nova-engine = { path = "../engine" }
+serde_json = "1"
+png = "0.18"
+slint = "1.18"
+
+[build-dependencies]
+slint-build = "1.18"
+winresource = "0.1"

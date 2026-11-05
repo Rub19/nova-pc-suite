@@ -1,0 +1,807 @@
+import { Palette } from "std-widgets.slint";
+
+export global Theme {
+    in-out property <bool> keynav: false;
+    in-out property <bool> reduced: false;
+    property <bool> still: keynav || reduced;
+    out property <duration> quick: still ? 0ms : 120ms;
+    out property <duration> base: still ? 0ms : 180ms;
+    out property <duration> slow: still ? 0ms : 240ms;
+    out property <duration> rise: still ? 0ms : 280ms;
+    out property <length> lift: reduced || keynav ? 0px : 6px;
+
+    out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+    out property <color> page: dark ? #141c27 : #edf0f3;
+    out property <color> panel: dark ? #1c2634 : #ffffff;
+    out property <color> panel-hover: dark ? #233041 : #f5f7f9;
+    out property <color> line: dark ? #2d3b4d : #d5dbe2;
+    out property <color> ink: dark ? #e8edf3 : #15202e;
+    out property <color> muted: dark ? #9aa8b9 : #566476;
+    out property <color> control: dark ? #243142 : #ffffff;
+    out property <color> control-line: dark ? #3c4d62 : #bcc5cf;
+    out property <color> primary: dark ? #f2c230 : #1e3a5f;
+    out property <color> primary-ink: dark ? #15202e : #ffffff;
+    out property <color> ok: dark ? #62c79a : #24704f;
+    out property <color> warn: dark ? #e8b14a : #8f5a00;
+    out property <color> alert: dark ? #f0837a : #b0342c;
+    out property <color> warn-soft: dark ? #33291a : #f8efd9;
+    out property <color> alert-soft: dark ? #3a2224 : #f9e4e2;
+    out property <color> focus: dark ? #f2c230 : #1e3a5f;
+    out property <color> rail: dark ? #16283f : #1e3a5f;
+    out property <color> rail-ink: #e6ecf3;
+    out property <color> rail-muted: #a9bad0;
+    out property <color> rail-hover: dark ? #20364f : #2a4a74;
+    out property <color> signal: #f2c230;
+    out property <string> display: "Bahnschrift";
+}
+
+export struct Measure {
+    label: string,
+    before: string,
+    after: string,
+    delta: string,
+}
+
+export global Icons {
+    out property <image> stethoscope: @image-url("../icons/stethoscope.svg");
+    out property <image> cpu: @image-url("../icons/cpu.svg");
+    out property <image> download: @image-url("../icons/download.svg");
+    out property <image> brush: @image-url("../icons/brush.svg");
+    out property <image> power: @image-url("../icons/power.svg");
+    out property <image> gauge: @image-url("../icons/gauge.svg");
+    out property <image> wrench: @image-url("../icons/wrench.svg");
+    out property <image> clipboard: @image-url("../icons/clipboard-list.svg");
+    out property <image> shield: @image-url("../icons/shield-check.svg");
+    out property <image> undo: @image-url("../icons/undo-2.svg");
+    out property <image> close: @image-url("../icons/x.svg");
+    out property <image> alert: @image-url("../icons/circle-alert.svg");
+    out property <image> check: @image-url("../icons/circle-check.svg");
+    out property <image> warn: @image-url("../icons/triangle-alert.svg");
+    out property <image> lock: @image-url("../icons/lock.svg");
+    out property <image> external: @image-url("../icons/external-link.svg");
+}
+
+export global Shell {
+    in-out property <bool> is-admin;
+    in-out property <bool> modal;
+    callback elevate();
+}
+
+export component Btn {
+    in property <string> text;
+    in property <string> kind;
+    in property <bool> enabled: true;
+    in property <image> icon;
+    in property <color> tint: kind == "link" ? Theme.ink : kind == "primary" ? Theme.primary-ink : kind == "danger" ? Theme.page : Theme.ink;
+    callback clicked;
+    property <bool> live: enabled && !Shell.modal;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { clicked(); } }
+    forward-focus: scope;
+    horizontal-stretch: 0;
+    opacity: enabled ? 1 : 0.5;
+
+    face := Rectangle {
+        background: root.kind == "primary" ? (touch.has-hover && live ? Theme.primary.brighter(12%) : Theme.primary)
+            : root.kind == "danger" ? (touch.has-hover && live ? Theme.alert.brighter(8%) : Theme.alert)
+            : root.kind == "link" ? transparent
+            : touch.has-hover && live ? Theme.panel-hover : Theme.control;
+        border-radius: 7px;
+        border-width: root.kind == "" ? 1px : 0px;
+        border-color: Theme.control-line;
+        transform-scale: touch.pressed && live && !Theme.reduced ? 0.97 : 1;
+        animate transform-scale, background { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+
+        HorizontalLayout {
+            padding-left: root.kind == "link" ? 4px : 13px;
+            padding-right: root.kind == "link" ? 4px : 13px;
+            padding-top: root.kind == "link" ? 2px : 7px;
+            padding-bottom: root.kind == "link" ? 2px : 7px;
+            spacing: 7px;
+            alignment: center;
+            if root.icon.width > 0: Image {
+                source: root.icon;
+                colorize: root.tint;
+                width: 15px;
+                height: 15px;
+            }
+            label := Text {
+                text: root.text;
+                color: root.tint;
+                font-size: 13.5px;
+                font-weight: root.kind == "link" ? 600 : 500;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+        }
+        if root.kind == "link": Rectangle {
+            y: parent.height - 3px;
+            x: 4px;
+            width: parent.width - 8px;
+            height: 1px;
+            background: root.tint;
+        }
+        touch := TouchArea {
+            mouse-cursor: live ? MouseCursor.pointer : MouseCursor.default;
+            clicked => {
+                if live {
+                    Theme.keynav = false;
+                    root.clicked();
+                }
+            }
+        }
+    }
+    scope := FocusScope {
+        enabled: live;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                Theme.keynav = true;
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    if scope.has-focus: Rectangle {
+        x: -2px;
+        y: -2px;
+        width: parent.width + 4px;
+        height: parent.height + 4px;
+        border-radius: 9px;
+        border-width: 2px;
+        border-color: Theme.focus;
+    }
+}
+
+export component AdminBtn {
+    in property <string> text;
+    in property <string> kind;
+    in property <bool> enabled: true;
+    in property <bool> needs-admin: true;
+    callback clicked;
+    horizontal-stretch: 0;
+    property <bool> locked: needs-admin && !Shell.is-admin;
+    HorizontalLayout {
+        Btn {
+            text: root.text;
+            kind: root.kind;
+            enabled: root.enabled;
+            icon: locked ? Icons.shield : @image-url("");
+            clicked => {
+                if locked {
+                    Shell.elevate();
+                } else {
+                    root.clicked();
+                }
+            }
+        }
+    }
+}
+
+export component Muted inherits Text {
+    color: Theme.muted;
+    font-size: 13px;
+    wrap: word-wrap;
+}
+
+export component Strong inherits Text {
+    color: Theme.ink;
+    font-weight: 600;
+    wrap: word-wrap;
+}
+
+export component Rise {
+    in property <int> index: 0;
+    property <bool> shown: false;
+    init => { shown = true; }
+    opacity: shown ? 1 : 0;
+    animate opacity { duration: Theme.rise; easing: cubic-bezier(0.23, 1, 0.32, 1); delay: Theme.rise == 0ms ? 0ms : min(index, 4) * 40ms; }
+    VerticalLayout {
+        padding-top: 0px;
+        y: shown ? 0px : Theme.lift;
+        animate y { duration: Theme.rise; easing: cubic-bezier(0.23, 1, 0.32, 1); delay: Theme.rise == 0ms ? 0ms : min(index, 4) * 40ms; }
+        @children
+    }
+}
+
+export component Page {
+    in property <length> area;
+    property <bool> shown: false;
+    init => { shown = true; }
+    opacity: shown ? 1 : 0;
+    animate opacity { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+    scroller := Flickable {
+        content-width: root.area;
+        content-height: column.preferred-height;
+        column := VerticalLayout {
+            width: root.area;
+            y: shown ? 0px : Theme.lift;
+            animate y { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+            padding-top: 34px;
+            padding-bottom: 72px;
+            padding-left: max(36px, (root.area - 868px) / 2);
+            padding-right: max(36px, (root.area - 868px) / 2);
+            spacing: 0px;
+            alignment: start;
+            @children
+        }
+    }
+    if scroller.content-height > scroller.height: Rectangle {
+        x: parent.width - 8px;
+        width: 5px;
+        border-radius: 3px;
+        background: Theme.control-line;
+        height: max(30px, scroller.height * scroller.height / scroller.content-height);
+        y: (scroller.height - self.height) * (-scroller.content-y) / max(1px, scroller.content-height - scroller.height);
+    }
+}
+
+export component Head {
+    in property <string> title;
+    in property <string> intro;
+    HorizontalLayout {
+        padding-bottom: 26px;
+        spacing: 20px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            Text {
+                text: root.title;
+                color: Theme.ink;
+                font-family: Theme.display;
+                font-size: 30px;
+                font-weight: 600;
+                wrap: word-wrap;
+            }
+            if root.intro != "": Text {
+                text: root.intro;
+                color: Theme.muted;
+                wrap: word-wrap;
+            }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            alignment: end;
+            spacing: 8px;
+            @children
+        }
+    }
+}
+
+export component SectionHead {
+    in property <string> title;
+    in property <string> note;
+    HorizontalLayout {
+        padding-top: 34px;
+        padding-bottom: 12px;
+        spacing: 20px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: end;
+            spacing: 3px;
+            Text {
+                text: root.title;
+                color: Theme.ink;
+                font-family: Theme.display;
+                font-size: 17px;
+                font-weight: 600;
+                wrap: word-wrap;
+            }
+            if root.note != "": Muted { text: root.note; }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            spacing: 8px;
+            alignment: end;
+            @children
+        }
+    }
+}
+
+export component Panel {
+    Rectangle {
+        background: Theme.panel;
+        border-radius: 10px;
+        border-width: 1px;
+        border-color: Theme.line;
+        clip: true;
+        VerticalLayout {
+            padding: 1px;
+            @children
+        }
+    }
+}
+
+export component Row {
+    in property <bool> first: false;
+    if !root.first: Rectangle {
+        y: 0;
+        height: 1px;
+        background: Theme.line;
+    }
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: 11px;
+        padding-bottom: 11px;
+        spacing: 12px;
+        min-height: 52px;
+        @children
+    }
+}
+
+export component Grow inherits VerticalLayout {
+    horizontal-stretch: 1;
+    alignment: center;
+}
+
+export component Tag {
+    in property <string> text;
+    in property <color> tint: Theme.muted;
+    in property <image> icon;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    Rectangle {
+        border-radius: 5px;
+        border-width: 1px;
+        border-color: Theme.line;
+        HorizontalLayout {
+            padding-left: 7px;
+            padding-right: 7px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+            spacing: 4px;
+            if root.icon.width > 0: Image {
+                source: root.icon;
+                colorize: root.tint;
+                width: 13px;
+                height: 13px;
+            }
+            Text {
+                text: root.text;
+                color: root.tint;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+export component NewTag {
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    Rectangle {
+        border-radius: 5px;
+        background: Theme.warn-soft;
+        HorizontalLayout {
+            padding-left: 7px;
+            padding-right: 7px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+            Text {
+                text: "Nouveau";
+                color: Theme.warn;
+                font-size: 11.5px;
+                font-weight: 600;
+            }
+        }
+    }
+}
+
+export component Failure {
+    in property <string> text;
+    in property <bool> retry: true;
+    callback retried;
+    Rise {
+        VerticalLayout {
+            padding-top: 10px;
+            padding-bottom: 10px;
+            Rectangle {
+                background: Theme.alert-soft;
+                border-radius: 10px;
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 11px;
+                    padding-bottom: 11px;
+                    spacing: 16px;
+                    Text {
+                        text: root.text;
+                        color: Theme.ink;
+                        wrap: word-wrap;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                    }
+                    if root.retry: Btn {
+                        text: "Réessayer";
+                        clicked => { root.retried(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component Empty {
+    in property <string> text;
+    Rectangle {
+        background: Theme.panel;
+        border-radius: 10px;
+        border-width: 1px;
+        border-color: Theme.line;
+        HorizontalLayout {
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 14px;
+            padding-bottom: 14px;
+            Text {
+                text: root.text;
+                color: Theme.muted;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+export component Note {
+    in property <string> text;
+    VerticalLayout {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        Muted { text: root.text; }
+    }
+}
+
+export component Skeleton {
+    in property <int> rows: 4;
+    Panel {
+        for i in root.rows: Row {
+            first: i == 0;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    height: 14px;
+                    width: mod(i, 2) == 0 ? 460px : 330px;
+                    border-radius: 4px;
+                    background: Theme.line;
+                    opacity: Theme.reduced ? 1 : 0.75 + 0.25 * cos(animation-tick() / 1400ms * 360deg);
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
+    }
+}
+
+export component Elapsed {
+    in property <string> label;
+    property <int> seconds: 0;
+    Timer {
+        interval: 1s;
+        triggered => { seconds += 1; }
+    }
+    accessible-role: text;
+    accessible-label: label;
+    HorizontalLayout {
+        padding-top: 10px;
+        padding-bottom: 12px;
+        spacing: 12px;
+        Rectangle {
+            width: 120px;
+            Rectangle {
+                y: (parent.height - 3px) / 2;
+                height: 3px;
+                border-radius: 2px;
+                background: Theme.line;
+                clip: true;
+                Rectangle {
+                    width: 60px;
+                    border-radius: 2px;
+                    background: Theme.primary;
+                    x: Theme.reduced ? 30px : mod(animation-tick() / 1100ms, 1) * 180px - 60px;
+                }
+            }
+        }
+        Text {
+            text: root.label;
+            color: Theme.ink;
+            wrap: word-wrap;
+            horizontal-stretch: 1;
+        }
+        Text {
+            horizontal-stretch: 0;
+            color: Theme.muted;
+            text: seconds >= 60 ? floor(seconds / 60) + " min " + mod(seconds, 60) + " s" : seconds + " s";
+        }
+    }
+}
+
+export component Measures {
+    in property <[Measure]> items;
+    VerticalLayout {
+        spacing: 4px;
+        for m[i] in root.items: Rise {
+            index: i;
+            HorizontalLayout {
+                spacing: 12px;
+                Muted {
+                    text: m.label;
+                    horizontal-stretch: 0;
+                    wrap: no-wrap;
+                    vertical-alignment: center;
+                }
+                HorizontalLayout {
+                    spacing: 7px;
+                    horizontal-stretch: 1;
+                    alignment: start;
+                    Muted { text: m.before; wrap: no-wrap; vertical-alignment: center; font-size: 14px; }
+                    Muted { text: "›"; wrap: no-wrap; vertical-alignment: center; font-size: 14px; }
+                    Text {
+                        text: m.after;
+                        color: Theme.ink;
+                        font-family: Theme.display;
+                        font-size: 15px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                    if m.delta != "": Muted { text: m.delta; wrap: no-wrap; vertical-alignment: center; }
+                }
+            }
+        }
+    }
+}
+
+export component Ticket {
+    Rise {
+        VerticalLayout {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            Rectangle {
+                background: Theme.panel;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: Theme.line;
+                clip: true;
+                Rectangle {
+                    x: 0;
+                    width: 3px;
+                    background: Theme.primary;
+                }
+                VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 13px;
+                    padding-bottom: 13px;
+                    spacing: 8px;
+                    @children
+                }
+            }
+        }
+    }
+}
+
+export component Check {
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    in property <string> label;
+    in property <string> detail;
+    callback toggled;
+    accessible-role: checkbox;
+    accessible-checkable: true;
+    accessible-checked: checked;
+    accessible-label: label;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { toggled(); } }
+    forward-focus: scope;
+    property <bool> live: enabled && !Shell.modal;
+    HorizontalLayout {
+        spacing: 11px;
+        VerticalLayout {
+            alignment: root.detail == "" ? center : start;
+            padding-top: root.detail == "" ? 0px : 3px;
+            Rectangle {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: root.checked ? Theme.primary : Theme.control;
+            border-width: root.checked ? 0px : 1px;
+            border-color: Theme.control-line;
+            opacity: root.enabled ? 1 : 0.5;
+            animate background { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+            Path {
+                x: 3px;
+                y: 3px;
+                width: 10px;
+                height: 10px;
+                viewbox-width: 10;
+                viewbox-height: 10;
+                commands: "M1.5 5.2 L4 7.6 L8.5 2.4";
+                fill: transparent;
+                stroke: Theme.primary-ink;
+                stroke-width: 1.8px;
+                opacity: root.checked ? 1 : 0;
+                transform-scale: root.checked ? 1 : 0.7;
+                animate opacity, transform-scale { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+            }
+            if scope.has-focus: Rectangle {
+                x: -2px;
+                y: -2px;
+                width: 20px;
+                height: 20px;
+                border-radius: 6px;
+                border-width: 2px;
+                border-color: Theme.focus;
+            }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            Text {
+                text: root.label;
+                color: root.enabled ? Theme.ink : Theme.muted;
+                font-weight: root.detail == "" ? 400 : 600;
+                wrap: word-wrap;
+            }
+            if root.detail != "": Muted { text: root.detail; }
+        }
+    }
+    TouchArea {
+        clicked => {
+            if live {
+                Theme.keynav = false;
+                root.toggled();
+            }
+        }
+    }
+    scope := FocusScope {
+        enabled: live;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == " " {
+                Theme.keynav = true;
+                root.toggled();
+                return accept;
+            }
+            reject
+        }
+    }
+}
+
+export component Switch {
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    in property <string> label;
+    callback toggled;
+    width: 40px;
+    height: 22px;
+    accessible-role: switch;
+    accessible-checkable: true;
+    accessible-checked: checked;
+    accessible-label: label;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { toggled(); } }
+    forward-focus: scope;
+    property <bool> live: enabled && !Shell.modal;
+    opacity: enabled ? 1 : 0.5;
+    Rectangle {
+        border-radius: 11px;
+        background: root.checked ? Theme.primary : Theme.control-line;
+        animate background { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        Rectangle {
+            x: root.checked ? 20px : 2px;
+            y: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            background: root.checked && Theme.dark ? Theme.primary-ink : #ffffff;
+            animate x { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        }
+    }
+    TouchArea {
+        clicked => {
+            if live {
+                Theme.keynav = false;
+                root.toggled();
+            }
+        }
+    }
+    scope := FocusScope {
+        enabled: live;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == " " || event.text == Key.Return {
+                Theme.keynav = true;
+                root.toggled();
+                return accept;
+            }
+            reject
+        }
+    }
+    if scope.has-focus: Rectangle {
+        x: -2px;
+        y: -2px;
+        width: 44px;
+        height: 26px;
+        border-radius: 13px;
+        border-width: 2px;
+        border-color: Theme.focus;
+    }
+}
+
+export component Segment {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> enabled: true;
+    in property <length> pad: 13px;
+    in property <length> size: 13.5px;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-checked: on;
+    accessible-checkable: true;
+    accessible-action-default => { clicked(); }
+    forward-focus: scope;
+    property <bool> live: enabled && !Shell.modal;
+    Rectangle {
+        border-radius: 6px;
+        background: root.on ? Theme.primary : touch.has-hover && live ? Theme.panel-hover : transparent;
+        animate background { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        HorizontalLayout {
+            padding-left: root.pad;
+            padding-right: root.pad;
+            padding-top: 6px;
+            padding-bottom: 6px;
+            Text {
+                text: root.text;
+                font-size: root.size;
+                font-weight: 500;
+                color: root.on ? Theme.primary-ink : Theme.muted;
+                horizontal-alignment: center;
+                animate color { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+            }
+        }
+        touch := TouchArea {
+            clicked => {
+                if live {
+                    Theme.keynav = false;
+                    root.clicked();
+                }
+            }
+        }
+    }
+    scope := FocusScope {
+        enabled: live;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == " " || event.text == Key.Return {
+                Theme.keynav = true;
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    if scope.has-focus: Rectangle {
+        border-radius: 7px;
+        border-width: 2px;
+        border-color: Theme.focus;
+    }
+}
+
+export component Segments {
+    horizontal-stretch: 0;
+    Rectangle {
+        background: Theme.panel;
+        border-radius: 9px;
+        border-width: 1px;
+        border-color: Theme.line;
+        HorizontalLayout {
+            padding: 3px;
+            spacing: 3px;
+            @children
+        }
+    }
+}

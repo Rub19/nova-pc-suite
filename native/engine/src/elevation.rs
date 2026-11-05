@@ -111,6 +111,7 @@ pub struct Handoff {
     handle: *mut c_void,
     pub token: String,
 }
+unsafe impl Send for Handoff {}
 impl Handoff {
     pub fn new() -> Result<Self, String> {
         let token = uid()?;

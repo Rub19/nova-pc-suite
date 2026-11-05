@@ -266,6 +266,49 @@ fn render(event: EVT_HANDLE) -> Option<String> {
     Some(from_wide(&buffer))
 }
 
+pub fn animations_enabled() -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SystemParametersInfoW, SPI_GETCLIENTAREAANIMATION, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+    };
+    let mut enabled = BOOL(1);
+    let read = unsafe {
+        SystemParametersInfoW(
+            SPI_GETCLIENTAREAANIMATION,
+            0,
+            Some((&mut enabled as *mut BOOL).cast()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    };
+    read.is_err() || enabled.as_bool()
+}
+
+pub fn set_clipboard(text: &str) -> Result<(), String> {
+    use windows::Win32::{
+        Foundation::HANDLE,
+        System::{
+            DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData},
+            Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE},
+        },
+    };
+    const CF_UNICODETEXT: u32 = 13;
+    let refused = |_| "Windows a refusé la copie.".to_string();
+    let data = wide(text);
+    unsafe {
+        OpenClipboard(None).map_err(refused)?;
+        let result = (|| -> windows::core::Result<()> {
+            EmptyClipboard()?;
+            let block = GlobalAlloc(GMEM_MOVEABLE, data.len() * 2)?;
+            let target = GlobalLock(block) as *mut u16;
+            std::ptr::copy_nonoverlapping(data.as_ptr(), target, data.len());
+            let _ = GlobalUnlock(block);
+            SetClipboardData(CF_UNICODETEXT, Some(HANDLE(block.0)))?;
+            Ok(())
+        })();
+        let _ = CloseClipboard();
+        result.map_err(refused)
+    }
+}
+
 #[link(name = "ntdll")]
 extern "system" {
     fn NtQuerySystemInformation(class: u32, info: *mut u8, length: u32, returned: *mut u32) -> i32;

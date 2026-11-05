@@ -1,0 +1,572 @@
+import { AboutSlint } from "std-widgets.slint";
+import { Theme, Icons, Btn, AdminBtn, Muted, Strong, Shell, Measure } from "kit.slint";
+import {
+    BilanPage, BilanState, FindingRow, Fact,
+    PilotesPage, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine,
+    MajPage, MajState, Upgrade, HistoryRow,
+    NettoyagePage, NettoyageState, CleanRow,
+    DemarragePage, DemarrageState, BootBar, StartupRow,
+    PerfPage, PerfState, Plan, Stat, VolumeRow, ProcRow, Probe,
+    ReparerPage, ReparerState, RestoreRow,
+    JournalPage, JournalState, JournalRow
+} from "pages.slint";
+
+export { Theme, Shell, Measure, BilanState, FindingRow, Fact, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine, MajState, Upgrade, HistoryRow, NettoyageState, CleanRow, DemarrageState, BootBar, StartupRow, PerfState, Plan, Stat, VolumeRow, ProcRow, Probe, ReparerState, RestoreRow, JournalState, JournalRow }
+
+export struct ToastItem {
+    id: int,
+    text: string,
+    alert: bool,
+    undo-label: string,
+    leaving: bool,
+}
+export struct License { title: string, text: string }
+
+export global Nova {
+    in-out property <int> page: 0;
+    in-out property <int> issues: 0;
+    in-out property <[ToastItem]> toasts;
+    in-out property <string> cpu-text: "n/d";
+    in-out property <string> ram-text: "n/d";
+    in-out property <string> disk-text: "n/d";
+    in-out property <string> cpu-path;
+    in-out property <string> ram-path;
+    in-out property <string> disk-path;
+    in-out property <bool> ask-open;
+    in-out property <string> ask-title;
+    in-out property <string> ask-body;
+    in-out property <string> ask-confirm;
+    in-out property <bool> ask-danger;
+    in-out property <[string]> ask-lines;
+    in-out property <[License]> ask-licenses;
+    in-out property <bool> about-open;
+    callback go(int);
+    callback answer(bool);
+    callback toast-close(int);
+    callback toast-undo(int);
+}
+
+component Badge {
+    in property <int> count;
+    width: count > 99 ? 32px : count > 9 ? 26px : 18px;
+    height: 18px;
+    accessible-role: text;
+    accessible-label: count + " à traiter";
+    for value in [count]: Rectangle {
+        property <bool> shown: false;
+        init => { shown = true; }
+        border-radius: 9px;
+        background: Theme.signal;
+        opacity: shown ? 1 : 0;
+        transform-scale: shown || Theme.reduced ? 1 : 0.7;
+        animate opacity, transform-scale { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        Text {
+            text: value;
+            color: #1a1405;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    }
+}
+
+component NavItem {
+    in property <string> label;
+    in property <image> icon;
+    in property <int> index;
+    in property <int> badge: 0;
+    height: 36px;
+    accessible-role: button;
+    accessible-label: label + " (Ctrl+" + (index + 1) + ")";
+    accessible-action-default => { Nova.go(index); }
+    forward-focus: scope;
+    property <bool> active: Nova.page == index;
+    Rectangle {
+        border-radius: 7px;
+        background: touch.has-hover && !active ? Theme.rail-hover : transparent;
+        animate background { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 10px;
+            spacing: 11px;
+            Image {
+                source: root.icon;
+                colorize: active || touch.has-hover ? #ffffff : Theme.rail-muted;
+                width: 17px;
+                height: 17px;
+                transform-scale: touch.pressed && !Theme.reduced ? 0.88 : 1;
+                animate transform-scale { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+            }
+            Text {
+                text: root.label;
+                color: active || touch.has-hover ? #ffffff : Theme.rail-muted;
+                font-weight: 500;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                animate color { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+            }
+            if root.badge > 0: Badge { count: root.badge; }
+        }
+        touch := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => {
+                if !Shell.modal {
+                    Theme.keynav = false;
+                    Nova.go(index);
+                }
+            }
+        }
+    }
+    scope := FocusScope {
+        enabled: !Shell.modal;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                Theme.keynav = true;
+                Nova.go(index);
+                return accept;
+            }
+            reject
+        }
+    }
+    if scope.has-focus: Rectangle {
+        border-radius: 8px;
+        border-width: 2px;
+        border-color: Theme.signal;
+    }
+}
+
+component Trace {
+    in property <string> label;
+    in property <string> value;
+    in property <string> path;
+    accessible-role: text;
+    accessible-label: label + " " + value;
+    VerticalLayout {
+        spacing: 2px;
+        HorizontalLayout {
+            Text { text: root.label; color: Theme.rail-muted; font-size: 12px; horizontal-stretch: 1; vertical-alignment: center; }
+            Text { text: root.value; color: Theme.rail-ink; font-family: Theme.display; font-size: 13px; font-weight: 500; }
+        }
+        Rectangle {
+            height: 26px;
+            if root.path != "": Path {
+                width: 100%;
+                height: 100%;
+                viewbox-x: 0;
+                viewbox-y: 0;
+                viewbox-width: 59;
+                viewbox-height: 100;
+                commands: root.path;
+                fill: transparent;
+                stroke: Theme.signal;
+                stroke-width: 1.5px;
+            }
+        }
+    }
+}
+
+component ToastCard {
+    in property <ToastItem> item;
+    property <bool> shown: false;
+    init => { shown = true; }
+    property <bool> visible-now: shown && !item.leaving;
+    opacity: visible-now ? 1 : 0;
+    animate opacity { duration: Theme.slow; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+    Rectangle {
+        y: visible-now || Theme.reduced ? 0px : 12px;
+        animate y { duration: Theme.slow; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        background: item.alert ? Theme.alert : Theme.ink;
+        border-radius: 9px;
+        drop-shadow-blur: 24px;
+        drop-shadow-offset-y: 8px;
+        drop-shadow-color: #0b121c44;
+        HorizontalLayout {
+            padding-left: 16px;
+            padding-right: 12px;
+            padding-top: 11px;
+            padding-bottom: 11px;
+            spacing: 12px;
+            Text {
+                text: item.text;
+                color: Theme.page;
+                wrap: word-wrap;
+                horizontal-stretch: 1;
+                vertical-alignment: center;
+            }
+            if item.undo-label != "": Btn {
+                kind: "link";
+                tint: Theme.page;
+                icon: Icons.undo;
+                text: item.undo-label;
+                clicked => { Nova.toast-undo(item.id); }
+            }
+            Btn {
+                kind: "link";
+                tint: Theme.page;
+                icon: Icons.close;
+                text: "";
+                accessible-label: "Fermer ce message";
+                clicked => { Nova.toast-close(item.id); }
+            }
+        }
+    }
+}
+
+component Sheet {
+    in property <bool> open;
+    in property <length> sheet-width: 480px;
+    callback dismiss();
+    property <bool> shown: false;
+    init => { shown = true; focus-scope.focus(); }
+    Rectangle {
+        background: #0b121c66;
+        opacity: open && shown ? 1 : 0;
+        animate opacity { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+    }
+    TouchArea {}
+    focus-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                Theme.keynav = true;
+                root.dismiss();
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        width: min(root.sheet-width, parent.width - 40px);
+        height: body.preferred-height;
+        background: Theme.panel;
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: Theme.line;
+        drop-shadow-blur: 60px;
+        drop-shadow-offset-y: 24px;
+        drop-shadow-color: #0b121c66;
+        opacity: open && shown ? 1 : 0;
+        transform-scale: (open && shown) || Theme.reduced ? 1 : 0.97;
+        animate opacity, transform-scale { duration: open ? Theme.base : Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        accessible-role: groupbox;
+        body := VerticalLayout {
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 22px;
+            padding-bottom: 18px;
+            spacing: 10px;
+            @children
+        }
+    }
+}
+
+component Modal {
+    in property <string> text;
+    in property <string> kind;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { clicked(); }
+    forward-focus: scope;
+    horizontal-stretch: 0;
+    Rectangle {
+        background: root.kind == "primary" ? Theme.primary : root.kind == "danger" ? Theme.alert : touch.has-hover ? Theme.panel-hover : Theme.control;
+        border-radius: 7px;
+        border-width: root.kind == "" ? 1px : 0px;
+        border-color: Theme.control-line;
+        transform-scale: touch.pressed && !Theme.reduced ? 0.97 : 1;
+        animate transform-scale { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        HorizontalLayout {
+            padding-left: 13px;
+            padding-right: 13px;
+            padding-top: 7px;
+            padding-bottom: 7px;
+            Text {
+                text: root.text;
+                font-size: 13.5px;
+                font-weight: 500;
+                color: root.kind == "primary" ? Theme.primary-ink : root.kind == "danger" ? Theme.page : Theme.ink;
+            }
+        }
+        touch := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => {
+                Theme.keynav = false;
+                root.clicked();
+            }
+        }
+    }
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                Theme.keynav = true;
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    if scope.has-focus: Rectangle {
+        x: -2px;
+        y: -2px;
+        width: parent.width + 4px;
+        height: parent.height + 4px;
+        border-radius: 9px;
+        border-width: 2px;
+        border-color: Theme.focus;
+    }
+}
+
+component AskSheet {
+    in property <bool> open;
+    Sheet {
+        open: root.open;
+        dismiss => { Nova.answer(false); }
+        Text {
+            text: Nova.ask-title;
+            color: Theme.ink;
+            font-family: Theme.display;
+            font-size: 20px;
+            font-weight: 600;
+            wrap: word-wrap;
+        }
+        Text { text: Nova.ask-body; color: Theme.ink; wrap: word-wrap; }
+        for line in Nova.ask-lines: Text { text: line; color: Theme.ink; wrap: word-wrap; }
+        for license in Nova.ask-licenses: VerticalLayout {
+            property <bool> unfolded: false;
+            spacing: 4px;
+            HorizontalLayout {
+                alignment: start;
+                Btn {
+                    kind: "link";
+                    text: (unfolded ? "▾ " : "▸ ") + "Licence : " + license.title;
+                    clicked => { unfolded = !unfolded; }
+                }
+            }
+            if unfolded: Flickable {
+                height: 180px;
+                content-height: eula.preferred-height;
+                eula := Text {
+                    width: parent.width;
+                    text: license.text;
+                    color: Theme.ink;
+                    font-size: 12.5px;
+                    wrap: word-wrap;
+                }
+            }
+        }
+        HorizontalLayout {
+            padding-top: 8px;
+            spacing: 8px;
+            alignment: end;
+            Modal { text: "Annuler"; clicked => { Nova.answer(false); } }
+            Modal {
+                text: Nova.ask-confirm;
+                kind: Nova.ask-danger ? "danger" : "primary";
+                clicked => { Nova.answer(true); }
+            }
+        }
+    }
+}
+
+export component App inherits Window {
+    title: "Nova PC Suite";
+    icon: @image-url("../icons/app.png");
+    preferred-width: 1180px;
+    preferred-height: 780px;
+    min-width: 900px;
+    min-height: 600px;
+    background: Theme.page;
+    default-font-family: "Segoe UI";
+    default-font-size: 14px;
+    in-out property <bool> ask-visible;
+    in-out property <bool> about-visible;
+    callback shortcut(int);
+    forward-focus: keys;
+
+    keys := FocusScope {
+        key-pressed(event) => {
+            if event.modifiers.control {
+                if event.text == "1" || event.text == "&" { Theme.keynav = true; Nova.go(0); return accept; }
+                if event.text == "2" || event.text == "é" { Theme.keynav = true; Nova.go(1); return accept; }
+                if event.text == "3" || event.text == "\"" { Theme.keynav = true; Nova.go(2); return accept; }
+                if event.text == "4" || event.text == "'" { Theme.keynav = true; Nova.go(3); return accept; }
+                if event.text == "5" || event.text == "(" { Theme.keynav = true; Nova.go(4); return accept; }
+                if event.text == "6" || event.text == "-" { Theme.keynav = true; Nova.go(5); return accept; }
+                if event.text == "7" || event.text == "è" { Theme.keynav = true; Nova.go(6); return accept; }
+                if event.text == "8" || event.text == "_" { Theme.keynav = true; Nova.go(7); return accept; }
+            }
+            reject
+        }
+
+        HorizontalLayout {
+            Rectangle {
+                width: 216px;
+                background: Theme.rail;
+                VerticalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-top: 18px;
+                    padding-bottom: 14px;
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        padding-bottom: 18px;
+                        spacing: 10px;
+                        Rectangle {
+                            width: 12px;
+                            height: 12px;
+                                                        border-radius: 6px;
+                            background: Theme.signal;
+                        }
+                        Text {
+                            text: "Nova";
+                            color: Theme.rail-ink;
+                            font-family: Theme.display;
+                            font-size: 20px;
+                            font-weight: 600;
+                        }
+                    }
+                    Rectangle {
+                        height: 8 * 36px;
+                        pill := Rectangle {
+                            x: 0;
+                            y: Nova.page * 36px;
+                            height: 36px;
+                            border-radius: 7px;
+                            background: Theme.rail-hover;
+                            animate y { duration: Theme.slow; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+                            Rectangle {
+                                x: -12px;
+                                y: 7px;
+                                width: 4px;
+                                height: 22px;
+                                border-top-right-radius: 3px;
+                                border-bottom-right-radius: 3px;
+                                background: Theme.signal;
+                            }
+                        }
+                        VerticalLayout {
+                            NavItem { label: "Bilan"; icon: Icons.stethoscope; index: 0; badge: Nova.issues; }
+                            NavItem { label: "Pilotes"; icon: Icons.cpu; index: 1; }
+                            NavItem { label: "Mises à jour"; icon: Icons.download; index: 2; }
+                            NavItem { label: "Nettoyage"; icon: Icons.brush; index: 3; }
+                            NavItem { label: "Démarrage"; icon: Icons.power; index: 4; }
+                            NavItem { label: "Performances"; icon: Icons.gauge; index: 5; }
+                            NavItem { label: "Réparer"; icon: Icons.wrench; index: 6; }
+                            NavItem { label: "Journal"; icon: Icons.clipboard; index: 7; }
+                        }
+                    }
+                    Rectangle { vertical-stretch: 1; }
+                    VerticalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        padding-top: 18px;
+                        padding-bottom: 12px;
+                        spacing: 12px;
+                        Trace { label: "Processeur"; value: Nova.cpu-text; path: Nova.cpu-path; }
+                        Trace { label: "Mémoire"; value: Nova.ram-text; path: Nova.ram-path; }
+                        Trace { label: "Disque"; value: Nova.disk-text; path: Nova.disk-path; }
+                    }
+                    if Shell.is-admin: Text {
+                        text: "Mode administrateur";
+                        color: Theme.rail-muted;
+                        font-size: 12px;
+                    }
+                    if !Shell.is-admin: Rectangle {
+                        height: 32px;
+                        border-radius: 7px;
+                        border-width: 1px;
+                        border-color: #ffffff38;
+                        background: elevate-touch.has-hover ? Theme.rail-hover : transparent;
+                        animate background { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+                        accessible-role: button;
+                        accessible-label: "Relancer en administrateur";
+                        accessible-action-default => { Shell.elevate(); }
+                        Text {
+                            text: "Relancer en administrateur";
+                            color: Theme.rail-ink;
+                            font-size: 12.5px;
+                        }
+                        elevate-touch := TouchArea {
+                            mouse-cursor: MouseCursor.pointer;
+                            clicked => {
+                                if !Shell.modal {
+                                    Theme.keynav = false;
+                                    Shell.elevate();
+                                }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        padding-top: 8px;
+                        alignment: center;
+                        Btn {
+                            kind: "link";
+                            tint: Theme.rail-muted;
+                            text: "À propos";
+                            clicked => { root.about-visible = true; Nova.about-open = true; Shell.modal = true; }
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                clip: true;
+                if Nova.page == 0: BilanPage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 1: PilotesPage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 2: MajPage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 3: NettoyagePage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 4: DemarragePage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 5: PerfPage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 6: ReparerPage { area: root.width - 216px; width: 100%; height: 100%; }
+                if Nova.page == 7: JournalPage { area: root.width - 216px; width: 100%; height: 100%; }
+            }
+        }
+    }
+
+    VerticalLayout {
+        x: parent.width - self.width - 20px;
+        y: parent.height - self.height - 20px;
+        width: min(440px, parent.width - 40px);
+        height: self.preferred-height;
+        spacing: 8px;
+        alignment: end;
+        for toast in Nova.toasts: ToastCard { item: toast; }
+    }
+
+    if root.ask-visible: AskSheet {
+        width: 100%;
+        height: 100%;
+        open: Nova.ask-open;
+    }
+
+    if root.about-visible: Sheet {
+        width: 100%;
+        height: 100%;
+        open: Nova.about-open;
+        sheet-width: 460px;
+        dismiss => { root.about-visible = false; Nova.about-open = false; Shell.modal = false; keys.focus(); }
+        Text {
+            text: "Nova PC Suite";
+            color: Theme.ink;
+            font-family: Theme.display;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        Muted { text: "Version 0.3.0, native en Rust. Licence MIT. Entretien et réparation de Windows 10 et 11."; }
+        AboutSlint { height: 180px; }
+        HorizontalLayout {
+            alignment: end;
+            Modal {
+                text: "Fermer";
+                clicked => { root.about-visible = false; Nova.about-open = false; Shell.modal = false; keys.focus(); }
+            }
+        }
+    }
+
+    public function restore-focus() {
+        keys.focus();
+    }
+}
