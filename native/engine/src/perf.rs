@@ -104,6 +104,13 @@ pub fn letter_in_parentheses(text: &str) -> Option<char> {
     })
 }
 
+fn drive_letter(row: &win::Row) -> Option<char> {
+    let from_text = text(row, "DriveLetter").chars().next();
+    from_text
+        .or_else(|| number(row, "DriveLetter").and_then(|code| char::from_u32(code as u32)))
+        .filter(char::is_ascii_alphabetic)
+}
+
 fn volumes() -> Vec<Value> {
     let storage = win::wmi_at(STORAGE);
     let media: HashMap<String, &str> = query(&storage, "SELECT DeviceId, MediaType FROM MSFT_PhysicalDisk")
@@ -113,7 +120,7 @@ fn volumes() -> Vec<Value> {
     let disk_of: HashMap<char, String> = query(&storage, "SELECT DriveLetter, DiskNumber FROM MSFT_Partition")
         .iter()
         .filter_map(|p| {
-            let letter = char::from_u32(number(p, "DriveLetter")? as u32)?;
+            let letter = drive_letter(p)?;
             Some((letter.to_ascii_uppercase(), format!("{}", number(p, "DiskNumber")? as u32)))
         })
         .collect();
@@ -130,8 +137,7 @@ fn volumes() -> Vec<Value> {
     query(&storage, "SELECT DriveLetter, DriveType, FileSystem, FileSystemLabel, Size, SizeRemaining FROM MSFT_Volume")
         .iter()
         .filter_map(|v| {
-            let code = number(v, "DriveLetter")? as u32;
-            let letter = char::from_u32(code).filter(char::is_ascii_alphabetic)?;
+            let letter = drive_letter(v)?;
             let fixed = number(v, "DriveType") == Some(3.0);
             if !fixed || !matches!(text(v, "FileSystem").as_str(), "NTFS" | "ReFS") {
                 return None;

@@ -698,6 +698,14 @@ mod tests {
     }
 
     #[test]
+    fn the_real_native_scan_reads_as_a_scan() {
+        let scan: Scan = serde_json::from_value(crate::diag::scan().unwrap()).unwrap();
+        assert!(scan.memory.total_bytes > 0.0);
+        assert!(!findings(&scan).is_empty());
+        assert!(!machine_facts(&scan).is_empty());
+    }
+
+    #[test]
     fn always_returns_a_list() {
         assert!(arr(Value::Null).is_empty());
         assert_eq!(arr(json!({"a": 1})), vec![json!({"a": 1})]);

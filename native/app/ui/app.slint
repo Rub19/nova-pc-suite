@@ -49,10 +49,11 @@ export global Nova {
 component Badge {
     in property <int> count;
     width: count > 99 ? 32px : count > 9 ? 26px : 18px;
-    height: 18px;
     accessible-role: text;
     accessible-label: count + " à traiter";
     for value in [count]: Rectangle {
+        y: (root.height - 18px) / 2;
+        height: 18px;
         property <bool> shown: false;
         init => { shown = true; }
         border-radius: 9px;
@@ -92,7 +93,6 @@ component NavItem {
                 source: root.icon;
                 colorize: active || touch.has-hover ? #ffffff : Theme.rail-muted;
                 width: 17px;
-                height: 17px;
                 transform-scale: touch.pressed && !Theme.reduced ? 0.88 : 1;
                 animate transform-scale { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
             }
@@ -141,11 +141,14 @@ component Trace {
     in property <string> path;
     accessible-role: text;
     accessible-label: label + " " + value;
+    height: 46px;
+    vertical-stretch: 0;
     VerticalLayout {
         spacing: 2px;
         HorizontalLayout {
+            height: 18px;
             Text { text: root.label; color: Theme.rail-muted; font-size: 12px; horizontal-stretch: 1; vertical-alignment: center; }
-            Text { text: root.value; color: Theme.rail-ink; font-family: Theme.display; font-size: 13px; font-weight: 500; }
+            Text { text: root.value; color: Theme.rail-ink; font-family: Theme.display; font-size: 13px; font-weight: 500; vertical-alignment: center; }
         }
         Rectangle {
             height: 26px;
@@ -154,8 +157,8 @@ component Trace {
                 height: 100%;
                 viewbox-x: 0;
                 viewbox-y: 0;
-                viewbox-width: 59;
-                viewbox-height: 100;
+                viewbox-width: 172;
+                viewbox-height: 26;
                 commands: root.path;
                 fill: transparent;
                 stroke: Theme.signal;
@@ -172,15 +175,19 @@ component ToastCard {
     property <bool> visible-now: shown && !item.leaving;
     opacity: visible-now ? 1 : 0;
     animate opacity { duration: Theme.slow; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+    min-height: line.min-height;
+    preferred-height: line.preferred-height;
     Rectangle {
         y: visible-now || Theme.reduced ? 0px : 12px;
         animate y { duration: Theme.slow; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        width: root.width;
+        height: root.height;
         background: item.alert ? Theme.alert : Theme.ink;
         border-radius: 9px;
         drop-shadow-blur: 24px;
         drop-shadow-offset-y: 8px;
         drop-shadow-color: #0b121c44;
-        HorizontalLayout {
+        line := HorizontalLayout {
             padding-left: 16px;
             padding-right: 12px;
             padding-top: 11px;
@@ -216,6 +223,7 @@ component Sheet {
     in property <bool> open;
     in property <length> sheet-width: 480px;
     callback dismiss();
+    callback confirm();
     property <bool> shown: false;
     init => { shown = true; focus-scope.focus(); }
     Rectangle {
@@ -229,6 +237,11 @@ component Sheet {
             if event.text == Key.Escape {
                 Theme.keynav = true;
                 root.dismiss();
+                return accept;
+            }
+            if event.text == Key.Return {
+                Theme.keynav = true;
+                root.confirm();
                 return accept;
             }
             reject
@@ -321,8 +334,11 @@ component Modal {
 component AskSheet {
     in property <bool> open;
     Sheet {
+        width: 100%;
+        height: 100%;
         open: root.open;
         dismiss => { Nova.answer(false); }
+        confirm => { Nova.answer(true); }
         Text {
             text: Nova.ask-title;
             color: Theme.ink;
@@ -465,6 +481,7 @@ export component App inherits Window {
                         padding-top: 18px;
                         padding-bottom: 12px;
                         spacing: 12px;
+                        vertical-stretch: 0;
                         Trace { label: "Processeur"; value: Nova.cpu-text; path: Nova.cpu-path; }
                         Trace { label: "Mémoire"; value: Nova.ram-text; path: Nova.ram-path; }
                         Trace { label: "Disque"; value: Nova.disk-text; path: Nova.disk-path; }

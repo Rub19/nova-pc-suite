@@ -83,6 +83,8 @@ export component Btn {
     horizontal-stretch: 0;
     opacity: enabled ? 1 : 0.5;
 
+    VerticalLayout {
+    alignment: center;
     face := Rectangle {
         background: root.kind == "primary" ? (touch.has-hover && live ? Theme.primary.brighter(12%) : Theme.primary)
             : root.kind == "danger" ? (touch.has-hover && live ? Theme.alert.brighter(8%) : Theme.alert)
@@ -105,7 +107,6 @@ export component Btn {
                 source: root.icon;
                 colorize: root.tint;
                 width: 15px;
-                height: 15px;
             }
             label := Text {
                 text: root.text;
@@ -132,6 +133,16 @@ export component Btn {
                 }
             }
         }
+        if scope.has-focus: Rectangle {
+            x: -2px;
+            y: -2px;
+            width: parent.width + 4px;
+            height: parent.height + 4px;
+            border-radius: 9px;
+            border-width: 2px;
+            border-color: Theme.focus;
+        }
+    }
     }
     scope := FocusScope {
         enabled: live;
@@ -144,15 +155,6 @@ export component Btn {
             }
             reject
         }
-    }
-    if scope.has-focus: Rectangle {
-        x: -2px;
-        y: -2px;
-        width: parent.width + 4px;
-        height: parent.height + 4px;
-        border-radius: 9px;
-        border-width: 2px;
-        border-color: Theme.focus;
     }
 }
 
@@ -199,8 +201,15 @@ export component Rise {
     init => { shown = true; }
     opacity: shown ? 1 : 0;
     animate opacity { duration: Theme.rise; easing: cubic-bezier(0.23, 1, 0.32, 1); delay: Theme.rise == 0ms ? 0ms : min(index, 4) * 40ms; }
-    VerticalLayout {
-        padding-top: 0px;
+    min-height: inner.min-height;
+    preferred-height: inner.preferred-height;
+    max-height: inner.preferred-height;
+    min-width: inner.min-width;
+    preferred-width: inner.preferred-width;
+    inner := VerticalLayout {
+        x: 0;
+        width: root.width;
+        height: root.height;
         y: shown ? 0px : Theme.lift;
         animate y { duration: Theme.rise; easing: cubic-bezier(0.23, 1, 0.32, 1); delay: Theme.rise == 0ms ? 0ms : min(index, 4) * 40ms; }
         @children
@@ -214,10 +223,14 @@ export component Page {
     opacity: shown ? 1 : 0;
     animate opacity { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
     scroller := Flickable {
+        width: 100%;
+        height: 100%;
         content-width: root.area;
         content-height: column.preferred-height;
         column := VerticalLayout {
+            x: 0;
             width: root.area;
+            height: self.preferred-height;
             y: shown ? 0px : Theme.lift;
             animate y { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
             padding-top: 34px;
@@ -344,6 +357,8 @@ export component Tag {
     in property <image> icon;
     horizontal-stretch: 0;
     vertical-stretch: 0;
+    VerticalLayout {
+    alignment: center;
     Rectangle {
         border-radius: 5px;
         border-width: 1px;
@@ -358,7 +373,6 @@ export component Tag {
                 source: root.icon;
                 colorize: root.tint;
                 width: 13px;
-                height: 13px;
             }
             Text {
                 text: root.text;
@@ -367,6 +381,7 @@ export component Tag {
                 vertical-alignment: center;
             }
         }
+    }
     }
 }
 
@@ -391,34 +406,32 @@ export component NewTag {
     }
 }
 
-export component Failure {
+export component Failure inherits Rise {
     in property <string> text;
     in property <bool> retry: true;
     callback retried;
-    Rise {
-        VerticalLayout {
-            padding-top: 10px;
-            padding-bottom: 10px;
-            Rectangle {
-                background: Theme.alert-soft;
-                border-radius: 10px;
-                HorizontalLayout {
-                    padding-left: 16px;
-                    padding-right: 16px;
-                    padding-top: 11px;
-                    padding-bottom: 11px;
-                    spacing: 16px;
-                    Text {
-                        text: root.text;
-                        color: Theme.ink;
-                        wrap: word-wrap;
-                        horizontal-stretch: 1;
-                        vertical-alignment: center;
-                    }
-                    if root.retry: Btn {
-                        text: "Réessayer";
-                        clicked => { root.retried(); }
-                    }
+    VerticalLayout {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        Rectangle {
+            background: Theme.alert-soft;
+            border-radius: 10px;
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 11px;
+                padding-bottom: 11px;
+                spacing: 16px;
+                Text {
+                    text: root.text;
+                    color: Theme.ink;
+                    wrap: word-wrap;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+                if root.retry: Btn {
+                    text: "Réessayer";
+                    clicked => { root.retried(); }
                 }
             }
         }
@@ -553,30 +566,28 @@ export component Measures {
     }
 }
 
-export component Ticket {
-    Rise {
-        VerticalLayout {
-            padding-top: 12px;
-            padding-bottom: 12px;
+export component Ticket inherits Rise {
+    VerticalLayout {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        Rectangle {
+            background: Theme.panel;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.line;
+            clip: true;
             Rectangle {
-                background: Theme.panel;
-                border-radius: 10px;
-                border-width: 1px;
-                border-color: Theme.line;
-                clip: true;
-                Rectangle {
-                    x: 0;
-                    width: 3px;
-                    background: Theme.primary;
-                }
-                VerticalLayout {
-                    padding-left: 16px;
-                    padding-right: 16px;
-                    padding-top: 13px;
-                    padding-bottom: 13px;
-                    spacing: 8px;
-                    @children
-                }
+                x: 0;
+                width: 3px;
+                background: Theme.primary;
+            }
+            VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 13px;
+                padding-bottom: 13px;
+                spacing: 8px;
+                @children
             }
         }
     }
@@ -676,7 +687,6 @@ export component Switch {
     in property <string> label;
     callback toggled;
     width: 40px;
-    height: 22px;
     accessible-role: switch;
     accessible-checkable: true;
     accessible-checked: checked;
@@ -687,9 +697,19 @@ export component Switch {
     property <bool> live: enabled && !Shell.modal;
     opacity: enabled ? 1 : 0.5;
     Rectangle {
+        height: 22px;
         border-radius: 11px;
         background: root.checked ? Theme.primary : Theme.control-line;
         animate background { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
+        if scope.has-focus: Rectangle {
+            x: -2px;
+            y: -2px;
+            width: 44px;
+            height: 26px;
+            border-radius: 13px;
+            border-width: 2px;
+            border-color: Theme.focus;
+        }
         Rectangle {
             x: root.checked ? 20px : 2px;
             y: 2px;
@@ -719,15 +739,6 @@ export component Switch {
             }
             reject
         }
-    }
-    if scope.has-focus: Rectangle {
-        x: -2px;
-        y: -2px;
-        width: 44px;
-        height: 26px;
-        border-radius: 13px;
-        border-width: 2px;
-        border-color: Theme.focus;
     }
 }
 

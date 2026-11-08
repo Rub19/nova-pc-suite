@@ -179,7 +179,7 @@ fn security() -> Value {
         json!({
             "running": flag(s, "AMServiceEnabled"),
             "realtime": flag(s, "RealTimeProtectionEnabled"),
-            "signatureAgeDays": number(s, "AntivirusSignatureAge").unwrap_or(0.0),
+            "signatureAgeDays": number(s, "AntivirusSignatureAge").unwrap_or(0.0) as i64,
         })
     });
     let others: Vec<String> = query(
@@ -279,12 +279,12 @@ pub fn scan() -> Result<Value, String> {
         "timestamp": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
         "os": {"name": text(&os, "Caption"), "release": release, "build": text(&os, "BuildNumber")},
         "computer": {"manufacturer": text(&computer, "Manufacturer"), "model": text(&computer, "Model"), "board": board_name.trim(), "bios": text(&bios, "SMBIOSBIOSVersion")},
-        "cpu": {"name": text(&cpu, "Name").trim(), "cores": number(&cpu, "NumberOfCores").unwrap_or(0.0), "threads": number(&cpu, "NumberOfLogicalProcessors").unwrap_or(0.0)},
+        "cpu": {"name": text(&cpu, "Name").trim(), "cores": number(&cpu, "NumberOfCores").unwrap_or(0.0) as u64, "threads": number(&cpu, "NumberOfLogicalProcessors").unwrap_or(0.0) as u64},
         "memory": {
             "totalBytes": number(&os, "TotalVisibleMemorySize").unwrap_or(0.0) * 1024.0,
             "freeBytes": number(&os, "FreePhysicalMemory").unwrap_or(0.0) * 1024.0,
             "modules": ram.len(),
-            "speedMHz": ram.first().and_then(|r| number(r, "ConfiguredClockSpeed")),
+            "speedMHz": ram.first().and_then(|r| number(r, "ConfiguredClockSpeed")).map(|v| v as u64),
         },
         "gpus": gpus,
         "uptimeSeconds": uptime_seconds(),

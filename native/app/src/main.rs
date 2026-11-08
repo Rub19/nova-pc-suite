@@ -269,9 +269,9 @@ fn trace_path(points: &[f64]) -> String {
     let last = points.len() - 1;
     let mut path = String::with_capacity(points.len() * 14);
     for (i, value) in points.iter().enumerate() {
-        let x = 59.0 - (last - i) as f64;
-        let y = 99.0 - value.clamp(0.0, 100.0) * 0.97;
-        path.push_str(&format!("{} {x:.0} {y:.1} ", if i == 0 { "M" } else { "L" }));
+        let x = 172.0 - (last - i) as f64 * 172.0 / 59.0;
+        let y = 25.0 - value.clamp(0.0, 100.0) * 0.23;
+        path.push_str(&format!("{} {x:.1} {y:.1} ", if i == 0 { "M" } else { "L" }));
     }
     path
 }
@@ -407,8 +407,8 @@ mod tests {
     #[test]
     fn traces_are_aligned_on_the_right_and_stay_in_the_box() {
         assert!(trace_path(&[5.0]).is_empty());
-        assert_eq!(trace_path(&[0.0, 100.0]), "M 58 99.0 L 59 2.0 ");
-        assert_eq!(trace_path(&[250.0, -5.0]), "M 58 2.0 L 59 99.0 ");
+        assert_eq!(trace_path(&[0.0, 100.0]), "M 169.1 25.0 L 172.0 2.0 ");
+        assert_eq!(trace_path(&[250.0, -5.0]), "M 169.1 2.0 L 172.0 25.0 ");
     }
 
     #[test]
