@@ -1,17 +1,17 @@
 import { AboutSlint } from "std-widgets.slint";
 import { Theme, Icons, Btn, AdminBtn, Muted, Strong, Shell, Measure } from "kit.slint";
 import {
-    BilanPage, BilanState, FindingRow, Fact,
+    BilanPage, BilanState, FindingRow, Fact, DiskUse,
     PilotesPage, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine,
-    MajPage, MajState, Upgrade, HistoryRow,
-    NettoyagePage, NettoyageState, CleanRow,
+    MajPage, MajState, Upgrade, HistoryRow, InstalledRow,
+    NettoyagePage, NettoyageState, CleanRow, BigFolder,
     DemarragePage, DemarrageState, BootBar, StartupRow,
-    PerfPage, PerfState, Plan, Stat, VolumeRow, ProcRow, Probe,
+    PerfPage, PerfState, Plan, Stat, VolumeRow, ProcRow, Probe, AdapterRow,
     ReparerPage, ReparerState, RestoreRow,
     JournalPage, JournalState, JournalRow
 } from "pages.slint";
 
-export { Theme, Shell, Measure, BilanState, FindingRow, Fact, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine, MajState, Upgrade, HistoryRow, NettoyageState, CleanRow, DemarrageState, BootBar, StartupRow, PerfState, Plan, Stat, VolumeRow, ProcRow, Probe, ReparerState, RestoreRow, JournalState, JournalRow }
+export { DiskUse, InstalledRow, BigFolder, AdapterRow, Theme, Shell, Measure, BilanState, FindingRow, Fact, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine, MajState, Upgrade, HistoryRow, NettoyageState, CleanRow, DemarrageState, BootBar, StartupRow, PerfState, Plan, Stat, VolumeRow, ProcRow, Probe, ReparerState, RestoreRow, JournalState, JournalRow }
 
 export struct ToastItem {
     id: int,

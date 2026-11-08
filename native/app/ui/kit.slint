@@ -117,7 +117,7 @@ export component Btn {
                 horizontal-alignment: center;
             }
         }
-        if root.kind == "link": Rectangle {
+        if root.kind == "link" && root.text != "": Rectangle {
             y: parent.height - 3px;
             x: 4px;
             width: parent.width - 8px;
@@ -343,6 +343,31 @@ export component Row {
         spacing: 12px;
         min-height: 52px;
         @children
+    }
+}
+
+export component Meter {
+    in property <float> ratio;
+    in property <color> tint: Theme.primary;
+    in property <int> index: 0;
+    property <bool> shown: false;
+    init => { shown = true; }
+    height: 6px;
+    accessible-role: progress-indicator;
+    accessible-value-maximum: 100;
+    accessible-value: round(ratio * 100);
+    Rectangle {
+        border-radius: 3px;
+        background: Theme.line;
+        clip: true;
+        Rectangle {
+            x: 0;
+            height: parent.height;
+            width: (shown ? root.ratio : 0) * parent.width;
+            border-radius: 3px;
+            background: root.tint;
+            animate width { duration: Theme.rise; easing: cubic-bezier(0.23, 1, 0.32, 1); delay: Theme.rise == 0ms ? 0ms : min(index, 4) * 40ms; }
+        }
     }
 }
 

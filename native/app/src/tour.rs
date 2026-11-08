@@ -31,11 +31,11 @@ fn press(ui: &App, text: &str) {
 fn idle(ui: &App, page: i32) -> bool {
     match page {
         0 => !ui.global::<BilanState>().get_loading(),
-        1 => !ui.global::<PilotesState>().get_loading(),
+        1 => !ui.global::<PilotesState>().get_loading() && !ui.global::<PilotesState>().get_wu().loading,
         2 => !ui.global::<MajState>().get_winget_loading(),
-        3 => !ui.global::<NettoyageState>().get_loading(),
+        3 => !ui.global::<NettoyageState>().get_loading() && !ui.global::<NettoyageState>().get_largest_loading(),
         4 => !ui.global::<DemarrageState>().get_loading(),
-        5 => !ui.global::<PerfState>().get_loading() && !ui.global::<PerfState>().get_procs_loading(),
+        5 => !ui.global::<PerfState>().get_loading() && !ui.global::<PerfState>().get_procs_loading() && !ui.global::<PerfState>().get_net_loading(),
         6 => ui.global::<ReparerState>().get_restore_loaded(),
         _ => true,
     }
@@ -64,10 +64,16 @@ pub fn start(ui: &App, dir: PathBuf) {
                 press(&ui, &(current + 1).to_string());
                 let moved = ui.global::<Nova>().get_page() == current;
                 println!("Ctrl+{} : {}", current + 1, if moved { "ok" } else { "ÉCHEC" });
+                match current {
+                    1 => ui.global::<PilotesState>().invoke_wu_search(),
+                    3 => ui.global::<NettoyageState>().invoke_measure_largest(),
+                    5 => ui.global::<PerfState>().invoke_net_test(),
+                    _ => {}
+                }
                 advance(1);
             }
             1 => {
-                if idle(&ui, current) || elapsed > Duration::from_secs(150) {
+                if idle(&ui, current) || elapsed > Duration::from_secs(420) {
                     println!("page {} prête en {:?}, idle={}", current, elapsed, idle(&ui, current));
                     advance(2);
                 }

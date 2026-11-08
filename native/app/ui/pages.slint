@@ -1,4 +1,4 @@
-import { Theme, Icons, Measure, Btn, AdminBtn, Muted, Strong, Rise, Page, Head, SectionHead, Panel, Row, Grow, Tag, NewTag, Failure, Empty, Note, Skeleton, Elapsed, Measures, Ticket, Check, Switch, Segment, Segments, Shell } from "kit.slint";
+import { Theme, Icons, Measure, Btn, AdminBtn, Muted, Strong, Rise, Page, Head, SectionHead, Panel, Row, Grow, Tag, NewTag, Failure, Empty, Note, Skeleton, Elapsed, Meter, Measures, Ticket, Check, Switch, Segment, Segments, Shell } from "kit.slint";
 
 export struct FindingRow {
     id: string,
@@ -10,6 +10,8 @@ export struct FindingRow {
     fresh: bool,
 }
 export struct Fact { key: string, value: string }
+export struct Stat { label: string, value: string }
+export struct DiskUse { title: string, detail: string, ratio: float, level: string }
 
 export global BilanState {
     in-out property <string> headline: "Analyse de ce PC en cours.";
@@ -21,6 +23,10 @@ export global BilanState {
     in-out property <[FindingRow]> issues;
     in-out property <[FindingRow]> fine;
     in-out property <[Fact]> facts;
+    in-out property <[DiskUse]> disks;
+    in-out property <[Stat]> stability;
+    in-out property <string> last-incident;
+    in-out property <[Fact]> crashes;
     callback rescan();
     callback copy();
     callback go(int);
@@ -101,6 +107,60 @@ export component BilanPage {
         if BilanState.fine.length > 0: SectionHead { title: "Ce qui va bien"; }
         if BilanState.fine.length > 0: Panel {
             for f[i] in BilanState.fine: FindingLine { item: f; first: i == 0; }
+        }
+        if BilanState.has-data: SectionHead { title: "Espace disque"; }
+        if BilanState.has-data: Panel {
+            for d[i] in BilanState.disks: Row {
+                first: i == 0;
+                Grow {
+                    spacing: 6px;
+                    HorizontalLayout {
+                        Strong { text: d.title; horizontal-stretch: 1; }
+                        Muted { text: d.detail; wrap: no-wrap; horizontal-stretch: 0; }
+                    }
+                    Meter {
+                        ratio: d.ratio;
+                        index: i;
+                        tint: d.level == "alert" ? Theme.alert : d.level == "warn" ? Theme.warn : Theme.primary;
+                    }
+                }
+            }
+        }
+        if BilanState.has-data: SectionHead {
+            title: "Stabilité sur 30 jours";
+            note: BilanState.last-incident;
+        }
+        if BilanState.has-data: Panel {
+            HorizontalLayout {
+                for s in BilanState.stability: VerticalLayout {
+                    horizontal-stretch: 1;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 12px;
+                    padding-bottom: 12px;
+                    spacing: 2px;
+                    Muted { text: s.label; }
+                    Text {
+                        text: s.value;
+                        color: Theme.ink;
+                        font-family: Theme.display;
+                        font-size: 24px;
+                        font-weight: 600;
+                    }
+                }
+            }
+            for c[i] in BilanState.crashes: VerticalLayout {
+                Rectangle { height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 8px;
+                    padding-bottom: 8px;
+                    spacing: 12px;
+                    Text { text: c.key; color: Theme.ink; wrap: word-wrap; horizontal-stretch: 1; }
+                    Muted { text: c.value; wrap: no-wrap; horizontal-stretch: 0; vertical-alignment: center; }
+                }
+            }
         }
         if BilanState.has-data: SectionHead { title: "Ce PC"; }
         if BilanState.has-data: Panel {
@@ -398,6 +458,7 @@ export component PilotesPage {
 
 export struct Upgrade { id: string, name: string, versions: string }
 export struct HistoryRow { title: string, detail: string }
+export struct InstalledRow { name: string, detail: string, size: string }
 
 export global MajState {
     in-out property <[WuItem]> wu-items;
@@ -413,6 +474,15 @@ export global MajState {
     in-out property <[Measure]> winget-measures;
     in-out property <string> history-error;
     in-out property <[HistoryRow]> history;
+    in-out property <bool> installed-loading;
+    in-out property <string> installed-error;
+    in-out property <string> installed-title: "Logiciels installés";
+    in-out property <[InstalledRow]> installed;
+    in-out property <string> installed-query;
+    in-out property <int> installed-sort: 0;
+    callback installed-filter();
+    callback installed-reload();
+    callback open-apps();
     callback reboot();
     callback wu-search();
     callback wu-install();
@@ -500,6 +570,52 @@ export component MajPage {
                 }
             }
         }
+        SectionHead {
+            title: MajState.installed-title;
+            note: "Lus dans le registre de Windows. La désinstallation se fait dans les réglages de Windows.";
+            Btn {
+                text: "Ouvrir les applications de Windows";
+                icon: Icons.external;
+                clicked => { MajState.open-apps(); }
+            }
+        }
+        if MajState.installed-error != "": Failure {
+            text: MajState.installed-error;
+            retried => { MajState.installed-reload(); }
+        }
+        if MajState.installed-loading: Skeleton { rows: 5; }
+        HorizontalLayout {
+            padding-bottom: 12px;
+            spacing: 12px;
+            alignment: start;
+            SearchField {
+                text <=> MajState.installed-query;
+                placeholder: "Filtrer par nom ou éditeur";
+                edited => { MajState.installed-filter(); }
+            }
+            Segments {
+                Segment { text: "Nom"; pad: 12px; size: 13px; on: MajState.installed-sort == 0; clicked => { MajState.installed-sort = 0; MajState.installed-filter(); } }
+                Segment { text: "Taille"; pad: 12px; size: 13px; on: MajState.installed-sort == 1; clicked => { MajState.installed-sort = 1; MajState.installed-filter(); } }
+                Segment { text: "Date"; pad: 12px; size: 13px; on: MajState.installed-sort == 2; clicked => { MajState.installed-sort = 2; MajState.installed-filter(); } }
+            }
+        }
+        if MajState.installed.length > 0: Panel {
+            for a[i] in MajState.installed: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: a.name; }
+                    Muted { text: a.detail; }
+                }
+                Text {
+                    horizontal-stretch: 0;
+                    text: a.size;
+                    color: Theme.muted;
+                    font-family: Theme.display;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                }
+            }
+        }
     }
 }
 
@@ -511,6 +627,8 @@ export struct CleanRow {
     off: bool,
     checked: bool,
 }
+
+export struct BigFolder { name: string, path: string, size: string, ratio: float }
 
 export global NettoyageState {
     in-out property <bool> loading;
@@ -528,6 +646,12 @@ export global NettoyageState {
     in-out property <string> done-text;
     in-out property <[Measure]> done-measures;
     in-out property <[string]> done-notes;
+    in-out property <bool> largest-loading;
+    in-out property <bool> largest-loaded;
+    in-out property <string> largest-error;
+    in-out property <[BigFolder]> largest;
+    callback measure-largest();
+    callback open-folder(string);
     callback rescan();
     callback clean();
     callback toggle(string);
@@ -651,6 +775,46 @@ export component NettoyagePage {
                 }
             }
         }
+        SectionHead {
+            title: "Ce qui prend le plus de place";
+            note: "Vos dossiers les plus lourds. Nova les mesure sans rien y changer : à vous de décider.";
+            Btn {
+                kind: NettoyageState.largest-loaded ? "" : "primary";
+                enabled: !NettoyageState.largest-loading;
+                text: NettoyageState.largest-loading ? "Mesure…" : NettoyageState.largest-loaded ? "Mesurer à nouveau" : "Mesurer";
+                clicked => { NettoyageState.measure-largest(); }
+            }
+        }
+        if NettoyageState.largest-loading: Elapsed { label: "Nova mesure vos dossiers. Cela peut prendre une minute."; }
+        if NettoyageState.largest-error != "": Failure {
+            text: NettoyageState.largest-error;
+            retried => { NettoyageState.measure-largest(); }
+        }
+        if NettoyageState.largest.length > 0: Panel {
+            for f[i] in NettoyageState.largest: Row {
+                first: i == 0;
+                Grow {
+                    spacing: 4px;
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Strong { text: f.name; horizontal-stretch: 1; }
+                        Text {
+                            horizontal-stretch: 0;
+                            text: f.size;
+                            color: Theme.muted;
+                            font-family: Theme.display;
+                            font-weight: 500;
+                        }
+                    }
+                    Muted { text: f.path; }
+                    Meter { ratio: f.ratio; index: i; }
+                }
+                Btn {
+                    text: "Ouvrir";
+                    clicked => { NettoyageState.open-folder(f.path); }
+                }
+            }
+        }
     }
 }
 
@@ -660,6 +824,7 @@ export struct StartupRow {
     name: string,
     display: string,
     detail: string,
+    path: string,
     missing: bool,
     enabled: bool,
     protected: bool,
@@ -679,6 +844,7 @@ export global DemarrageState {
     in-out property <string> pending;
     callback reload();
     callback toggle(string, string);
+    callback reveal(string);
 }
 
 export component DemarragePage {
@@ -781,6 +947,12 @@ export component DemarragePage {
                         text: "Le programme n'existe plus sur le disque. Cette entrée ne sert à rien.";
                     }
                 }
+                if !s.missing && s.path != "": Btn {
+                    kind: "link";
+                    tint: Theme.muted;
+                    text: "Emplacement";
+                    clicked => { DemarrageState.reveal(s.path); }
+                }
                 if s.protected: Tag {
                     text: "Protégé";
                     icon: Icons.lock;
@@ -802,10 +974,10 @@ export component DemarragePage {
 }
 
 export struct Plan { guid: string, name: string, active: bool }
-export struct Stat { label: string, value: string }
 export struct VolumeRow { letter: string, title: string, detail: string }
 export struct ProcRow { name: string, cpu: string, ram: string, closable: bool, muted: string }
 export struct Probe { role: string, result: string }
+export struct AdapterRow { name: string, detail: string }
 
 export global PerfState {
     in-out property <bool> loading;
@@ -832,6 +1004,7 @@ export global PerfState {
     in-out property <[Probe]> probes;
     in-out property <string> net-busy;
     in-out property <[Measure]> net-measures;
+    in-out property <[AdapterRow]> adapters;
     callback reload();
     callback set-plan(string);
     callback optimize(string);
@@ -1026,6 +1199,16 @@ export component PerfPage {
         if PerfState.net-measures.length > 0: VerticalLayout {
             padding-top: 12px;
             Measures { items: PerfState.net-measures; }
+        }
+        if PerfState.adapters.length > 0: SectionHead { title: "Cartes réseau actives"; }
+        if PerfState.adapters.length > 0: Panel {
+            for a[i] in PerfState.adapters: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: a.name; }
+                    Muted { text: a.detail; }
+                }
+            }
         }
     }
 }

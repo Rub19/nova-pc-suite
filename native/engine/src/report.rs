@@ -578,6 +578,53 @@ pub fn machine_facts(scan: &Scan) -> Vec<(String, String)> {
     facts
 }
 
+pub fn stability_stats(scan: &Scan) -> Vec<(String, String)> {
+    let s = &scan.stability;
+    vec![
+        ("Arrêts brutaux".to_string(), s.unexpected_shutdowns.to_string()),
+        ("Écrans bleus".to_string(), s.blue_screens.to_string()),
+        ("Blocages graphiques".to_string(), s.gpu_hangs.to_string()),
+        ("Plantages d'applications".to_string(), s.app_crashes.to_string()),
+    ]
+}
+
+pub fn crash_lines(scan: &Scan) -> Vec<(String, String)> {
+    let mut lines: Vec<(String, String)> = scan
+        .stability
+        .top_crashes
+        .iter()
+        .map(|c| (c.name.clone(), plural(c.count as u64, "plantage", "plantages")))
+        .collect();
+    for code in &scan.stability.gpu_codes {
+        let name = gpu_code_text(&code.code).map(str::to_string).unwrap_or_else(|| format!("code {}", code.code));
+        lines.push((capitalize(&name), plural(code.count as u64, "blocage graphique", "blocages graphiques")));
+    }
+    lines
+}
+
+fn capitalize(text: &str) -> String {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    }
+}
+
+pub fn volume_usage(volume: &Volume) -> (f64, Level) {
+    if volume.size_bytes <= 0.0 {
+        return (0.0, Level::Ok);
+    }
+    let used = 1.0 - volume.free_bytes / volume.size_bytes;
+    let level = if used > 0.9 {
+        Level::Alert
+    } else if used > 0.8 {
+        Level::Warn
+    } else {
+        Level::Ok
+    };
+    (used.clamp(0.0, 1.0), level)
+}
+
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct ScanMemory {
@@ -703,6 +750,25 @@ mod tests {
         assert!(scan.memory.total_bytes > 0.0);
         assert!(!findings(&scan).is_empty());
         assert!(!machine_facts(&scan).is_empty());
+    }
+
+    #[test]
+    fn crash_details_name_programs_and_graphic_codes() {
+        let mut scan = healthy();
+        scan.stability.top_crashes = vec![NameCount { name: "jeu.exe".into(), count: 3 }];
+        scan.stability.gpu_codes = vec![CodeCount { code: "141".into(), count: 1 }];
+        let lines = crash_lines(&scan);
+        assert_eq!(lines[0], ("jeu.exe".to_string(), "3 plantages".to_string()));
+        assert_eq!(lines[1], ("Moteur graphique bloqué".to_string(), "1 blocage graphique".to_string()));
+    }
+
+    #[test]
+    fn volume_usage_follows_the_same_limits_as_the_findings() {
+        let volume = |free: f64| Volume { size_bytes: 100.0, free_bytes: free, ..Default::default() };
+        assert_eq!(volume_usage(&volume(50.0)), (0.5, Level::Ok));
+        assert_eq!(volume_usage(&volume(15.0)).1, Level::Warn);
+        assert_eq!(volume_usage(&volume(5.0)).1, Level::Alert);
+        assert_eq!(volume_usage(&Volume::default()), (0.0, Level::Ok));
     }
 
     #[test]

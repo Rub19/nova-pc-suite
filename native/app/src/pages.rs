@@ -1,6 +1,6 @@
 use crate::{
-    ask, call, measures_of, model, run_undo, ss, toast, work, App, Ask, BilanState, BootBar, CleanRow,
-    DemarrageState, DriverRow, Fact, FindingRow, HistoryRow, JournalRow, JournalState, MajState,
+    ask, call, measures_of, model, run_undo, ss, toast, work, AdapterRow, App, Ask, BigFolder, BilanState, BootBar, CleanRow,
+    DemarrageState, DiskUse, DriverRow, InstalledRow, Fact, FindingRow, HistoryRow, JournalRow, JournalState, MajState,
     Nova, NettoyageState, PerfState, PilotesState, Plan, Probe, Problem, ProcRow, ReparerState,
     RestoreRow, Stat, StartupRow, Upgrade, Vendor, VolumeRow, WuItem, WuLine, WuState,
 };
@@ -35,6 +35,7 @@ struct State {
     overview: Option<Value>,
     journal: Vec<Value>,
     undone: Vec<i64>,
+    installed: Vec<Value>,
 }
 
 thread_local! {
@@ -63,12 +64,14 @@ pub fn open(ui: &App, page: i32) {
         2 if first => {
             winget_load(ui);
             history_load(ui);
+            installed_load(ui);
         }
         3 if first => nettoyage_load(ui),
         4 if first => demarrage_load(ui),
         5 if first => {
             perf_load(ui);
             procs_load(ui);
+            adapters_load(ui);
         }
         6 if first => reparer_load(ui),
         7 => journal_load(ui),
@@ -163,6 +166,39 @@ fn bilan_show(ui: &App, scan: Scan) {
     state.set_admin_note(!scan.boots.available);
     state.set_facts(model(
         report::machine_facts(&scan)
+            .into_iter()
+            .map(|(key, value)| Fact { key: ss(key), value: ss(value) })
+            .collect(),
+    ));
+    state.set_disks(model(
+        scan.volumes
+            .iter()
+            .map(|v| {
+                let (ratio, level) = report::volume_usage(v);
+                let label = if v.label.is_empty() { String::new() } else { format!(" {}", v.label) };
+                DiskUse {
+                    title: ss(format!("{}{label}", v.drive)),
+                    detail: ss(format!("{} libres sur {}", format_bytes(v.free_bytes), format_bytes(v.size_bytes))),
+                    ratio: ratio as f32,
+                    level: ss(level_name(level)),
+                }
+            })
+            .collect(),
+    ));
+    state.set_stability(model(
+        report::stability_stats(&scan)
+            .into_iter()
+            .map(|(label, value)| Stat { label: ss(label), value: ss(value) })
+            .collect(),
+    ));
+    state.set_last_incident(ss(scan
+        .stability
+        .last_incident
+        .as_deref()
+        .map(|d| format!("Dernier incident système : {}.", format_datetime(d)))
+        .unwrap_or_default()));
+    state.set_crashes(model(
+        report::crash_lines(&scan)
             .into_iter()
             .map(|(key, value)| Fact { key: ss(key), value: ss(value) })
             .collect(),
@@ -535,6 +571,66 @@ fn history_load(ui: &App) {
     });
 }
 
+fn installed_load(ui: &App) {
+    let g = ui.global::<MajState>();
+    g.set_installed_loading(true);
+    g.set_installed_error(ss(""));
+    work(ui, || call("updates", "installed", json!({})), |ui, result| {
+        let g = ui.global::<MajState>();
+        g.set_installed_loading(false);
+        match result {
+            Ok(data) => {
+                with(|s| s.installed = arr(data["items"].clone()));
+                installed_show(&ui);
+            }
+            Err(error) => g.set_installed_error(ss(error)),
+        }
+    });
+}
+
+pub fn filter_installed(list: &[Value], query: &str, sort: i32) -> Vec<Value> {
+    let q = query.trim().to_lowercase();
+    let mut rows: Vec<Value> = list
+        .iter()
+        .filter(|a| {
+            q.is_empty()
+                || format!("{} {}", a["name"].as_str().unwrap_or(""), a["publisher"].as_str().unwrap_or(""))
+                    .to_lowercase()
+                    .contains(&q)
+        })
+        .cloned()
+        .collect();
+    match sort {
+        1 => rows.sort_by(|a, b| b["bytes"].as_f64().unwrap_or(0.0).total_cmp(&a["bytes"].as_f64().unwrap_or(0.0))),
+        2 => rows.sort_by(|a, b| b["date"].as_str().unwrap_or("").cmp(a["date"].as_str().unwrap_or(""))),
+        _ => {}
+    }
+    rows
+}
+
+fn installed_show(ui: &App) {
+    let g = ui.global::<MajState>();
+    let (rows, total) = with(|s| (filter_installed(&s.installed, &g.get_installed_query(), g.get_installed_sort()), s.installed.len()));
+    g.set_installed_title(ss(format!("{} sur ce PC", plural(total as u64, "logiciel installé", "logiciels installés"))));
+    g.set_installed(model(
+        rows.iter()
+            .map(|a| {
+                let parts = [
+                    a["publisher"].as_str().unwrap_or("").to_string(),
+                    a["version"].as_str().filter(|v| !v.is_empty()).map(|v| format!("version {v}")).unwrap_or_default(),
+                    a["date"].as_str().map(|d| format!("installé le {}", format_date(Some(d)))).unwrap_or_default(),
+                ];
+                let bytes = a["bytes"].as_f64().unwrap_or(0.0);
+                InstalledRow {
+                    name: ss(a["name"].as_str().unwrap_or("")),
+                    detail: ss(parts.into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(", ")),
+                    size: ss(if bytes > 0.0 { format_bytes(bytes) } else { String::new() }),
+                }
+            })
+            .collect(),
+    ));
+}
+
 fn upgrade_one(ui: &App, id: &str) {
     let name = with(|s| s.upgrades.iter().find(|u| u["id"].as_str() == Some(id)).and_then(|u| u["name"].as_str()).unwrap_or(id).to_string());
     ui.global::<MajState>().set_queue(ss(name));
@@ -580,6 +676,13 @@ fn wire_maj(ui: &App) {
     bind!(ui, MajState, on_wu_toggle, |ui, id| wu_toggle(ui, 1, &id));
     bind!(ui, MajState, on_winget_reload, |ui| winget_load(ui));
     bind!(ui, MajState, on_history_reload, |ui| history_load(ui));
+    bind!(ui, MajState, on_installed_reload, |ui| installed_load(ui));
+    bind!(ui, MajState, on_installed_filter, |ui| installed_show(ui));
+    bind!(ui, MajState, on_open_apps, |ui| {
+        if let Err(error) = nova_engine::open_windows("apps") {
+            toast(ui, &error, true, None);
+        }
+    });
     bind!(ui, MajState, on_upgrade, |ui, id| upgrade_one(ui, &id));
     bind!(ui, MajState, on_upgrade_all, |ui| {
         let list: Vec<(String, String)> = with(|s| {
@@ -707,7 +810,47 @@ fn nettoyage_totals(ui: &App) {
     });
 }
 
+fn largest_load(ui: &App) {
+    let g = ui.global::<NettoyageState>();
+    g.set_largest_loading(true);
+    g.set_largest_error(ss(""));
+    work(ui, || call("cleanup", "largest", json!({})), |ui, result| {
+        let g = ui.global::<NettoyageState>();
+        g.set_largest_loading(false);
+        match result {
+            Ok(data) => {
+                let items = arr(data["items"].clone());
+                let top = items.iter().filter_map(|i| i["bytes"].as_f64()).fold(1.0, f64::max);
+                g.set_largest(model(
+                    items
+                        .iter()
+                        .map(|i| {
+                            let bytes = i["bytes"].as_f64().unwrap_or(0.0);
+                            BigFolder {
+                                name: ss(i["name"].as_str().unwrap_or("")),
+                                path: ss(i["path"].as_str().unwrap_or("")),
+                                size: ss(format_bytes(bytes)),
+                                ratio: (bytes / top) as f32,
+                            }
+                        })
+                        .collect(),
+                ));
+                g.set_largest_loaded(true);
+            }
+            Err(error) => g.set_largest_error(ss(error)),
+        }
+    });
+}
+
+fn reveal(ui: &App, path: &str) {
+    if let Err(error) = nova_engine::win::reveal(path) {
+        toast(ui, &error, true, None);
+    }
+}
+
 fn wire_nettoyage(ui: &App) {
+    bind!(ui, NettoyageState, on_measure_largest, |ui| largest_load(ui));
+    bind!(ui, NettoyageState, on_open_folder, |ui, path| reveal(ui, &path));
     bind!(ui, NettoyageState, on_rescan, |ui| nettoyage_load(ui));
     bind!(ui, NettoyageState, on_toggle, |ui, id| {
         with(|s| {
@@ -836,6 +979,7 @@ fn startup_row(i: &Value) -> StartupRow {
         name: ss(name),
         display: ss(display),
         detail: ss(parts.join(", ")),
+        path: ss(i["path"].as_str().unwrap_or("")),
         missing: i["exists"] != true,
         enabled: i["enabled"] == true,
         protected: i["protected"] == true,
@@ -875,6 +1019,7 @@ fn show_boots(ui: &App, data: &Value, changes: &[i64]) {
 
 fn wire_demarrage(ui: &App) {
     bind!(ui, DemarrageState, on_reload, |ui| demarrage_load(ui));
+    bind!(ui, DemarrageState, on_reveal, |ui, path| reveal(ui, &path));
     bind!(ui, DemarrageState, on_toggle, |ui, source, name| {
         let enabled = with(|s| {
             s.startup
@@ -993,6 +1138,31 @@ fn procs_load(ui: &App) {
                 g.set_procs_loaded(true);
             }
             Err(error) => g.set_procs_error(ss(error)),
+        }
+    });
+}
+
+fn adapters_load(ui: &App) {
+    work(ui, || call("perf", "adapters", json!({})), |ui, result| {
+        if let Ok(data) = result {
+            ui.global::<PerfState>().set_adapters(model(
+                arr(data["items"].clone())
+                    .iter()
+                    .map(|a| {
+                        let addresses: Vec<String> = arr(a["addresses"].clone()).iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
+                        let parts = [
+                            addresses.into_iter().next().unwrap_or_default(),
+                            a["gateway"].as_str().map(|g| format!("passerelle {g}")).unwrap_or_default(),
+                            a["speed"].as_str().unwrap_or("").to_string(),
+                            a["mac"].as_str().filter(|m| !m.is_empty()).map(|m| format!("MAC {m}")).unwrap_or_default(),
+                        ];
+                        AdapterRow {
+                            name: ss(a["name"].as_str().unwrap_or("")),
+                            detail: ss(parts.into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(", ")),
+                        }
+                    })
+                    .collect(),
+            ));
         }
     });
 }
@@ -1370,6 +1540,19 @@ mod tests {
         assert_eq!(row.size.as_str(), "droits requis");
         let free = json!({"id": "y", "label": "Y", "detail": "d", "bytes": 0, "needsAdmin": false, "blocked": false});
         assert_eq!(clean_row(&free, &[]).size.as_str(), "vide");
+    }
+
+    #[test]
+    fn installed_software_filters_and_sorts() {
+        let list = vec![
+            json!({"name": "Alpha", "publisher": "X", "bytes": 10.0, "date": "2024-01-01"}),
+            json!({"name": "Beta", "publisher": "Yoyo", "bytes": 30.0, "date": "2025-01-01"}),
+        ];
+        let names = |rows: Vec<Value>| rows.iter().map(|r| r["name"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+        assert_eq!(names(filter_installed(&list, "yoyo", 0)), ["Beta"]);
+        assert_eq!(names(filter_installed(&list, "", 1)), ["Beta", "Alpha"]);
+        assert_eq!(names(filter_installed(&list, "", 2)), ["Beta", "Alpha"]);
+        assert_eq!(names(filter_installed(&list, "", 0)), ["Alpha", "Beta"]);
     }
 
     #[test]

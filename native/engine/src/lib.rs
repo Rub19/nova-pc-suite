@@ -55,15 +55,15 @@ pub(crate) fn hold_data_root(path: &Path) -> Result<Vec<fs::File>, String> {
 pub fn policy(module: &str, action: &str) -> Option<bool> {
     match (module, action) {
         ("diag", "scan" | "boots") => Some(false),
-        ("updates", "devices" | "wu-search" | "wu-history" | "winget-list" | "open-vendor") => {
+        ("updates", "devices" | "wu-search" | "wu-history" | "winget-list" | "open-vendor" | "installed") => {
             Some(false)
         }
         ("updates", "wu-install" | "winget-upgrade" | "reboot" | "reboot-cancel") => Some(true),
-        ("cleanup", "scan") => Some(false),
+        ("cleanup", "scan" | "largest") => Some(false),
         ("cleanup", "clean") => Some(true),
         ("startup", "list") => Some(false),
         ("startup", "set") => Some(true),
-        ("perf", "overview" | "processes" | "network-test") => Some(false),
+        ("perf", "overview" | "processes" | "network-test" | "adapters") => Some(false),
         (
             "perf",
             "process-close" | "power-apply" | "volume-optimize" | "hibernate-set" | "dns-flush",
@@ -230,10 +230,12 @@ fn native(module: &str, action: &str, payload: &Value) -> Option<Result<Value, S
         ("updates", "wu-search") => updates::wu_search(payload["kind"].as_str().unwrap_or("")),
         ("updates", "wu-history") => updates::wu_history(),
         ("updates", "winget-list") => updates::winget_list(),
+        ("updates", "installed") => updates::installed(),
         ("startup", "list") => startup::list(),
         ("perf", "overview") => perf::overview(),
         ("perf", "processes") => perf::processes(),
         ("perf", "network-test") => perf::network_test(),
+        ("perf", "adapters") => perf::adapters(),
         ("repair", "open-restore") => win::shell_open(&win::sys32("rstrui.exe"))
             .map(|_| json!({"opened": true})),
         ("repair", "restore-list") if !elevation::is_admin() => {
@@ -247,6 +249,7 @@ pub fn execute(module: &str, action: &str, payload: &Value) -> Result<Value, Str
     if module == "cleanup" {
         return match action {
             "scan" => cleanup::scan(),
+            "largest" => cleanup::largest(),
             "clean" => cleanup::clean(
                 serde_json::from_value(payload["ids"].clone()).map_err(|_| "Sélection invalide")?,
             ),
@@ -363,6 +366,7 @@ pub fn open_windows(target: &str) -> Result<(), String> {
         "windows-update" => "ms-settings:windowsupdate",
         "security" => "windowsdefender:",
         "device-manager" => "devmgmt.msc",
+        "apps" => "ms-settings:appsfeatures",
         _ => return Err("Page Windows inconnue".into()),
     };
     win::shell_open(uri)

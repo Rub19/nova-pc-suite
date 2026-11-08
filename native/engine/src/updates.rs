@@ -194,6 +194,49 @@ pub fn wu_history() -> Result<Value, String> {
     }
 }
 
+fn read_uninstall(hive: &windows_registry::Key, path: &str, list: &mut Vec<Value>) {
+    let Ok(root) = hive.open(path) else { return };
+    let Ok(keys) = root.keys() else { return };
+    for name in keys {
+        let Ok(app) = root.open(&name) else { continue };
+        let display = app.get_string("DisplayName").unwrap_or_default();
+        let hidden = app.get_u32("SystemComponent").unwrap_or(0) == 1
+            || app.get_string("ParentKeyName").is_ok()
+            || app.get_string("ReleaseType").is_ok_and(|r| r.contains("Update") || r.contains("Hotfix"));
+        if display.trim().is_empty() || hidden {
+            continue;
+        }
+        let date = app.get_string("InstallDate").unwrap_or_default();
+        list.push(json!({
+            "name": display.trim(),
+            "version": app.get_string("DisplayVersion").unwrap_or_default(),
+            "publisher": app.get_string("Publisher").unwrap_or_default(),
+            "bytes": app.get_u32("EstimatedSize").unwrap_or(0) as f64 * 1024.0,
+            "date": win::wmi_date(&date),
+        }));
+    }
+}
+
+pub fn dedupe_installed(list: Vec<Value>) -> Vec<Value> {
+    let mut seen = std::collections::HashSet::new();
+    let mut unique: Vec<Value> = list
+        .into_iter()
+        .filter(|a| seen.insert(format!("{}|{}", a["name"].as_str().unwrap_or("").to_lowercase(), a["version"])))
+        .collect();
+    unique.sort_by_key(|a| a["name"].as_str().unwrap_or("").to_lowercase());
+    unique
+}
+
+pub fn installed() -> Result<Value, String> {
+    const KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+    const KEY32: &str = "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+    let mut list = Vec::new();
+    read_uninstall(windows_registry::LOCAL_MACHINE, KEY, &mut list);
+    read_uninstall(windows_registry::LOCAL_MACHINE, KEY32, &mut list);
+    read_uninstall(windows_registry::CURRENT_USER, KEY, &mut list);
+    Ok(json!({"items": dedupe_installed(list)}))
+}
+
 pub fn parse_winget(output: &str) -> Vec<Value> {
     let cleaned = output.replace('\r', "\n");
     let lines: Vec<Vec<char>> = cleaned
@@ -288,6 +331,22 @@ pub fn winget_list() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_real_installed_list_has_names() {
+        let data = installed().unwrap();
+        let items = data["items"].as_array().unwrap();
+        assert!(!items.is_empty());
+        assert!(items.iter().all(|i| !i["name"].as_str().unwrap().is_empty()));
+    }
+
+    #[test]
+    fn installed_software_is_deduplicated_and_sorted() {
+        let list = vec![json!({"name": "b", "version": "1"}), json!({"name": "A", "version": "2"}), json!({"name": "a", "version": "2"})];
+        let done = dedupe_installed(list);
+        assert_eq!(done.len(), 2);
+        assert_eq!(done[0]["name"], "A");
+    }
 
     #[test]
     fn winget_table_is_read_by_columns() {

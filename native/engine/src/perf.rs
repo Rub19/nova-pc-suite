@@ -277,6 +277,49 @@ pub fn processes() -> Result<Value, String> {
     Ok(json!({"items": items}))
 }
 
+pub fn link_speed(bits: f64) -> String {
+    if bits >= 1e9 {
+        format!("{} Gb/s", crate::report::fr_number(bits / 1e9, 1))
+    } else if bits > 0.0 {
+        format!("{} Mb/s", crate::report::fr_number(bits / 1e6, 0))
+    } else {
+        String::new()
+    }
+}
+
+fn strings(row: &win::Row, key: &str) -> Vec<String> {
+    match row.get(key) {
+        Some(win::Variant::Array(list)) => list
+            .iter()
+            .filter_map(|v| match v {
+                win::Variant::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+pub fn adapters() -> Result<Value, String> {
+    let cim = win::wmi_at("ROOT\\CIMV2");
+    let links = query(&cim, "SELECT InterfaceIndex, Speed FROM Win32_NetworkAdapter WHERE NetEnabled = TRUE");
+    let items: Vec<Value> = query(&cim, "SELECT Description, InterfaceIndex, IPAddress, DefaultIPGateway, MACAddress FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE")
+        .iter()
+        .map(|a| {
+            let index = number(a, "InterfaceIndex");
+            let speed = links.iter().find(|l| number(l, "InterfaceIndex") == index).and_then(|l| number(l, "Speed")).unwrap_or(0.0);
+            json!({
+                "name": text(a, "Description"),
+                "addresses": strings(a, "IPAddress"),
+                "gateway": strings(a, "DefaultIPGateway").into_iter().next(),
+                "mac": text(a, "MACAddress"),
+                "speed": link_speed(speed),
+            })
+        })
+        .collect();
+    Ok(json!({"items": items}))
+}
+
 fn ping(target: std::net::Ipv4Addr, role: &str) -> Value {
     let address = u32::from_ne_bytes(target.octets());
     let mut times = Vec::new();
@@ -360,6 +403,21 @@ pub fn network_test() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn real_adapters_are_listed_with_addresses() {
+        let data = adapters().unwrap();
+        let items = data["items"].as_array().unwrap();
+        assert!(!items.is_empty());
+        assert!(items.iter().any(|a| !a["addresses"].as_array().unwrap().is_empty()));
+    }
+
+    #[test]
+    fn link_speeds_read_in_french() {
+        assert_eq!(link_speed(2.5e9), "2,5 Gb/s");
+        assert_eq!(link_speed(100e6), "100 Mb/s");
+        assert_eq!(link_speed(0.0), "");
+    }
 
     #[test]
     fn windows_processes_stay_closed() {

@@ -70,6 +70,23 @@ pub fn shell_open(target: &str) -> Result<(), String> {
     }
 }
 
+pub fn reveal(path: &str) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    let target = std::path::Path::new(path);
+    if !target.is_absolute() || !target.exists() {
+        return Err("Cet emplacement n'existe plus.".into());
+    }
+    if target.is_dir() {
+        return shell_open(path);
+    }
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".into());
+    std::process::Command::new(format!("{root}\\explorer.exe"))
+        .raw_arg(format!("/select,\"{path}\""))
+        .spawn()
+        .map(|_| ())
+        .map_err(|_| "Windows n'a pas pu ouvrir cet emplacement.".to_string())
+}
+
 pub fn wmi_at(namespace: &str) -> Option<WMIConnection> {
     com();
     WMIConnection::with_namespace_path(namespace).ok()

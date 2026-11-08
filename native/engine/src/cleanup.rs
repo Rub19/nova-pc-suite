@@ -343,6 +343,52 @@ pub fn scan() -> Result<Value, String> {
     Ok(json!({"ok": true, "data": {"items": items, "freeBytes": free_bytes(&system_drive())}}))
 }
 
+pub fn folders_to_measure(profile: &Path, local: &Path, roaming: &Path) -> Vec<PathBuf> {
+    let app_data = profile.join("AppData");
+    let mut list: Vec<PathBuf> = subdirs(profile).into_iter().filter(|p| *p != app_data).collect();
+    list.extend(subdirs(local));
+    list.extend(subdirs(roaming));
+    list
+}
+
+fn measure_many(folders: Vec<PathBuf>) -> Vec<(PathBuf, u64)> {
+    let queue = std::sync::Mutex::new(folders);
+    let found = std::sync::Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..4 {
+            scope.spawn(|| loop {
+                let next = queue.lock().unwrap_or_else(|e| e.into_inner()).pop();
+                let Some(folder) = next else { break };
+                let mut tally = Tally::default();
+                walk(&folder, None, Duration::ZERO, false, &mut tally);
+                found.lock().unwrap_or_else(|e| e.into_inner()).push((folder, tally.bytes));
+            });
+        }
+    });
+    found.into_inner().unwrap_or_else(|e| e.into_inner())
+}
+
+pub fn largest() -> Result<Value, String> {
+    let (Some(profile), Some(local), Some(roaming)) = (env_path("USERPROFILE"), env_path("LOCALAPPDATA"), env_path("APPDATA")) else {
+        return Err("Dossier utilisateur introuvable.".into());
+    };
+    let mut sized = measure_many(folders_to_measure(&profile, &local, &roaming));
+    sized.sort_by(|a, b| b.1.cmp(&a.1));
+    sized.truncate(15);
+    let items: Vec<Value> = sized
+        .into_iter()
+        .filter(|(_, bytes)| *bytes > 0)
+        .map(|(path, bytes)| {
+            json!({
+                "name": path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+                "path": path.to_string_lossy(),
+                "bytes": bytes,
+            })
+        })
+        .collect();
+    Ok(json!({"items": items}))
+}
+
 pub fn clean(ids: Vec<String>) -> Result<Value, String> {
     if ids.is_empty() || ids.len() > 16 {
         return Err("Sélection invalide".into());
@@ -397,6 +443,25 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(root.join("sub")).unwrap();
         root
+    }
+
+    #[test]
+    fn largest_measures_folders_without_touching_them_or_counting_appdata_twice() {
+        let root = fixture("largest");
+        fs::create_dir_all(root.join("AppData").join("Local").join("App")).unwrap();
+        fs::create_dir_all(root.join("AppData").join("Roaming")).unwrap();
+        fs::write(root.join("sub").join("a.bin"), b"123456").unwrap();
+        let local = root.join("AppData").join("Local");
+        let roaming = root.join("AppData").join("Roaming");
+        fs::write(local.join("App").join("b.bin"), b"12").unwrap();
+        let folders = folders_to_measure(&root, &local, &roaming);
+        assert!(!folders.contains(&root.join("AppData")));
+        let mut sized = measure_many(folders);
+        sized.sort_by(|a, b| b.1.cmp(&a.1));
+        assert_eq!(sized[0], (root.join("sub"), 6));
+        assert_eq!(sized[1], (local.join("App"), 2));
+        assert!(root.join("sub").join("a.bin").exists());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
