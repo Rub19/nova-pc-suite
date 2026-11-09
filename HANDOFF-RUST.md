@@ -30,3 +30,8 @@ Dépôt `C:\Claude\nova-rust`, branche `rust-natif`. Code natif dans `native/` :
 cargo test --workspace -j 3
 powershell -NoProfile -ExecutionPolicy Bypass -File release.ps1
 ```
+
+## Parcours de bout en bout (événements Slint)
+
+`powershell -File native/e2e/run.ps1` compile avec la fonction `e2e` (absente des builds installés) et rejoue `native/e2e/nova.txt` hors écran : clics par libellé accessible ou texte affiché, frappe touche par touche, raccourcis, vérifications, capture à chaque échec. Journal et captures dans `%TEMP%`. 41 étapes sans aucune fenêtre (rendu headless) : les 8 écrans, filtres, Ctrl+1 à 8, À propos, sans rien modifier sur le PC. Bugs trouvés et corrigés : raccourcis morts après une saisie puis un changement de page, version 0.3.0 dans À propos.
+Limite : un élément coupé par le clip d'un parent compte encore comme visible.
