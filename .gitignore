@@ -18,3 +18,4 @@ Desktop.ini
 outputs/
 work/
 src-tauri/gen/
+native/release/
