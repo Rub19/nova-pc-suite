@@ -14,15 +14,15 @@ Dépôt `C:\Claude\nova-rust`, branche `rust-natif`. Code natif dans `native/` :
 - « Plus gros dossiers » corrigé : le moteur renvoyait le résultat sans l'enveloppe `ok`, l'écran l'affichait comme une erreur.
 - Installeur Rust/Slint (`native/setup`), modèle d'Ethone, Argus et Kairo : accueil ou mise à jour, progression, terminé, erreur avec Réessayer, désinstallation, raccourci bureau, lancement avec Windows, `/S`, `/P /UPDATE /R /ARGS`. Il remplace Nova Tauri sur place : même dossier `%LOCALAPPDATA%\Nova PC Suite`, même nom `nova-pc-suite.exe`, même clé `Uninstall\Nova PC Suite`. Il range l'ancien raccourci du dossier `Nova PC Suite` du menu Démarrer et la clé Tauri `Software\github\Nova PC Suite`. La désinstallation retire aussi l'audit planifié, avec les mêmes garde-fous que `scripts/uninstall-task.ps1`.
 - Essayé en dossier de test (`NOVA_SETUP_TEST=<dossier>`, plus `NOVA_SETUP_SNAP` ou `NOVA_SETUP_OFFSCREEN`) sur une fausse installation Tauri 0.3.0 : passage au natif, mise à jour passive, silencieuse, désinstallation ; captures des écrans vérifiées.
-- Version 0.4.0. Dernier installeur : `native\release\Nova-PC-Suite_0.4.0_x64-setup.exe`, 16,1 Mo, SHA-256 `70750DA87FF9F5AE9A7E9564358693E24D9CF388EB862909F28E1B5FDFD2295B`. Installé et désinstallé en silencieux dans un dossier de test, exe identique.
+- Version 0.4.0. Dernier installeur : `native\release\Nova-PC-Suite_0.4.0_x64-setup.exe`, 16,1 Mo, SHA-256 `85633746D79AA8683600521FCB9B4CCD070DA5CE28BBED43A815017A323AF969` (recompilé le 9 novembre avec l'étiquette « Protégé : sécurité »). Installé et désinstallé en silencieux dans un dossier de test, exe identique.
 
 ## Pas vérifié
 - Installation réelle, retrait réel de la tâche planifiée, icônes dans le menu Démarrer et la barre des tâches.
-- Pas de fichier de parité détaillé Tauri contre natif.
+- Fichier de parité : `docs/RUST_PARITY.md`, fait le 9 novembre. Tous les appels au moteur, titres et boutons de Tauri se retrouvent dans le natif ; visite hors écran refaite sur les 8 écrans.
 
 ## Reste à faire
 1. Essais de Rub19 : lancer `native\release\Nova-PC-Suite_0.4.0_x64-setup.exe`, puis les 8 écrans à la souris.
-2. Fichier de parité écran par écran, motion et nouvelles fonctions.
+2. Fait : fichier de parité. Reste : motion à relire.
 3. Après son OK : retirer Tauri sur la branche, adapter `.github` et la publication.
 
 ## Commandes (dans `native/`)
