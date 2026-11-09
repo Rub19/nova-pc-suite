@@ -249,7 +249,7 @@ pub fn execute(module: &str, action: &str, payload: &Value) -> Result<Value, Str
     if module == "cleanup" {
         return match action {
             "scan" => cleanup::scan(),
-            "largest" => cleanup::largest(),
+            "largest" => cleanup::largest().map(|data| json!({"ok": true, "data": data})),
             "clean" => cleanup::clean(
                 serde_json::from_value(payload["ids"].clone()).map_err(|_| "Sélection invalide")?,
             ),

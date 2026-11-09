@@ -1,7 +1,7 @@
 use crate::{App, BilanState, DemarrageState, MajState, NettoyageState, Nova, PerfState, PilotesState, ReparerState};
 use slint::{
-    platform::{Key, WindowEvent},
-    ComponentHandle, LogicalSize, SharedString, Timer, TimerMode,
+    platform::{Key, PointerEventButton, WindowEvent},
+    ComponentHandle, LogicalPosition, LogicalSize, PhysicalPosition, SharedString, Timer, TimerMode,
 };
 use std::{cell::Cell, fs::File, io::BufWriter, path::PathBuf, rc::Rc, time::{Duration, Instant}};
 
@@ -28,6 +28,15 @@ fn press(ui: &App, text: &str) {
     window.dispatch_event(WindowEvent::KeyReleased { text: control });
 }
 
+fn click(ui: &App, x: f32, y: f32) {
+    let position = LogicalPosition::new(x, y);
+    let window = ui.window();
+    window.dispatch_event(WindowEvent::PointerMoved { position });
+    window.dispatch_event(WindowEvent::PointerPressed { position, button: PointerEventButton::Left });
+    window.dispatch_event(WindowEvent::PointerReleased { position, button: PointerEventButton::Left });
+    window.dispatch_event(WindowEvent::PointerExited);
+}
+
 fn idle(ui: &App, page: i32) -> bool {
     match page {
         0 => !ui.global::<BilanState>().get_loading(),
@@ -45,6 +54,9 @@ pub fn start(ui: &App, dir: PathBuf) {
     let _ = std::fs::create_dir_all(&dir);
     let tall: f32 = std::env::var("NOVA_TOUR_HEIGHT").ok().and_then(|v| v.parse().ok()).unwrap_or(2200.0);
     ui.window().set_size(LogicalSize::new(1180.0, 780.0));
+    if std::env::var_os("NOVA_OFFSCREEN").is_some() {
+        ui.window().set_position(PhysicalPosition::new(-6000, -6000));
+    }
     let _ = ui.show();
     let step = Rc::new(Cell::new(0u32));
     let page = Rc::new(Cell::new(0i32));
@@ -98,6 +110,13 @@ pub fn start(ui: &App, dir: PathBuf) {
                 }
             }
             4 => {
+                click(&ui, 100.0, 80.0);
+                println!("clic sur Bilan : {}", if ui.global::<Nova>().get_page() == 0 { "ok" } else { "ÉCHEC" });
+                click(&ui, 100.0, 332.0);
+                println!("clic sur Journal : {}", if ui.global::<Nova>().get_page() == 7 { "ok" } else { "ÉCHEC" });
+                press(&ui, "é");
+                println!("Ctrl+é : {}", if ui.global::<Nova>().get_page() == 1 { "ok" } else { "ÉCHEC" });
+                press(&ui, "8");
                 crate::toast(&ui, "Message de test de la visite", false, None);
                 crate::ask(
                     &ui,

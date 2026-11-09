@@ -785,7 +785,7 @@ export component NettoyagePage {
                 clicked => { NettoyageState.measure-largest(); }
             }
         }
-        if NettoyageState.largest-loading: Elapsed { label: "Nova mesure vos dossiers. Cela peut prendre une minute."; }
+        if NettoyageState.largest-loading: Elapsed { label: "Nova mesure vos dossiers. Cela peut prendre quelques minutes."; }
         if NettoyageState.largest-error != "": Failure {
             text: NettoyageState.largest-error;
             retried => { NettoyageState.measure-largest(); }
