@@ -1,0 +1,51 @@
+# Parcours de Nova par événements Slint, sans rien modifier sur le PC
+wait 4000
+expect Nova
+snap 01-bilan
+
+click Pilotes (Ctrl+2)
+waitfor Pilotes installés|60000
+type Filtrer par nom, fabricant, version|zzzz-introuvable
+snap 02-pilotes-filtre
+type Filtrer par nom, fabricant, version|
+expect Sites des fabricants de ce PC
+
+click Mises à jour (Ctrl+3)
+expect Windows
+expect Logiciels
+
+click Nettoyage (Ctrl+4)
+expect Nettoyage
+
+click Démarrage (Ctrl+5)
+wait 2000
+expect programmes lancés au démarrage
+snap 03-demarrage
+
+click Performances (Ctrl+6)
+wait 2000
+expect Mode d'alimentation
+expect Ce qui occupe le PC en ce moment
+
+click Réparer (Ctrl+7)
+expect Vérifications
+expect Points de restauration
+
+click Journal (Ctrl+8)
+expect Journal
+click Échecs
+click Annulables
+click Tout
+snap 04-journal
+
+key Ctrl+1
+expect Ce qui va bien
+key Ctrl+6
+expect Mode d'alimentation
+key Ctrl+8
+expect Journal
+
+click À propos
+expect Version 0.4.0, native en Rust
+snap 05-apropos
+key Escape

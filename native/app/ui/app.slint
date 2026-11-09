@@ -23,6 +23,7 @@ export struct ToastItem {
 export struct License { title: string, text: string }
 
 export global Nova {
+    in-out property <string> version;
     in-out property <int> page: 0;
     in-out property <int> issues: 0;
     in-out property <[ToastItem]> toasts;
@@ -572,7 +573,7 @@ export component App inherits Window {
             font-size: 20px;
             font-weight: 600;
         }
-        Muted { text: "Version 0.3.0, native en Rust. Licence MIT. Entretien et réparation de Windows 10 et 11."; }
+        Muted { text: "Version " + Nova.version + ", native en Rust. Licence MIT. Entretien et réparation de Windows 10 et 11."; }
         AboutSlint { height: 180px; }
         HorizontalLayout {
             alignment: end;

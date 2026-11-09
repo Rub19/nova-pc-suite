@@ -9,6 +9,8 @@ slint::include_modules!();
 
 #[cfg(feature = "headless")]
 mod headless;
+#[cfg(feature = "e2e")]
+mod e2e;
 mod pages;
 mod tour;
 
@@ -318,6 +320,7 @@ fn wire_shell(ui: &App) {
     nova.on_go(move |page| {
         if let Some(ui) = weak.upgrade() {
             pages::open(&ui, page);
+            ui.invoke_restore_focus();
         }
     });
     let weak = ui.as_weak();
@@ -366,11 +369,12 @@ fn main() {
         return;
     }
     let tour_dir = std::env::var_os("NOVA_TOUR").map(std::path::PathBuf::from);
+    let e2e = cfg!(feature = "e2e") && std::env::var_os("NOVA_E2E").is_some();
     let replacement = match elevation::requested_token() {
         Ok(token) => token.is_some() && elevation::is_admin(),
         Err(_) => return,
     };
-    let _instance = if tour_dir.is_some() && cfg!(feature = "headless") {
+    let _instance = if (tour_dir.is_some() || e2e) && cfg!(feature = "headless") {
         None
     } else {
         match elevation::Instance::acquire(replacement) {
@@ -386,6 +390,7 @@ fn main() {
             return;
         }
     }
+    ui.global::<Nova>().set_version(env!("CARGO_PKG_VERSION").into());
     wire_shell(&ui);
     pages::wire(&ui);
     let start = report::PAGES
@@ -396,6 +401,16 @@ fn main() {
     ui.invoke_restore_focus();
     if let Some(dir) = tour_dir {
         tour::start(&ui, dir);
+    }
+    #[cfg(feature = "e2e")]
+    if e2e {
+        ui.window().set_size(slint::LogicalSize::new(1180.0, 780.0));
+        let _ = ui.show();
+        e2e::start(&ui, "NOVA", std::rc::Rc::new(|ui: &App, name: &str| {
+            if let Some(dir) = std::env::var_os("NOVA_E2E_SNAP") {
+                tour::snap(ui, std::path::PathBuf::from(dir).join(format!("{name}.png")));
+            }
+        }));
     }
     ui.run().expect("Impossible de démarrer Nova");
 }

@@ -2806,6 +2806,7 @@ dependencies = [
 name = "nova-native"
 version = "0.4.0"
 dependencies = [
+ "i-slint-backend-testing",
  "nova-engine",
  "png",
  "serde_json",

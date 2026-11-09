@@ -5,7 +5,7 @@ use slint::{
 };
 use std::{cell::Cell, fs::File, io::BufWriter, path::PathBuf, rc::Rc, time::{Duration, Instant}};
 
-fn snap(ui: &App, path: PathBuf) {
+pub fn snap(ui: &App, path: PathBuf) {
     let Ok(shot) = ui.window().take_snapshot() else {
         println!("capture impossible : {}", path.display());
         return;
