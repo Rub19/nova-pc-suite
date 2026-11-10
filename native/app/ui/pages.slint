@@ -1115,8 +1115,11 @@ export global PerfState {
     in-out property <string> net-error;
     in-out property <[Probe]> probes;
     in-out property <bool> speed-loading;
+    in-out property <[Probe]> failed-services;
+    in-out property <bool> services-checked;
     in-out property <string> speed-result;
     callback speed-test();
+    callback open-services();
     in-out property <string> net-busy;
     in-out property <[Measure]> net-measures;
     in-out property <[AdapterRow]> adapters;
@@ -1203,6 +1206,24 @@ export component PerfPage {
             }
         }
         if PerfState.speed-result != "": Note { text: PerfState.speed-result; }
+        if PerfState.services-checked: SectionHead {
+            title: "Services arrêtés en erreur";
+            note: "Services prévus au démarrage de Windows, arrêtés avec un code d'erreur.";
+            Btn {
+                text: "Ouvrir les services";
+                clicked => { PerfState.open-services(); }
+            }
+        }
+        if PerfState.services-checked && PerfState.failed-services.length == 0: Note { text: "Aucun : tous les services automatiques se sont arrêtés normalement ou tournent."; }
+        if PerfState.failed-services.length > 0: Panel {
+            for p[i] in PerfState.failed-services: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: p.role; }
+                    Muted { text: p.result; }
+                }
+            }
+        }
         if PerfState.has-data: Panel {
             for v[i] in PerfState.volumes: Row {
                 first: i == 0;
@@ -1357,6 +1378,7 @@ export global ReparerState {
         { title: "Image de Windows", detail: "La copie de référence dont Windows se sert pour se réparer. Durée : 10 à 30 minutes.", check: "dism-check", check-label: "Analyser", repair: "dism-repair", time: "10 à 30 minutes" },
         { title: "Fichiers système", detail: "Compare les fichiers de Windows à leur version d'origine. Durée : 5 à 15 minutes.", check: "sfc-check", check-label: "Vérifier", repair: "sfc-repair", time: "5 à 15 minutes" },
         { title: "Disque système", detail: "Cherche les erreurs du système de fichiers, sans arrêter le PC. Durée : quelques minutes.", check: "chkdsk-scan", check-label: "Analyser", repair: "", time: "quelques minutes" },
+        { title: "Réseau", detail: "Remet à zéro Winsock et TCP/IP quand Internet ne marche plus alors que le réseau est connecté. Un redémarrage termine l'opération.", check: "", check-label: "", repair: "network-reset", time: "quelques secondes" },
     ];
     callback check(string, string);
     callback repair(string, string, string);
@@ -1414,7 +1436,7 @@ export component ReparerPage {
                     Strong { text: t.title; }
                     Muted { text: t.detail; }
                 }
-                AdminBtn {
+                if t.check != "": AdminBtn {
                     enabled: !ReparerState.busy;
                     text: t.check-label;
                     clicked => { ReparerState.check(t.check, t.title); }

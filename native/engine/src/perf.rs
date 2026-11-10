@@ -374,6 +374,18 @@ fn gateway() -> Option<std::net::Ipv4Addr> {
     (!hop.is_unspecified()).then_some(hop)
 }
 
+pub fn failed_services() -> Result<Value, String> {
+    let cim = win::wmi_at("ROOT\\CIMV2");
+    if cim.is_none() {
+        return Err("Windows n'a pas répondu à la lecture des services.".into());
+    }
+    let list: Vec<Value> = win::query(&cim, "SELECT Name, DisplayName, ExitCode FROM Win32_Service WHERE StartMode = 'Auto' AND State = 'Stopped' AND ExitCode <> 0")
+        .iter()
+        .map(|s| json!({"name": win::text(s, "Name"), "display": win::text(s, "DisplayName"), "code": win::number(s, "ExitCode").unwrap_or(0.0) as i64}))
+        .collect();
+    Ok(json!({"items": list}))
+}
+
 pub fn disk_speed() -> Result<Value, String> {
     use std::io::{Read, Write};
     use std::os::windows::fs::OpenOptionsExt;
@@ -443,6 +455,14 @@ pub fn network_test() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn failed_services_are_read() {
+        let data = failed_services().unwrap();
+        let items = data["items"].as_array().unwrap();
+        assert!(items.iter().all(|s| s["code"].as_i64() != Some(0) && !s["name"].as_str().unwrap().is_empty()));
+        println!("services en erreur : {}", items.len());
+    }
 
     #[test]
     fn the_disk_speed_test_cleans_up_after_itself() {

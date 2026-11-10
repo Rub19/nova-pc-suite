@@ -68,6 +68,13 @@ function Invoke-Module([string]$Action) {
             if ($run.exitCode -ne 0) { throw "DISM a échoué (code $($run.exitCode)). $(@($run.tail) -join ' ')" }
             @{ summary = 'Anciens composants Windows supprimés'; output = @($run.tail); verdict = 'ok'; measures = @(@{ label = "Espace libre sur $env:SystemDrive"; before = $free; after = (Get-FreeBytes); unit = 'bytes' }) }
         }
+        'network-reset' {
+            Require-Admin
+            $winsock = Invoke-Native 'netsh.exe' @('winsock', 'reset')
+            $ip = Invoke-Native 'netsh.exe' @('int', 'ip', 'reset')
+            if ($winsock.exitCode -ne 0) { throw "La réinitialisation de Winsock a échoué (code $($winsock.exitCode))." }
+            @{ summary = 'Réseau réinitialisé : redémarrez le PC pour terminer'; output = @($winsock.tail) + @($ip.tail); verdict = 'ok'; measures = @() }
+        }
         default { throw 'Action inconnue' }
     }
 }

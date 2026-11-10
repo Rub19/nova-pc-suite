@@ -77,11 +77,11 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [~] 2. Doublons dans Téléchargements (même taille et même contenu) : section « Doublons dans Téléchargements » de Nettoyage : même taille puis même contenu, à partir de 1 Mo, lecture seule (tests files_are_sorted_by_kind_age_and_content, identical_files_have_the_same_fingerprint) ; lu sur ce PC en 2,5 s (5 groupes), écran pas encore vu
 - [~] 3. Vieux gros fichiers dans Téléchargements : section « Vieux gros fichiers dans Téléchargements » : plus de 100 Mo et 90 jours ; lu sur ce PC (2 fichiers), écran pas encore vu
 - [~] 4. Place prise par type de fichier dans le profil (vidéos, images, archives, installeurs) : section « Vos fichiers par type » : Bureau, Documents, Images, Vidéos, Musique, Téléchargements ; écran pas encore vu
-- [ ] 5. Réinitialiser la pile réseau (Winsock), en administrateur
+- [~] 5. Réinitialiser la pile réseau (Winsock), en administrateur : ligne « Réseau » dans Réparer : netsh winsock reset et int ip reset en administrateur, journalisé, redémarrage demandé ; pas lancé depuis Claude (modifie le PC)
 - [~] 6. Santé de la batterie (capacité d'origine et actuelle) : dans le bilan : capacité d'origine et actuelle (WMI), alerte sous 60 % (test battery_bitlocker_and_wifi_show_in_the_report) ; pas encore vu sur ce PC
 - [~] 7. BitLocker : état du chiffrement de chaque disque : ligne « BitLocker » de « Ce PC » (lisible en administrateur) ; pas encore vu sur ce PC
 - [~] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows : « Thème » dans À propos : Comme Windows, Clair, Sombre, gardé dans theme.txt ; écran pas encore vu
-- [ ] 9. Services en démarrage automatique arrêtés
+- [~] 9. Services en démarrage automatique arrêtés : section « Services arrêtés en erreur » dans Performances (démarrage automatique, arrêtés avec un code d'erreur), lue sur ce PC : aucun (test failed_services_are_read) ; écran pas encore vu
 - [ ] 10. Tâches planifiées de logiciels tiers, avec désactivation
 - [ ] 11. Désinstaller un logiciel depuis la liste des logiciels installés
 - [~] 12. Historique du bilan : nombre de points à traiter dans le temps : ligne « Points à traiter au fil des analyses » sous la date du bilan, 30 analyses gardées (test the_history_keeps_thirty_scans) ; écran pas encore vu

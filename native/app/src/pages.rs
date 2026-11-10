@@ -73,6 +73,7 @@ pub fn open(ui: &App, page: i32) {
             perf_load(ui);
             procs_load(ui);
             adapters_load(ui);
+            services_load(ui);
         }
         6 if first => reparer_load(ui),
         7 => journal_load(ui),
@@ -1268,7 +1269,22 @@ fn net_test(ui: &App) {
     });
 }
 
+fn services_load(ui: &App) {
+    work(ui, || call("perf", "failed-services", json!({})), |ui, result| {
+        let g = ui.global::<PerfState>();
+        if let Ok(data) = result {
+            g.set_failed_services(model(arr(data["items"].clone()).iter().map(|s| Probe { role: ss(s["display"].as_str().unwrap_or("")), result: ss(format!("{} · code {}", s["name"].as_str().unwrap_or(""), s["code"].as_i64().unwrap_or(0))) }).collect()));
+            g.set_services_checked(true);
+        }
+    });
+}
+
 fn wire_perf(ui: &App) {
+    bind!(ui, PerfState, on_open_services, |ui| {
+        if let Err(error) = nova_engine::open_windows("services") {
+            toast(ui, &error, true, None);
+        }
+    });
     bind!(ui, PerfState, on_speed_test, |ui| {
         ui.global::<PerfState>().set_speed_loading(true);
         work(ui, || call("perf", "disk-speed", json!({})), |ui, result| {
