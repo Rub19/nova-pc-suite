@@ -83,7 +83,7 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [~] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows : « Thème » dans À propos : Comme Windows, Clair, Sombre, gardé dans theme.txt ; écran pas encore vu
 - [~] 9. Services en démarrage automatique arrêtés : section « Services arrêtés en erreur » dans Performances (démarrage automatique, arrêtés avec un code d'erreur), lue sur ce PC : aucun (test failed_services_are_read) ; écran pas encore vu
 - [~] 10. Tâches planifiées de logiciels tiers, avec désactivation : section « Tâches planifiées des logiciels » dans Démarrage : tâches hors Microsoft lancées à heure fixe ou sur un événement, avec l'interrupteur existant (test native_startup_matches_powershell adapté) ; écran pas encore vu
-- [ ] 11. Désinstaller un logiciel depuis la liste des logiciels installés
+- [~] 11. Désinstaller un logiciel depuis la liste des logiciels installés : lien « Désinstaller » sur chaque logiciel installé : confirmation, puis Nova ouvre le désinstalleur lu dans le registre à partir d'un identifiant (jamais une commande venue de l'écran), journalisé (test uninstall_commands_are_split_like_windows) ; jamais lancé depuis Claude
 - [~] 12. Historique du bilan : nombre de points à traiter dans le temps : ligne « Points à traiter au fil des analyses » sous la date du bilan, 30 analyses gardées (test the_history_keeps_thirty_scans) ; écran pas encore vu
 - [~] 13. Export du bilan dans un fichier texte : bouton « Enregistrer » du bilan : fichier Nova-bilan-date.txt dans Documents, montré dans l'Explorateur (test report_files_are_named_by_date) ; pas encore essayé
 - [ ] 14. Nettoyage planifié (chaque semaine), désactivable

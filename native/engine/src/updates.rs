@@ -194,7 +194,7 @@ pub fn wu_history() -> Result<Value, String> {
     }
 }
 
-fn read_uninstall(hive: &windows_registry::Key, path: &str, list: &mut Vec<Value>) {
+fn read_uninstall(hive: &windows_registry::Key, path: &str, tag: &str, list: &mut Vec<Value>) {
     let Ok(root) = hive.open(path) else { return };
     let Ok(keys) = root.keys() else { return };
     for name in keys {
@@ -213,6 +213,8 @@ fn read_uninstall(hive: &windows_registry::Key, path: &str, list: &mut Vec<Value
             "publisher": app.get_string("Publisher").unwrap_or_default(),
             "bytes": app.get_u32("EstimatedSize").unwrap_or(0) as f64 * 1024.0,
             "date": win::wmi_date(&date),
+            "id": format!("{tag}|{name}"),
+            "removable": app.get_string("UninstallString").is_ok_and(|command| !command.trim().is_empty()),
         }));
     }
 }
@@ -231,10 +233,42 @@ pub fn installed() -> Result<Value, String> {
     const KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
     const KEY32: &str = "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
     let mut list = Vec::new();
-    read_uninstall(windows_registry::LOCAL_MACHINE, KEY, &mut list);
-    read_uninstall(windows_registry::LOCAL_MACHINE, KEY32, &mut list);
-    read_uninstall(windows_registry::CURRENT_USER, KEY, &mut list);
+    read_uninstall(windows_registry::LOCAL_MACHINE, KEY, "hklm", &mut list);
+    read_uninstall(windows_registry::LOCAL_MACHINE, KEY32, "hklm32", &mut list);
+    read_uninstall(windows_registry::CURRENT_USER, KEY, "hkcu", &mut list);
     Ok(json!({"items": dedupe_installed(list)}))
+}
+
+pub fn split_command(command: &str) -> Option<(String, String)> {
+    let command = command.trim();
+    if let Some(rest) = command.strip_prefix('"') {
+        let end = rest.find('"')?;
+        return Some((rest[..end].to_string(), rest[end + 1..].trim().to_string()));
+    }
+    let lower = command.to_lowercase();
+    let cut = lower.find(".exe").map(|index| index + 4).unwrap_or(command.len());
+    let (exe, args) = command.split_at(cut);
+    (!exe.trim().is_empty()).then(|| (exe.trim().to_string(), args.trim().to_string()))
+}
+
+pub fn uninstall(id: &str) -> Result<Value, String> {
+    use std::os::windows::process::CommandExt;
+    let (tag, name) = id.split_once('|').ok_or("Logiciel inconnu.")?;
+    if name.is_empty() || name.contains(['\\', '/']) {
+        return Err("Logiciel inconnu.".into());
+    }
+    let (hive, path) = match tag {
+        "hklm" => (windows_registry::LOCAL_MACHINE, "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+        "hklm32" => (windows_registry::LOCAL_MACHINE, "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+        "hkcu" => (windows_registry::CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+        _ => return Err("Logiciel inconnu.".into()),
+    };
+    let app = hive.open(path).and_then(|root| root.open(name)).map_err(|_| "Ce logiciel n'est plus installé.")?;
+    let display = app.get_string("DisplayName").unwrap_or_else(|_| name.to_string());
+    let command = app.get_string("UninstallString").map_err(|_| "Ce logiciel ne propose pas de désinstallation.")?;
+    let (exe, args) = split_command(&command).ok_or("Commande de désinstallation illisible.")?;
+    std::process::Command::new(&exe).raw_arg(&args).spawn().map_err(|error| format!("Le désinstalleur n'a pas pu démarrer : {error}"))?;
+    Ok(json!({"summary": format!("Désinstalleur de {} ouvert : suivez ses étapes.", display.trim()), "measures": []}))
 }
 
 pub fn parse_winget(output: &str) -> Vec<Value> {
@@ -338,6 +372,16 @@ mod tests {
         let items = data["items"].as_array().unwrap();
         assert!(!items.is_empty());
         assert!(items.iter().all(|i| !i["name"].as_str().unwrap().is_empty()));
+    }
+
+    #[test]
+    fn uninstall_commands_are_split_like_windows() {
+        assert_eq!(split_command(r#""C:\Program Files\App\unins000.exe" /SILENT"#), Some((r"C:\Program Files\App\unins000.exe".to_string(), "/SILENT".to_string())));
+        assert_eq!(split_command("MsiExec.exe /X{1234-5678}"), Some(("MsiExec.exe".to_string(), "/X{1234-5678}".to_string())));
+        assert_eq!(split_command(r"C:\Tools\remove.exe"), Some((r"C:\Tools\remove.exe".to_string(), String::new())));
+        assert_eq!(split_command("   "), None);
+        assert!(uninstall("hklm|..\\Windows").is_err());
+        assert!(uninstall("autre|x").is_err());
     }
 
     #[test]

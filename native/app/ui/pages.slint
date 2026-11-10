@@ -465,9 +465,10 @@ export component PilotesPage {
 
 export struct Upgrade { id: string, name: string, versions: string }
 export struct HistoryRow { title: string, detail: string }
-export struct InstalledRow { name: string, detail: string, size: string }
+export struct InstalledRow { name: string, detail: string, size: string, id: string, removable: bool }
 
 export global MajState {
+    callback uninstall(string, string);
     in-out property <string> space-note;
     in-out property <[WuItem]> wu-items;
     in-out property <WuState> wu;
@@ -622,6 +623,12 @@ export component MajPage {
                     font-family: Theme.display;
                     font-weight: 500;
                     vertical-alignment: center;
+                }
+                if a.removable: Btn {
+                    kind: "link";
+                    tint: Theme.muted;
+                    text: "Désinstaller";
+                    clicked => { MajState.uninstall(a.id, a.name); }
                 }
             }
         }

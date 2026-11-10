@@ -639,6 +639,8 @@ fn installed_show(ui: &App) {
                     name: ss(a["name"].as_str().unwrap_or("")),
                     detail: ss(parts.into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(", ")),
                     size: ss(if bytes > 0.0 { format_bytes(bytes) } else { String::new() }),
+                    id: ss(a["id"].as_str().unwrap_or("")),
+                    removable: a["removable"] == true,
                 }
             })
             .collect(),
@@ -684,6 +686,26 @@ fn upgrade_next(ui: &App, mut left: Vec<(String, String)>, total: usize, done: u
 }
 
 fn wire_maj(ui: &App) {
+    bind!(ui, MajState, on_uninstall, |ui, id, name| {
+        let id = id.to_string();
+        ask(
+            ui,
+            Ask {
+                title: format!("Désinstaller {name}"),
+                body: "Nova ouvre le désinstalleur du logiciel : c'est lui qui pose ses questions et supprime les fichiers. Vos documents ne sont pas touchés.".into(),
+                confirm: "Ouvrir le désinstalleur",
+                danger: true,
+                lines: vec![],
+                licenses: vec![],
+            },
+            move |ui| {
+                work(ui, move || call("updates", "uninstall", json!({ "id": id })), |ui, result| match result {
+                    Ok(data) => toast(&ui, data["summary"].as_str().unwrap_or("Désinstalleur ouvert."), false, None),
+                    Err(error) => toast(&ui, &error, true, None),
+                });
+            },
+        );
+    });
     bind!(ui, MajState, on_wu_search, |ui| wu_search(ui, 1));
     bind!(ui, MajState, on_wu_install, |ui| wu_install(ui, 1));
     bind!(ui, MajState, on_wu_toggle_all, |ui| wu_toggle_all(ui, 1));

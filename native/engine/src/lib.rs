@@ -60,7 +60,7 @@ pub fn policy(module: &str, action: &str) -> Option<bool> {
         ("updates", "devices" | "wu-search" | "wu-history" | "winget-list" | "open-vendor" | "installed") => {
             Some(false)
         }
-        ("updates", "wu-install" | "winget-upgrade" | "reboot" | "reboot-cancel") => Some(true),
+        ("updates", "wu-install" | "winget-upgrade" | "reboot" | "reboot-cancel" | "uninstall") => Some(true),
         ("cleanup", "scan" | "largest" | "files") => Some(false),
         ("cleanup", "clean") => Some(true),
         ("startup", "list") => Some(false),
@@ -233,6 +233,7 @@ fn native(module: &str, action: &str, payload: &Value) -> Option<Result<Value, S
         ("updates", "wu-history") => updates::wu_history(),
         ("updates", "winget-list") => updates::winget_list(),
         ("updates", "installed") => updates::installed(),
+        ("updates", "uninstall") => updates::uninstall(payload["id"].as_str().unwrap_or("")),
         ("startup", "list") => startup::list(),
         ("perf", "overview") => perf::overview(),
         ("perf", "processes") => perf::processes(),
