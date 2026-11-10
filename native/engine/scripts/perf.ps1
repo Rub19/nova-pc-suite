@@ -144,6 +144,7 @@ function Invoke-Module([string]$Action) {
         }
         'fast-startup-set' {
             Require-Admin
+            $null = Ensure-RestorePoint 'Nova PC Suite : avant démarrage rapide'
             $enable = [bool]$P.enabled
             Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name 'HiberbootEnabled' -Value ([int]$enable) -Type DWord -ErrorAction Stop
             @{

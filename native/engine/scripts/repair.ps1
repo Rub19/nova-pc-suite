@@ -70,10 +70,11 @@ function Invoke-Module([string]$Action) {
         }
         'network-reset' {
             Require-Admin
+            $restore = Ensure-RestorePoint 'Nova PC Suite : avant réinitialisation du réseau'
             $winsock = Invoke-Native 'netsh.exe' @('winsock', 'reset')
             $ip = Invoke-Native 'netsh.exe' @('int', 'ip', 'reset')
             if ($winsock.exitCode -ne 0) { throw "La réinitialisation de Winsock a échoué (code $($winsock.exitCode))." }
-            @{ summary = 'Réseau réinitialisé : redémarrez le PC pour terminer'; output = @($winsock.tail) + @($ip.tail); verdict = 'ok'; measures = @() }
+            @{ summary = 'Réseau réinitialisé : redémarrez le PC pour terminer'; output = @($winsock.tail) + @($ip.tail); verdict = 'ok'; measures = @(); restorePoint = $restore }
         }
         default { throw 'Action inconnue' }
     }

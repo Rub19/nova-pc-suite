@@ -87,7 +87,7 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [~] 12. Historique du bilan : nombre de points à traiter dans le temps : ligne « Points à traiter au fil des analyses » sous la date du bilan, 30 analyses gardées (test the_history_keeps_thirty_scans) ; écran pas encore vu
 - [~] 13. Export du bilan dans un fichier texte : bouton « Enregistrer » du bilan : fichier Nova-bilan-date.txt dans Documents, montré dans l'Explorateur (test report_files_are_named_by_date) ; pas encore essayé
 - [ ] 14. Nettoyage planifié (chaque semaine), désactivable
-- [ ] 15. Point de restauration automatique avant les actions risquées (option)
+- [~] 15. Point de restauration automatique avant les actions risquées (option) : existait déjà avant les réparations de Windows et les mises à jour de Windows ; ajouté avant la réinitialisation du réseau et le changement du démarrage rapide. Toujours actif (Windows n'en crée qu'un par 24 h), pas d'option pour le couper ; jamais lancé depuis Claude
 - [ ] 16. Mode jeu : plan d'alimentation performances et programmes choisis fermés
 - [~] 17. Test de vitesse du disque : « Tester la vitesse » dans Performances : 256 Mo écrits puis lus sans le cache de Windows, fichier supprimé ; mesuré sur ce PC (C: 3 323 Mo/s en écriture, 2 793 Mo/s en lecture, test the_disk_speed_test_cleans_up_after_itself) ; écran pas encore vu
 - [~] 18. Wi-Fi : force du signal et réseaux enregistrés : ligne « Wi-Fi » de « Ce PC » : réseau, signal, réseaux enregistrés, lus par netsh sans fenêtre (test wifi_is_read_from_netsh_in_french_or_english) ; pas encore vu sur ce PC
