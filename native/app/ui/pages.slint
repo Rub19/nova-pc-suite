@@ -674,6 +674,9 @@ export global NettoyageState {
     in-out property <[BigFolder]> file-old;
     in-out property <[BigFolder]> file-twins;
     callback analyse-files();
+    in-out property <bool> weekly;
+    in-out property <bool> weekly-known;
+    callback weekly-set(bool);
     callback open-folder(string);
     callback rescan();
     callback clean();
@@ -795,6 +798,20 @@ export component NettoyagePage {
                     font-family: Theme.display;
                     font-weight: 500;
                     vertical-alignment: center;
+                }
+            }
+        }
+        if NettoyageState.weekly-known: Panel {
+            Row {
+                first: true;
+                Grow {
+                    Strong { text: "Nettoyage automatique chaque dimanche"; }
+                    Muted { text: "À 12 h, Nova nettoie les catégories cochées par défaut, sans droits administrateur. Chaque passage apparaît dans le Journal."; }
+                }
+                Switch {
+                    checked: NettoyageState.weekly;
+                    label: "Nettoyage automatique chaque dimanche";
+                    toggled => { NettoyageState.weekly-set(!NettoyageState.weekly); }
                 }
             }
         }

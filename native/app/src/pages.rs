@@ -67,7 +67,10 @@ pub fn open(ui: &App, page: i32) {
             history_load(ui);
             installed_load(ui);
         }
-        3 if first => nettoyage_load(ui),
+        3 if first => {
+            nettoyage_load(ui);
+            weekly_load(ui);
+        }
         4 if first => demarrage_load(ui),
         5 if first => {
             perf_load(ui);
@@ -883,6 +886,16 @@ fn largest_load(ui: &App) {
     });
 }
 
+fn weekly_load(ui: &App) {
+    work(ui, || call("cleanup", "weekly-get", json!({})), |ui, result| {
+        if let Ok(data) = result {
+            let g = ui.global::<NettoyageState>();
+            g.set_weekly(data["enabled"] == true);
+            g.set_weekly_known(true);
+        }
+    });
+}
+
 fn files_load(ui: &App) {
     let g = ui.global::<NettoyageState>();
     g.set_files_loading(true);
@@ -922,6 +935,18 @@ fn reveal(ui: &App, path: &str) {
 fn wire_nettoyage(ui: &App) {
     bind!(ui, NettoyageState, on_measure_largest, |ui| largest_load(ui));
     bind!(ui, NettoyageState, on_analyse_files, |ui| files_load(ui));
+    bind!(ui, NettoyageState, on_weekly_set, |ui, enabled| {
+        work(ui, move || call("cleanup", "weekly-set", json!({"enabled": enabled})), move |ui, result| {
+            match result {
+                Ok(data) => {
+                    let undo = data["undo"].is_object().then(|| data["undo"].clone());
+                    toast(&ui, data["summary"].as_str().unwrap_or(""), false, undo);
+                }
+                Err(error) => toast(&ui, &error, true, None),
+            }
+            weekly_load(&ui);
+        });
+    });
     bind!(ui, NettoyageState, on_open_folder, |ui, path| reveal(ui, &path));
     bind!(ui, NettoyageState, on_rescan, |ui| nettoyage_load(ui));
     bind!(ui, NettoyageState, on_toggle, |ui, id| {

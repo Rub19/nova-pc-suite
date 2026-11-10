@@ -369,6 +369,15 @@ fn main() {
     if std::env::args().any(|a| a == "--scheduled-scan") {
         return;
     }
+    if std::env::args().any(|a| a == nova_engine::cleanup::WEEKLY_ARG) {
+        if let Ok(scan) = nova_engine::run("cleanup", "scan", None) {
+            let ids = nova_engine::cleanup::weekly_ids(&scan);
+            if !ids.is_empty() {
+                let _ = nova_engine::run("cleanup", "clean", Some(json!({"ids": ids})));
+            }
+        }
+        return;
+    }
     let tour_dir = std::env::var_os("NOVA_TOUR").map(std::path::PathBuf::from);
     let e2e = cfg!(feature = "e2e") && std::env::var_os("NOVA_E2E").is_some();
     let replacement = match elevation::requested_token() {

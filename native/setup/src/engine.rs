@@ -12,7 +12,7 @@ const NO_WINDOW: u32 = 0x0800_0000;
 const DETACHED: u32 = 0x0000_0008;
 const EXE: &str = "nova-pc-suite.exe";
 const PRODUCT: &str = "Nova PC Suite";
-const TASK_SCRIPT: &str = r#"$ErrorActionPreference='Stop';try{$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value;$name='Nova PC Suite Audit '+$sid;$task=Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue;if($task -and $task.Description -eq 'Nova PC Suite read-only audit v1'){$actions=@($task.Actions);if($actions.Count -eq 1 -and $actions[0].Arguments -eq '--scheduled-scan'){Unregister-ScheduledTask -TaskName $name -Confirm:$false}}}catch{exit 1}"#;
+const TASK_SCRIPT: &str = r#"$ErrorActionPreference='Stop';try{$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value;$name='Nova PC Suite Audit '+$sid;$task=Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue;if($task -and $task.Description -eq 'Nova PC Suite read-only audit v1'){$actions=@($task.Actions);if($actions.Count -eq 1 -and $actions[0].Arguments -eq '--scheduled-scan'){Unregister-ScheduledTask -TaskName $name -Confirm:$false}};Get-ScheduledTask -TaskName ('Nova PC Suite Nettoyage '+$env:USERNAME) -ErrorAction SilentlyContinue|Where-Object{@($_.Actions)[0].Arguments -eq '--scheduled-clean'}|Unregister-ScheduledTask -Confirm:$false}catch{exit 1}"#;
 
 #[derive(Clone)]
 pub struct Target {

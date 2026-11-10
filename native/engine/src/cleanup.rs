@@ -311,6 +311,60 @@ fn system_drive() -> String {
     env::var("SystemDrive").unwrap_or_else(|_| "C:".into()) + "\\"
 }
 
+pub const WEEKLY_ARG: &str = "--scheduled-clean";
+
+pub fn weekly_task_name(sid: &str) -> String {
+    format!("Nova PC Suite Nettoyage {sid}")
+}
+
+fn current_sid() -> String {
+    std::env::var("USERNAME").unwrap_or_default().chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect()
+}
+
+fn schtasks(args: &[&str]) -> std::io::Result<std::process::Output> {
+    use std::os::windows::process::CommandExt;
+    std::process::Command::new(crate::win::sys32("schtasks.exe")).args(args).creation_flags(0x08000000).output()
+}
+
+pub fn weekly_get() -> Result<Value, String> {
+    let name = weekly_task_name(&current_sid());
+    let on = schtasks(&["/Query", "/TN", &name]).map(|out| out.status.success()).unwrap_or(false);
+    Ok(json!({"enabled": on}))
+}
+
+pub fn weekly_set(enabled: bool) -> Result<Value, String> {
+    let name = weekly_task_name(&current_sid());
+    let out = if enabled {
+        let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+        let action = format!("\"{}\" {WEEKLY_ARG}", exe.display());
+        schtasks(&["/Create", "/F", "/SC", "WEEKLY", "/D", "SUN", "/ST", "12:00", "/TN", &name, "/TR", &action])
+    } else {
+        schtasks(&["/Delete", "/F", "/TN", &name])
+    }
+    .map_err(|error| error.to_string())?;
+    if !out.status.success() {
+        return Err("Windows a refusé de planifier le nettoyage.".into());
+    }
+    Ok(json!({
+        "summary": if enabled { "Nettoyage automatique planifié chaque dimanche à 12 h" } else { "Nettoyage automatique arrêté" },
+        "measures": [],
+        "undo": {"module": "cleanup", "action": "weekly-set", "payload": {"enabled": !enabled}, "label": if enabled { "Arrêter" } else { "Replanifier" }},
+    }))
+}
+
+pub fn weekly_ids(scan: &Value) -> Vec<String> {
+    scan["data"]["items"]
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter(|i| i["selected"] == true && i["needsAdmin"] != true && i["blocked"] != true && i["bytes"].as_f64().unwrap_or(0.0) > 0.0)
+                .filter_map(|i| i["id"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 pub const UPGRADE_SPACE: u64 = 20 * 1024 * 1024 * 1024;
 
 pub fn space_note(free: u64, drive: &str) -> String {
@@ -451,6 +505,23 @@ pub fn clean(ids: Vec<String>) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_weekly_clean_only_takes_safe_ticked_categories() {
+        let scan = json!({"data": {"items": [
+            {"id": "temp", "selected": true, "needsAdmin": false, "blocked": false, "bytes": 10},
+            {"id": "windows-temp", "selected": true, "needsAdmin": true, "blocked": false, "bytes": 10},
+            {"id": "recycle-bin", "selected": false, "needsAdmin": false, "blocked": false, "bytes": 10},
+            {"id": "empty", "selected": true, "needsAdmin": false, "blocked": false, "bytes": 0}
+        ]}});
+        assert_eq!(weekly_ids(&scan), vec!["temp".to_string()]);
+        assert_eq!(weekly_task_name("rub"), "Nova PC Suite Nettoyage rub");
+        let real = super::scan().unwrap();
+        let ids = weekly_ids(&real);
+        let known: Vec<&str> = real["data"]["items"].as_array().unwrap().iter().filter_map(|i| i["id"].as_str()).collect();
+        assert!(ids.iter().all(|id| known.contains(&id.as_str())));
+        println!("nettoyage hebdomadaire : {ids:?}");
+    }
 
     #[test]
     fn little_free_space_is_flagged_before_a_big_update() {

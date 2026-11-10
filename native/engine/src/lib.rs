@@ -61,8 +61,8 @@ pub fn policy(module: &str, action: &str) -> Option<bool> {
             Some(false)
         }
         ("updates", "wu-install" | "winget-upgrade" | "reboot" | "reboot-cancel" | "uninstall") => Some(true),
-        ("cleanup", "scan" | "largest" | "files") => Some(false),
-        ("cleanup", "clean") => Some(true),
+        ("cleanup", "scan" | "largest" | "files" | "weekly-get") => Some(false),
+        ("cleanup", "clean" | "weekly-set") => Some(true),
         ("startup", "list") => Some(false),
         ("startup", "set") => Some(true),
         ("perf", "overview" | "processes" | "network-test" | "adapters" | "disk-speed" | "failed-services") => Some(false),
@@ -257,6 +257,8 @@ pub fn execute(module: &str, action: &str, payload: &Value) -> Result<Value, Str
             "scan" => cleanup::scan(),
             "largest" => cleanup::largest().map(|data| json!({"ok": true, "data": data})),
             "files" => files::analyse().map(|data| json!({"ok": true, "data": data})),
+            "weekly-get" => cleanup::weekly_get().map(|data| json!({"ok": true, "data": data})),
+            "weekly-set" => payload["enabled"].as_bool().ok_or_else(|| "Paramètres invalides".to_string()).and_then(cleanup::weekly_set).map(|data| json!({"ok": true, "data": data})),
             "clean" => cleanup::clean(
                 serde_json::from_value(payload["ids"].clone()).map_err(|_| "Sélection invalide")?,
             ),
