@@ -142,6 +142,16 @@ function Invoke-Module([string]$Action) {
                 undo = @{ module = 'perf'; action = 'hibernate-set'; payload = @{ enabled = (-not $enable) }; label = $(if ($enable) { 'Désactiver à nouveau' } else { 'Réactiver' }) }
             }
         }
+        'fast-startup-set' {
+            Require-Admin
+            $enable = [bool]$P.enabled
+            Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name 'HiberbootEnabled' -Value ([int]$enable) -Type DWord -ErrorAction Stop
+            @{
+                summary = "Démarrage rapide $(if ($enable) { 'activé' } else { 'désactivé' })"
+                measures = @()
+                undo = @{ module = 'perf'; action = 'fast-startup-set'; payload = @{ enabled = (-not $enable) }; label = $(if ($enable) { 'Désactiver à nouveau' } else { 'Réactiver' }) }
+            }
+        }
         'network-test' {
             $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Where-Object { $_.NextHop -ne '0.0.0.0' } | Sort-Object RouteMetric | Select-Object -First 1
             $probes = @()

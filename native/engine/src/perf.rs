@@ -167,7 +167,12 @@ fn hibernation() -> Value {
     let size = std::fs::metadata(format!("{drive}\\hiberfil.sys"))
         .map(|m| m.len() as f64)
         .unwrap_or(0.0);
-    json!({"enabled": enabled, "fileBytes": size})
+    let fast = windows_registry::LOCAL_MACHINE
+        .open("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power")
+        .and_then(|k| k.get_u32("HiberbootEnabled"))
+        .map(|v| v != 0)
+        .unwrap_or(false);
+    json!({"enabled": enabled, "fileBytes": size, "fastStartup": enabled && fast})
 }
 
 pub fn parse_nvidia(line: &str) -> Option<Value> {

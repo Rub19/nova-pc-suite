@@ -68,7 +68,7 @@ pub fn policy(module: &str, action: &str) -> Option<bool> {
         ("perf", "overview" | "processes" | "network-test" | "adapters" | "disk-speed" | "failed-services") => Some(false),
         (
             "perf",
-            "process-close" | "power-apply" | "volume-optimize" | "hibernate-set" | "dns-flush",
+            "process-close" | "power-apply" | "volume-optimize" | "hibernate-set" | "dns-flush" | "fast-startup-set",
         ) => Some(true),
         (
             "repair",

@@ -1159,6 +1159,8 @@ export global PerfState {
     in-out property <string> net-error;
     in-out property <[Probe]> probes;
     in-out property <bool> speed-loading;
+    in-out property <bool> fast-startup;
+    callback fast-startup-set(bool);
     in-out property <[Probe]> failed-services;
     in-out property <bool> services-checked;
     in-out property <string> speed-result;
@@ -1294,6 +1296,17 @@ export component PerfPage {
                     enabled: PerfState.busy == "";
                     text: PerfState.hibernation-on ? "Désactiver" : "Réactiver";
                     clicked => { PerfState.hibernate(!PerfState.hibernation-on); }
+                }
+            }
+            if PerfState.hibernation-on: Row {
+                Grow {
+                    Strong { text: "Démarrage rapide " + (PerfState.fast-startup ? "activé" : "désactivé"); }
+                    Muted { text: "Windows garde une partie du système en veille prolongée à l'arrêt pour redémarrer plus vite. À couper si un pilote ou un double démarrage pose problème : le redémarrage, lui, n'est pas concerné."; }
+                }
+                AdminBtn {
+                    enabled: PerfState.busy == "";
+                    text: PerfState.fast-startup ? "Désactiver" : "Activer";
+                    clicked => { PerfState.fast-startup-set(!PerfState.fast-startup); }
                 }
             }
         }
