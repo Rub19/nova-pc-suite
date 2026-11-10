@@ -65,6 +65,10 @@ Revue du 9 novembre 2026 : chaque appel au moteur des pages Tauri (`src/pages/*.
 - Clics réels à la souris sur les 8 écrans, installation réelle, actions qui modifient le PC (nettoyage, mises à jour, pilotes, restauration) : jamais lancées depuis Claude.
 - Mise à jour automatique (nouvelle, absente de Tauri) : Nova lit `latest.json` des versions GitHub de `Rub19/nova-pc-suite` au lancement puis toutes les 6 h, carte « Nova X disponible » dans la barre latérale, signature minisign vérifiée avant de lancer l'installeur en `/P /UPDATE /R`, état dans « À propos ». Pas encore active : la clé n'existe pas (`native\cle-maj.ps1` la crée, à lancer par Rub19, puis `update.pub` à commiter). `release.ps1` signe ensuite et écrit `latest.json`. Jamais essayée de bout en bout : il faut la clé et une version GitHub normale (les actuelles sont des préversions, que `releases/latest` ignore).
 
+## Direction artistique (10 novembre 2026)
+
+Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`), graphite en sombre (`#111413`), un seul accent vert sarcelle (`#0e6b5c` / `#5fd4b5`), barre latérale claire avec la page active en carte, filet de séparation, titres en Segoe UI Variable Display, texte en Segoe UI Variable Text. Toutes les couleurs passent par `Theme` (plus aucune couleur en dur hors l'interrupteur). Vu en clair sur les captures du parcours ; le thème sombre n'est pas encore vu.
+
 ## 20 fonctionnalités en plus (demandées le 10 novembre 2026)
 
 `[ ]` à faire, `[x]` fait et vérifié (tests ou parcours e2e), avec la preuve dans « Fait ensuite » ou ici.

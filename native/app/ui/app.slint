@@ -70,7 +70,7 @@ component Badge {
         animate opacity, transform-scale { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
         Text {
             text: value;
-            color: #1a1405;
+            color: Theme.badge-ink;
             font-size: 11px;
             font-weight: 600;
         }
@@ -98,14 +98,14 @@ component NavItem {
             spacing: 11px;
             Image {
                 source: root.icon;
-                colorize: active || touch.has-hover ? #ffffff : Theme.rail-muted;
+                colorize: active || touch.has-hover ? Theme.rail-ink : Theme.rail-muted;
                 width: 17px;
                 transform-scale: touch.pressed && !Theme.reduced ? 0.88 : 1;
                 animate transform-scale { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
             }
             Text {
                 text: root.label;
-                color: active || touch.has-hover ? #ffffff : Theme.rail-muted;
+                color: active || touch.has-hover ? Theme.rail-ink : Theme.rail-muted;
                 font-weight: 500;
                 vertical-alignment: center;
                 horizontal-stretch: 1;
@@ -193,7 +193,7 @@ component ToastCard {
         border-radius: 9px;
         drop-shadow-blur: 24px;
         drop-shadow-offset-y: 8px;
-        drop-shadow-color: #0b121c44;
+        drop-shadow-color: Theme.shadow;
         line := HorizontalLayout {
             padding-left: 16px;
             padding-right: 12px;
@@ -234,7 +234,7 @@ component Sheet {
     property <bool> shown: false;
     init => { shown = true; focus-scope.focus(); }
     Rectangle {
-        background: #0b121c66;
+        background: Theme.scrim;
         opacity: open && shown ? 1 : 0;
         animate opacity { duration: Theme.base; easing: cubic-bezier(0.23, 1, 0.32, 1); }
     }
@@ -264,7 +264,7 @@ component Sheet {
         border-color: Theme.line;
         drop-shadow-blur: 60px;
         drop-shadow-offset-y: 24px;
-        drop-shadow-color: #0b121c66;
+        drop-shadow-color: Theme.shadow;
         opacity: open && shown ? 1 : 0;
         transform-scale: (open && shown) || Theme.reduced ? 1 : 0.97;
         animate opacity, transform-scale { duration: open ? Theme.base : Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
@@ -401,7 +401,7 @@ export component App inherits Window {
     min-width: 900px;
     min-height: 600px;
     background: Theme.page;
-    default-font-family: "Segoe UI";
+    default-font-family: "Segoe UI Variable Text";
     default-font-size: 14px;
     in-out property <bool> ask-visible;
     in-out property <bool> about-visible;
@@ -427,6 +427,7 @@ export component App inherits Window {
             Rectangle {
                 width: 216px;
                 background: Theme.rail;
+                Rectangle { x: parent.width - 1px; width: 1px; background: Theme.rail-line; }
                 VerticalLayout {
                     padding-left: 12px;
                     padding-right: 12px;
@@ -437,11 +438,14 @@ export component App inherits Window {
                         padding-right: 10px;
                         padding-bottom: 18px;
                         spacing: 10px;
-                        Rectangle {
-                            width: 12px;
-                            height: 12px;
-                                                        border-radius: 6px;
-                            background: Theme.signal;
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 12px;
+                                height: 12px;
+                                border-radius: 6px;
+                                background: Theme.signal;
+                            }
                         }
                         Text {
                             text: "Nova";
@@ -496,9 +500,9 @@ export component App inherits Window {
                     if Nova.update-version != "": Rise {
                         Rectangle {
                             border-radius: 8px;
-                            background: #ffffff14;
+                            background: Theme.rail-hover;
                             border-width: 1px;
-                            border-color: #ffffff24;
+                            border-color: Theme.rail-line;
                             VerticalLayout {
                                 padding: 10px;
                                 spacing: 6px;
@@ -542,7 +546,7 @@ export component App inherits Window {
                         height: 32px;
                         border-radius: 7px;
                         border-width: 1px;
-                        border-color: #ffffff38;
+                        border-color: Theme.rail-line;
                         background: elevate-touch.has-hover ? Theme.rail-hover : transparent;
                         animate background { duration: Theme.quick; easing: cubic-bezier(0.23, 1, 0.32, 1); }
                         accessible-role: button;

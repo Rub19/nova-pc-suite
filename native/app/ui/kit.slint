@@ -11,28 +11,32 @@ export global Theme {
     out property <length> lift: reduced || keynav ? 0px : 6px;
 
     out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
-    out property <color> page: dark ? #141c27 : #edf0f3;
-    out property <color> panel: dark ? #1c2634 : #ffffff;
-    out property <color> panel-hover: dark ? #233041 : #f5f7f9;
-    out property <color> line: dark ? #2d3b4d : #d5dbe2;
-    out property <color> ink: dark ? #e8edf3 : #15202e;
-    out property <color> muted: dark ? #9aa8b9 : #566476;
-    out property <color> control: dark ? #243142 : #ffffff;
-    out property <color> control-line: dark ? #3c4d62 : #bcc5cf;
-    out property <color> primary: dark ? #f2c230 : #1e3a5f;
-    out property <color> primary-ink: dark ? #15202e : #ffffff;
-    out property <color> ok: dark ? #62c79a : #24704f;
-    out property <color> warn: dark ? #e8b14a : #8f5a00;
-    out property <color> alert: dark ? #f0837a : #b0342c;
-    out property <color> warn-soft: dark ? #33291a : #f8efd9;
-    out property <color> alert-soft: dark ? #3a2224 : #f9e4e2;
-    out property <color> focus: dark ? #f2c230 : #1e3a5f;
-    out property <color> rail: dark ? #16283f : #1e3a5f;
-    out property <color> rail-ink: #e6ecf3;
-    out property <color> rail-muted: #a9bad0;
-    out property <color> rail-hover: dark ? #20364f : #2a4a74;
-    out property <color> signal: #f2c230;
-    out property <string> display: "Bahnschrift";
+    out property <color> page: dark ? #111413 : #f3f1ec;
+    out property <color> panel: dark ? #181c1b : #fffefb;
+    out property <color> panel-hover: dark ? #1f2422 : #f7f5f0;
+    out property <color> line: dark ? #29302d : #e1ddd4;
+    out property <color> ink: dark ? #e7ebe8 : #1c1b18;
+    out property <color> muted: dark ? #95a09b : #6a665d;
+    out property <color> control: dark ? #1d2220 : #fffefb;
+    out property <color> control-line: dark ? #36403c : #cfc9bd;
+    out property <color> primary: dark ? #5fd4b5 : #0e6b5c;
+    out property <color> primary-ink: dark ? #08130f : #ffffff;
+    out property <color> ok: dark ? #6fcf97 : #2f7a4f;
+    out property <color> warn: dark ? #e3b15a : #93600a;
+    out property <color> alert: dark ? #f08a7e : #b23a2e;
+    out property <color> warn-soft: dark ? #2e2617 : #f6ecd6;
+    out property <color> alert-soft: dark ? #35201e : #f7e3df;
+    out property <color> focus: dark ? #5fd4b5 : #0e6b5c;
+    out property <color> rail: dark ? #0c0f0e : #ebe8e1;
+    out property <color> rail-ink: dark ? #e7ebe8 : #1c1b18;
+    out property <color> rail-muted: dark ? #8e9994 : #6a665d;
+    out property <color> rail-hover: dark ? #1b201e : #fffefb;
+    out property <color> rail-line: dark ? #1f2523 : #dcd7cc;
+    out property <color> signal: dark ? #5fd4b5 : #0e6b5c;
+    out property <color> badge-ink: dark ? #08130f : #ffffff;
+    out property <color> scrim: dark ? #000000aa : #1c1b1855;
+    out property <color> shadow: dark ? #00000066 : #1c1b1826;
+    out property <string> display: "Segoe UI Variable Display";
 }
 
 export struct Measure {
