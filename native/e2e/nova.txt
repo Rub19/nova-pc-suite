@@ -28,6 +28,11 @@ expect programmes lancés au démarrage
 snap 03-demarrage
 
 click Performances (Ctrl+6)
+waitfor Disques|30000
+scrollto Tester la vitesse|1170,400
+click Tester la vitesse
+waitfor Mo/s|30000
+snap 08-vitesse-disque
 wait 2000
 expect Mode d'alimentation
 expect Ce qui occupe le PC en ce moment

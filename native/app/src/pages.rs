@@ -62,6 +62,7 @@ pub fn open(ui: &App, page: i32) {
         0 if first => bilan_load(ui),
         1 if first => pilotes_load(ui),
         2 if first => {
+            work(ui, nova_engine::cleanup::system_space_note, |ui, note| ui.global::<MajState>().set_space_note(ss(note)));
             winget_load(ui);
             history_load(ui);
             installed_load(ui);
@@ -1268,6 +1269,23 @@ fn net_test(ui: &App) {
 }
 
 fn wire_perf(ui: &App) {
+    bind!(ui, PerfState, on_speed_test, |ui| {
+        ui.global::<PerfState>().set_speed_loading(true);
+        work(ui, || call("perf", "disk-speed", json!({})), |ui, result| {
+            let g = ui.global::<PerfState>();
+            g.set_speed_loading(false);
+            g.set_speed_result(ss(match result {
+                Ok(data) => format!(
+                    "Disque {} : écriture {} Mo/s, lecture {} Mo/s, mesurées sur {} Mo sans le cache de Windows. Le fichier d'essai est supprimé.",
+                    data["drive"].as_str().unwrap_or(""),
+                    data["writeMBs"].as_f64().unwrap_or(0.0),
+                    data["readMBs"].as_f64().unwrap_or(0.0),
+                    data["sizeMB"].as_u64().unwrap_or(0)
+                ),
+                Err(error) => error,
+            }));
+        });
+    });
     bind!(ui, PerfState, on_reload, |ui| perf_load(ui));
     bind!(ui, PerfState, on_procs_reload, |ui| procs_load(ui));
     bind!(ui, PerfState, on_net_test, |ui| net_test(ui));

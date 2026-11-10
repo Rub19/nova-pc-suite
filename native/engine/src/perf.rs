@@ -374,6 +374,46 @@ fn gateway() -> Option<std::net::Ipv4Addr> {
     (!hop.is_unspecified()).then_some(hop)
 }
 
+pub fn disk_speed() -> Result<Value, String> {
+    use std::io::{Read, Write};
+    use std::os::windows::fs::OpenOptionsExt;
+    const SIZE: usize = 256 * 1024 * 1024;
+    const BLOCK: usize = 4 * 1024 * 1024;
+    const NO_BUFFERING: u32 = 0x2000_0000;
+    const WRITE_THROUGH: u32 = 0x8000_0000;
+    let path = std::env::temp_dir().join(format!("nova-vitesse-{}.tmp", std::process::id()));
+    let mut raw = vec![0u8; BLOCK + 4096];
+    let offset = raw.as_ptr().align_offset(4096);
+    let block = &mut raw[offset..offset + BLOCK];
+    for (index, byte) in block.iter_mut().enumerate() {
+        *byte = (index % 251) as u8;
+    }
+    let mut run = || -> std::io::Result<(f64, f64)> {
+        let started = std::time::Instant::now();
+        {
+            let mut file = std::fs::OpenOptions::new().write(true).create(true).truncate(true).custom_flags(NO_BUFFERING | WRITE_THROUGH).open(&path)?;
+            for _ in 0..SIZE / BLOCK {
+                file.write_all(block)?;
+            }
+        }
+        let write = started.elapsed().as_secs_f64();
+        let started = std::time::Instant::now();
+        {
+            let mut file = std::fs::OpenOptions::new().read(true).custom_flags(NO_BUFFERING).open(&path)?;
+            for _ in 0..SIZE / BLOCK {
+                file.read_exact(block)?;
+            }
+        }
+        Ok((write, started.elapsed().as_secs_f64()))
+    };
+    let result = run();
+    let _ = std::fs::remove_file(&path);
+    let (write, read) = result.map_err(|error| format!("Test impossible : {error}"))?;
+    let mbs = |seconds: f64| (SIZE as f64 / 1_048_576.0 / seconds.max(1e-6)).round();
+    let drive = path.components().next().map(|c| c.as_os_str().to_string_lossy().to_string()).unwrap_or_default();
+    Ok(json!({"drive": drive, "writeMBs": mbs(write), "readMBs": mbs(read), "sizeMB": SIZE / 1_048_576}))
+}
+
 pub fn network_test() -> Result<Value, String> {
     let mut probes = Vec::new();
     if let Some(hop) = gateway() {
@@ -403,6 +443,15 @@ pub fn network_test() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_disk_speed_test_cleans_up_after_itself() {
+        let data = disk_speed().unwrap();
+        assert!(data["writeMBs"].as_f64().unwrap() > 0.0 && data["readMBs"].as_f64().unwrap() > 0.0);
+        let leftover = std::fs::read_dir(std::env::temp_dir()).unwrap().flatten().any(|e| e.file_name().to_string_lossy() == format!("nova-vitesse-{}.tmp", std::process::id()));
+        assert!(!leftover);
+        println!("{data}");
+    }
 
     #[test]
     fn real_adapters_are_listed_with_addresses() {

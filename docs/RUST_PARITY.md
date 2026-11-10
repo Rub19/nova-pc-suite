@@ -89,7 +89,7 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [ ] 14. Nettoyage planifié (chaque semaine), désactivable
 - [ ] 15. Point de restauration automatique avant les actions risquées (option)
 - [ ] 16. Mode jeu : plan d'alimentation performances et programmes choisis fermés
-- [ ] 17. Test de vitesse du disque
+- [~] 17. Test de vitesse du disque : « Tester la vitesse » dans Performances : 256 Mo écrits puis lus sans le cache de Windows, fichier supprimé ; mesuré sur ce PC (C: 3 323 Mo/s en écriture, 2 793 Mo/s en lecture, test the_disk_speed_test_cleans_up_after_itself) ; écran pas encore vu
 - [~] 18. Wi-Fi : force du signal et réseaux enregistrés : ligne « Wi-Fi » de « Ce PC » : réseau, signal, réseaux enregistrés, lus par netsh sans fenêtre (test wifi_is_read_from_netsh_in_french_or_english) ; pas encore vu sur ce PC
 - [x] 19. Outils Windows en un clic : section « Outils de Windows » dans Réparer (périphériques, événements, ressources, tâches, services, disques, informations système), liste fermée côté moteur (test `only_known_windows_tools_open`), vue dans le parcours ; boutons « Ouvrir » non cliqués par le parcours pour ne pas ouvrir de vraie fenêtre
-- [ ] 20. Espace libre conseillé avant une grosse mise à jour Windows
+- [~] 20. Espace libre conseillé avant une grosse mise à jour Windows : note dans Mises à jour quand il reste moins de 20 Go sur le disque système (test little_free_space_is_flagged_before_a_big_update) ; écran pas encore vu

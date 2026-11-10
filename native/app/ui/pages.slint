@@ -468,6 +468,7 @@ export struct HistoryRow { title: string, detail: string }
 export struct InstalledRow { name: string, detail: string, size: string }
 
 export global MajState {
+    in-out property <string> space-note;
     in-out property <[WuItem]> wu-items;
     in-out property <WuState> wu;
     in-out property <[Measure]> wu-measures;
@@ -517,6 +518,7 @@ export component MajPage {
             }
         }
         SectionHead { title: "Windows"; }
+        if MajState.space-note != "": Note { text: MajState.space-note; }
         WuList {
             items: MajState.wu-items;
             state: MajState.wu;
@@ -1112,6 +1114,9 @@ export global PerfState {
     in-out property <bool> net-tested;
     in-out property <string> net-error;
     in-out property <[Probe]> probes;
+    in-out property <bool> speed-loading;
+    in-out property <string> speed-result;
+    callback speed-test();
     in-out property <string> net-busy;
     in-out property <[Measure]> net-measures;
     in-out property <[AdapterRow]> adapters;
@@ -1191,7 +1196,13 @@ export component PerfPage {
         if PerfState.has-data: SectionHead {
             title: "Disques";
             note: "Windows choisit lui-même : TRIM pour un SSD, défragmentation pour un disque dur.";
+            Btn {
+                enabled: !PerfState.speed-loading;
+                text: PerfState.speed-loading ? "Test…" : "Tester la vitesse";
+                clicked => { PerfState.speed-test(); }
+            }
         }
+        if PerfState.speed-result != "": Note { text: PerfState.speed-result; }
         if PerfState.has-data: Panel {
             for v[i] in PerfState.volumes: Row {
                 first: i == 0;

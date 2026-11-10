@@ -311,6 +311,20 @@ fn system_drive() -> String {
     env::var("SystemDrive").unwrap_or_else(|_| "C:".into()) + "\\"
 }
 
+pub const UPGRADE_SPACE: u64 = 20 * 1024 * 1024 * 1024;
+
+pub fn space_note(free: u64, drive: &str) -> String {
+    if free >= UPGRADE_SPACE {
+        return String::new();
+    }
+    format!("Il reste {} sur {}. Une grosse mise à jour de Windows demande environ 20 Go libres : libérez de la place dans Nettoyage avant de la lancer.", human(free), drive.trim_end_matches('\\'))
+}
+
+pub fn system_space_note() -> String {
+    let drive = system_drive();
+    space_note(free_bytes(&drive), &drive)
+}
+
 fn update_pending() -> bool {
     env_path("SystemRoot")
         .map(|w| w.join("WinSxS\\pending.xml").exists())
@@ -437,6 +451,13 @@ pub fn clean(ids: Vec<String>) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn little_free_space_is_flagged_before_a_big_update() {
+        assert_eq!(space_note(UPGRADE_SPACE, "C:\\"), "");
+        let note = space_note(5 * 1024 * 1024 * 1024, "C:\\");
+        assert!(note.starts_with("Il reste 5") && note.contains("sur C:.") && note.contains("20 Go"), "{note}");
+    }
 
     fn fixture(name: &str) -> PathBuf {
         let root = env::temp_dir().join(format!("nova-clean-{name}-{}", std::process::id()));

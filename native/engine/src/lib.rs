@@ -65,7 +65,7 @@ pub fn policy(module: &str, action: &str) -> Option<bool> {
         ("cleanup", "clean") => Some(true),
         ("startup", "list") => Some(false),
         ("startup", "set") => Some(true),
-        ("perf", "overview" | "processes" | "network-test" | "adapters") => Some(false),
+        ("perf", "overview" | "processes" | "network-test" | "adapters" | "disk-speed") => Some(false),
         (
             "perf",
             "process-close" | "power-apply" | "volume-optimize" | "hibernate-set" | "dns-flush",
@@ -237,6 +237,7 @@ fn native(module: &str, action: &str, payload: &Value) -> Option<Result<Value, S
         ("perf", "overview") => perf::overview(),
         ("perf", "processes") => perf::processes(),
         ("perf", "network-test") => perf::network_test(),
+        ("perf", "disk-speed") => perf::disk_speed(),
         ("perf", "adapters") => perf::adapters(),
         ("repair", "open-restore") => win::shell_open(&win::sys32("rstrui.exe"))
             .map(|_| json!({"opened": true})),
