@@ -1004,9 +1004,11 @@ pub fn demarrage_load(ui: &App) {
             match list {
                 Ok(data) => {
                     let items = arr(data["items"].clone());
-                    let active = items.iter().filter(|i| i["enabled"] == true).count() as u64;
+                    let (periodic, launched): (Vec<&Value>, Vec<&Value>) = items.iter().partition(|i| i["periodic"] == true);
+                    let active = launched.iter().filter(|i| i["enabled"] == true).count() as u64;
                     g.set_count_title(ss(format!("{} au démarrage", plural(active, "programme lancé", "programmes lancés"))));
-                    g.set_rows(model(items.iter().map(startup_row).collect()));
+                    g.set_rows(model(launched.into_iter().map(startup_row).collect()));
+                    g.set_task_rows(model(periodic.into_iter().map(startup_row).collect()));
                     with(|s| s.startup = items);
                     g.set_has_data(true);
                 }

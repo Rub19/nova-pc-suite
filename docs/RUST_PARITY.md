@@ -73,7 +73,7 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 
 `[ ]` à faire, `[x]` fait et vérifié (tests ou parcours e2e), avec la preuve dans « Fait ensuite » ou ici. Corbeille, cache DNS, temps depuis le redémarrage et santé des disques existaient déjà : remplacés par d'autres.
 
-- [ ] 1. Pare-feu Windows : état des trois profils (domaine, privé, public)
+- [ ] 1. Démarrage rapide de Windows : état et réglage (le pare-feu, prévu ici, est déjà vérifié par le bilan)
 - [~] 2. Doublons dans Téléchargements (même taille et même contenu) : section « Doublons dans Téléchargements » de Nettoyage : même taille puis même contenu, à partir de 1 Mo, lecture seule (tests files_are_sorted_by_kind_age_and_content, identical_files_have_the_same_fingerprint) ; lu sur ce PC en 2,5 s (5 groupes), écran pas encore vu
 - [~] 3. Vieux gros fichiers dans Téléchargements : section « Vieux gros fichiers dans Téléchargements » : plus de 100 Mo et 90 jours ; lu sur ce PC (2 fichiers), écran pas encore vu
 - [~] 4. Place prise par type de fichier dans le profil (vidéos, images, archives, installeurs) : section « Vos fichiers par type » : Bureau, Documents, Images, Vidéos, Musique, Téléchargements ; écran pas encore vu
@@ -82,7 +82,7 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [~] 7. BitLocker : état du chiffrement de chaque disque : ligne « BitLocker » de « Ce PC » (lisible en administrateur) ; pas encore vu sur ce PC
 - [~] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows : « Thème » dans À propos : Comme Windows, Clair, Sombre, gardé dans theme.txt ; écran pas encore vu
 - [~] 9. Services en démarrage automatique arrêtés : section « Services arrêtés en erreur » dans Performances (démarrage automatique, arrêtés avec un code d'erreur), lue sur ce PC : aucun (test failed_services_are_read) ; écran pas encore vu
-- [ ] 10. Tâches planifiées de logiciels tiers, avec désactivation
+- [~] 10. Tâches planifiées de logiciels tiers, avec désactivation : section « Tâches planifiées des logiciels » dans Démarrage : tâches hors Microsoft lancées à heure fixe ou sur un événement, avec l'interrupteur existant (test native_startup_matches_powershell adapté) ; écran pas encore vu
 - [ ] 11. Désinstaller un logiciel depuis la liste des logiciels installés
 - [~] 12. Historique du bilan : nombre de points à traiter dans le temps : ligne « Points à traiter au fil des analyses » sous la date du bilan, 30 analyses gardées (test the_history_keeps_thirty_scans) ; écran pas encore vu
 - [~] 13. Export du bilan dans un fichier texte : bouton « Enregistrer » du bilan : fichier Nova-bilan-date.txt dans Documents, montré dans l'Explorateur (test report_files_are_named_by_date) ; pas encore essayé

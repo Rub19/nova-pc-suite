@@ -250,9 +250,6 @@ fn walk_tasks(
                 triggers.get_Item(t)?.Type(&mut kind)?;
                 logon |= kind == TASK_TRIGGER_LOGON;
             }
-            if !logon {
-                continue;
-            }
             let actions = definition.Actions()?;
             let mut exe = None;
             let mut action_count = 0;
@@ -269,15 +266,17 @@ fn walk_tasks(
             }
             let state = task.State()?;
             let full = format!("{}{}{}", path, if path.ends_with('\\') { "" } else { "\\" }, task.Name()?);
-            items.push(entry(
+            let mut row = entry(
                 "task",
-                "Tâche planifiée à l'ouverture de session",
+                if logon { "Tâche planifiée à l'ouverture de session" } else { "Tâche planifiée à heure fixe ou sur un événement" },
                 full,
                 exe,
                 state != TASK_STATE_DISABLED,
                 admin,
                 ram,
-            ));
+            );
+            row["periodic"] = Value::Bool(!logon);
+            items.push(row);
         }
         let folders = folder.GetFolders(0)?;
         for i in 1..=folders.Count()? {

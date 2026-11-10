@@ -572,6 +572,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .iter()
+                .filter(|i| i["periodic"] != true)
                 .map(|i| {
                     format!(
                         "{}|{}|{}|{}|{}|{}|{}",

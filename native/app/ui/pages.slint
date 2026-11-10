@@ -953,6 +953,7 @@ export global DemarrageState {
     in-out property <[BootBar]> bars;
     in-out property <string> compare;
     in-out property <[StartupRow]> rows;
+    in-out property <[StartupRow]> task-rows;
     in-out property <string> pending;
     callback reload();
     callback toggle(string, string);
@@ -1072,6 +1073,49 @@ export component DemarragePage {
                 if !s.protected && s.manageable: Switch {
                     checked: s.enabled;
                     label: s.name + " au démarrage";
+                    enabled: DemarrageState.pending == "";
+                    toggled => { DemarrageState.toggle(s.source, s.name); }
+                }
+                if !s.protected && !s.manageable: Btn {
+                    kind: "link";
+                    text: "Droits requis";
+                    clicked => { Shell.elevate(); }
+                }
+            }
+        }
+        if DemarrageState.task-rows.length > 0: SectionHead {
+            title: "Tâches planifiées des logiciels";
+            note: "Mises à jour et relevés que les logiciels lancent à heure fixe. Les couper ne désinstalle rien ; les tâches de Windows ne sont pas listées.";
+        }
+        if DemarrageState.task-rows.length > 0: Panel {
+            for s[i] in DemarrageState.task-rows: Row {
+                first: i == 0;
+                Grow {
+                    Text {
+                        text: s.display;
+                        color: s.enabled ? Theme.ink : Theme.muted;
+                        font-weight: 600;
+                        wrap: word-wrap;
+                    }
+                    Muted { text: s.detail; }
+                    if s.missing: Muted {
+                        color: Theme.warn;
+                        text: "Le programme n'existe plus sur le disque. Cette entrée ne sert à rien.";
+                    }
+                }
+                if !s.missing && s.path != "": Btn {
+                    kind: "link";
+                    tint: Theme.muted;
+                    text: "Emplacement";
+                    clicked => { DemarrageState.reveal(s.path); }
+                }
+                if s.protected: Tag {
+                    text: "Protégé : sécurité";
+                    icon: Icons.lock;
+                }
+                if !s.protected && s.manageable: Switch {
+                    checked: s.enabled;
+                    label: s.name + " planifiée";
                     enabled: DemarrageState.pending == "";
                     toggled => { DemarrageState.toggle(s.source, s.name); }
                 }
