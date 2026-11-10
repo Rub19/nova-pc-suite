@@ -64,3 +64,28 @@ Revue du 9 novembre 2026 : chaque appel au moteur des pages Tauri (`src/pages/*.
 
 - Clics réels à la souris sur les 8 écrans, installation réelle, actions qui modifient le PC (nettoyage, mises à jour, pilotes, restauration) : jamais lancées depuis Claude.
 - Mise à jour automatique (nouvelle, absente de Tauri) : Nova lit `latest.json` des versions GitHub de `Rub19/nova-pc-suite` au lancement puis toutes les 6 h, carte « Nova X disponible » dans la barre latérale, signature minisign vérifiée avant de lancer l'installeur en `/P /UPDATE /R`, état dans « À propos ». Pas encore active : la clé n'existe pas (`native\cle-maj.ps1` la crée, à lancer par Rub19, puis `update.pub` à commiter). `release.ps1` signe ensuite et écrit `latest.json`. Jamais essayée de bout en bout : il faut la clé et une version GitHub normale (les actuelles sont des préversions, que `releases/latest` ignore).
+
+## 20 fonctionnalités en plus (demandées le 10 novembre 2026)
+
+`[ ]` à faire, `[x]` fait et vérifié (tests ou parcours e2e), avec la preuve dans « Fait ensuite » ou ici.
+
+- [ ] 1. Corbeille : taille et vidage
+- [ ] 2. Doublons dans Téléchargements (même taille et même contenu)
+- [ ] 3. Vieux gros fichiers dans Téléchargements
+- [ ] 4. Vider le cache DNS
+- [ ] 5. Réinitialiser la pile réseau (Winsock), en administrateur
+- [ ] 6. Santé de la batterie (capacité d'origine et actuelle)
+- [ ] 7. Santé des disques (état et usure signalés par Windows)
+- [ ] 8. Temps depuis le dernier redémarrage, redémarrage conseillé
+- [ ] 9. Services en démarrage automatique arrêtés
+- [ ] 10. Tâches planifiées de logiciels tiers, avec désactivation
+- [ ] 11. Désinstaller un logiciel depuis la liste des logiciels installés
+- [ ] 12. Historique du bilan : nombre de points à traiter dans le temps
+- [ ] 13. Export du bilan dans un fichier texte
+- [ ] 14. Nettoyage planifié (chaque semaine), désactivable
+- [ ] 15. Point de restauration automatique avant les actions risquées (option)
+- [ ] 16. Mode jeu : plan d'alimentation performances et programmes choisis fermés
+- [ ] 17. Test de vitesse du disque
+- [ ] 18. Wi-Fi : force du signal et réseaux enregistrés
+- [ ] 19. Outils Windows en un clic : gestionnaire de périphériques, observateur d'événements, etc.
+- [ ] 20. Espace libre conseillé avant une grosse mise à jour Windows
