@@ -80,12 +80,12 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [ ] 5. Réinitialiser la pile réseau (Winsock), en administrateur
 - [~] 6. Santé de la batterie (capacité d'origine et actuelle) : dans le bilan : capacité d'origine et actuelle (WMI), alerte sous 60 % (test battery_bitlocker_and_wifi_show_in_the_report) ; pas encore vu sur ce PC
 - [~] 7. BitLocker : état du chiffrement de chaque disque : ligne « BitLocker » de « Ce PC » (lisible en administrateur) ; pas encore vu sur ce PC
-- [ ] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows
+- [~] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows : « Thème » dans À propos : Comme Windows, Clair, Sombre, gardé dans theme.txt ; écran pas encore vu
 - [ ] 9. Services en démarrage automatique arrêtés
 - [ ] 10. Tâches planifiées de logiciels tiers, avec désactivation
 - [ ] 11. Désinstaller un logiciel depuis la liste des logiciels installés
-- [ ] 12. Historique du bilan : nombre de points à traiter dans le temps
-- [ ] 13. Export du bilan dans un fichier texte
+- [~] 12. Historique du bilan : nombre de points à traiter dans le temps : ligne « Points à traiter au fil des analyses » sous la date du bilan, 30 analyses gardées (test the_history_keeps_thirty_scans) ; écran pas encore vu
+- [~] 13. Export du bilan dans un fichier texte : bouton « Enregistrer » du bilan : fichier Nova-bilan-date.txt dans Documents, montré dans l'Explorateur (test report_files_are_named_by_date) ; pas encore essayé
 - [ ] 14. Nettoyage planifié (chaque semaine), désactivable
 - [ ] 15. Point de restauration automatique avant les actions risquées (option)
 - [ ] 16. Mode jeu : plan d'alimentation performances et programmes choisis fermés

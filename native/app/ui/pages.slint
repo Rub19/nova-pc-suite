@@ -16,6 +16,8 @@ export struct DiskUse { title: string, detail: string, ratio: float, level: stri
 export global BilanState {
     in-out property <string> headline: "Analyse de ce PC en cours.";
     in-out property <string> meta;
+    in-out property <string> history;
+    callback save();
     in-out property <string> error;
     in-out property <bool> loading;
     in-out property <bool> has-data;
@@ -81,6 +83,10 @@ export component BilanPage {
                     text: "Copier le bilan";
                     clicked => { BilanState.copy(); }
                 }
+                if BilanState.has-data && !BilanState.loading: Btn {
+                    text: "Enregistrer";
+                    clicked => { BilanState.save(); }
+                }
                 Btn {
                     text: BilanState.loading ? "Analyse…" : "Relancer l'analyse";
                     enabled: !BilanState.loading;
@@ -91,6 +97,7 @@ export component BilanPage {
         if BilanState.has-data: VerticalLayout {
             padding-bottom: 18px;
             Muted { text: BilanState.meta; }
+        if BilanState.history != "": Muted { text: BilanState.history; }
         }
         if BilanState.error != "": Failure {
             text: BilanState.error;

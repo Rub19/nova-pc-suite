@@ -163,6 +163,7 @@ fn bilan_show(ui: &App, scan: Scan) {
         ".".to_string()
     };
     state.set_meta(ss(format!("Analyse du {}{solved}", format_datetime(&scan.timestamp))));
+    state.set_history(ss(report::history_line(&memory)));
     state.set_admin_note(!scan.boots.available);
     state.set_facts(model(
         report::machine_facts(&scan)
@@ -224,6 +225,17 @@ fn wire_bilan(ui: &App) {
         let text = with(|s| s.scan.as_ref().map(|scan| report::report_text(scan, &s.findings)));
         if let Some(text) = text {
             copy_text(ui, &text, "Bilan copié");
+        }
+    });
+    bind!(ui, BilanState, on_save, |ui| {
+        let text = with(|s| s.scan.as_ref().map(|scan| (report::report_text(scan, &s.findings), scan.timestamp.clone())));
+        let Some((text, stamp)) = text else { return };
+        match nova_engine::files::save_report(&text, &stamp) {
+            Ok(path) => {
+                toast(ui, &format!("Bilan enregistré : {path}"), false, None);
+                let _ = nova_engine::win::reveal(&path);
+            }
+            Err(error) => toast(ui, &error, true, None),
         }
     });
 }

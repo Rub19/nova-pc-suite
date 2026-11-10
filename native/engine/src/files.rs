@@ -124,6 +124,19 @@ fn known(id: &windows::core::GUID) -> Option<PathBuf> {
     }
 }
 
+pub fn report_name(stamp: &str) -> String {
+    let clean: String = stamp.chars().take(16).map(|c| if c.is_ascii_digit() { c } else { '-' }).collect();
+    format!("Nova-bilan-{clean}.txt")
+}
+
+pub fn save_report(text: &str, stamp: &str) -> Result<String, String> {
+    use windows::Win32::UI::Shell::FOLDERID_Documents;
+    let dir = known(&FOLDERID_Documents).ok_or("Dossier Documents introuvable.")?;
+    let path = dir.join(report_name(stamp));
+    std::fs::write(&path, format!("\u{feff}{}", text.replace('\n', "\r\n"))).map_err(|error| format!("Bilan non enregistré : {error}"))?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 pub fn analyse() -> Result<Value, String> {
     use windows::Win32::UI::Shell::{FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Videos};
     let downloads = known(&FOLDERID_Downloads).ok_or("Dossier Téléchargements introuvable.")?;
@@ -177,6 +190,11 @@ mod tests {
         let kinds: Vec<String> = data["kinds"].as_array().unwrap().iter().map(|k| format!("{} {} Mo", k["label"].as_str().unwrap(), k["bytes"].as_u64().unwrap() / 1_048_576)).collect();
         println!("{:?} | vieux gros : {} | doublons : {} | {:.1} s", kinds, data["old"].as_array().unwrap().len(), data["duplicates"].as_array().unwrap().len(), started.elapsed().as_secs_f32());
         assert!(!kinds.is_empty());
+    }
+
+    #[test]
+    fn report_files_are_named_by_date() {
+        assert_eq!(report_name("2026-11-10T19:12:33.000Z"), "Nova-bilan-2026-11-10-19-12.txt");
     }
 
     #[test]

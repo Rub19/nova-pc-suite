@@ -58,5 +58,9 @@ click À propos
 expect Version 0.4.0, native en Rust
 expect Mises à jour automatiques
 absent Mettre à jour
+click Sombre
+wait 800
+snap 05b-theme-sombre
+click Comme Windows
 snap 05-apropos
 key Escape

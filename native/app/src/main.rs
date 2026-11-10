@@ -392,6 +392,14 @@ fn main() {
         }
     }
     ui.global::<Nova>().set_version(env!("CARGO_PKG_VERSION").into());
+    let scheme_file = nova_engine::data_dir().ok().map(|dir| dir.join("theme.txt"));
+    let saved = scheme_file.as_ref().and_then(|path| std::fs::read_to_string(path).ok()).and_then(|text| text.trim().parse::<i32>().ok()).filter(|n| (0..=2).contains(n));
+    ui.global::<Theme>().set_scheme(saved.unwrap_or(0));
+    ui.global::<Nova>().on_scheme_chosen(move |choice| {
+        if let Some(path) = scheme_file.as_ref() {
+            let _ = nova_engine::winpaths::write_owned(path, choice.to_string().as_bytes(), false);
+        }
+    });
     selfupdate::wire(&ui, tour_dir.is_none() && !e2e && std::env::var_os("NOVA_NO_UPDATE").is_none());
     wire_shell(&ui);
     pages::wire(&ui);

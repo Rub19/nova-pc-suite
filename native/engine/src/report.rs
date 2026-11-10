@@ -689,6 +689,17 @@ pub struct ScanMemory {
     pub ids: Vec<String>,
     pub fresh: Vec<String>,
     pub solved: usize,
+    pub history: Vec<(String, usize)>,
+}
+
+pub const HISTORY: usize = 30;
+
+pub fn history_line(memory: &ScanMemory) -> String {
+    if memory.history.len() < 2 {
+        return String::new();
+    }
+    let parts: Vec<String> = memory.history.iter().rev().take(6).map(|(stamp, count)| format!("{count} le {}", format_date_no_year(stamp))).collect();
+    format!("Points à traiter au fil des analyses : {}.", parts.join(", "))
 }
 
 pub fn compare_findings(previous: Option<&[String]>, items: &[Finding]) -> (Vec<String>, usize) {
@@ -706,12 +717,13 @@ pub fn remember(saved: Option<ScanMemory>, timestamp: &str, items: &[Finding]) -
         return memory.clone();
     }
     let (fresh, solved) = compare_findings(saved.as_ref().map(|m| m.ids.as_slice()), items);
-    ScanMemory {
-        timestamp: timestamp.to_string(),
-        ids: items.iter().filter(|f| f.level != Level::Ok).map(|f| f.id.to_string()).collect(),
-        fresh,
-        solved,
+    let ids: Vec<String> = items.iter().filter(|f| f.level != Level::Ok).map(|f| f.id.to_string()).collect();
+    let mut history = saved.map(|m| m.history).unwrap_or_default();
+    history.push((timestamp.to_string(), ids.len()));
+    if history.len() > HISTORY {
+        history.drain(..history.len() - HISTORY);
     }
+    ScanMemory { timestamp: timestamp.to_string(), ids, fresh, solved, history }
 }
 
 pub fn by_size_then_usable<T>(list: &mut [T], facts: impl Fn(&T) -> (f64, bool, bool)) {
@@ -768,6 +780,20 @@ pub fn invert_driver_filter(manufacturer: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_history_keeps_thirty_scans() {
+        let finding = Finding { id: "disk", level: Level::Warn, title: String::new(), detail: String::new(), page: None, cta: None };
+        let mut memory = remember(None, "2026-11-01T10:00:00.000Z", &[finding.clone()]);
+        assert_eq!(history_line(&memory), "");
+        for day in 2..=40 {
+            memory = remember(Some(memory), &format!("2026-11-{:02}T10:00:00.000Z", day.min(30)), &[finding.clone(), finding.clone()]);
+        }
+        assert_eq!(memory.history.len(), HISTORY);
+        assert!(history_line(&memory).starts_with("Points à traiter au fil des analyses : 2 le "));
+        let old: ScanMemory = serde_json::from_str(r#"{"timestamp":"t","ids":[],"fresh":[],"solved":0}"#).unwrap();
+        assert!(old.history.is_empty());
+    }
 
     #[test]
     fn battery_bitlocker_and_wifi_show_in_the_report() {

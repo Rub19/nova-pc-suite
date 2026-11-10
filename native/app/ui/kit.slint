@@ -10,7 +10,8 @@ export global Theme {
     out property <duration> rise: still ? 0ms : 280ms;
     out property <length> lift: reduced || keynav ? 0px : 6px;
 
-    out property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+    in-out property <int> scheme;
+    out property <bool> dark: scheme == 2 || (scheme == 0 && Palette.color-scheme == ColorScheme.dark);
     out property <color> page: dark ? #111413 : #f3f1ec;
     out property <color> panel: dark ? #181c1b : #fffefb;
     out property <color> panel-hover: dark ? #1f2422 : #f7f5f0;

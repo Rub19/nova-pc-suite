@@ -1,5 +1,5 @@
 import { AboutSlint } from "std-widgets.slint";
-import { Theme, Icons, Btn, AdminBtn, Muted, Strong, Shell, Measure, Rise } from "kit.slint";
+import { Theme, Icons, Btn, AdminBtn, Muted, Strong, Shell, Measure, Rise, Segments, Segment } from "kit.slint";
 import {
     BilanPage, BilanState, FindingRow, Fact, DiskUse,
     PilotesPage, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine,
@@ -46,6 +46,7 @@ export global Nova {
     in-out property <string> update-info;
     in-out property <bool> update-busy;
     callback update-go();
+    callback scheme-chosen(int);
     callback update-later();
     callback go(int);
     callback answer(bool);
@@ -625,6 +626,23 @@ export component App inherits Window {
         }
         Muted { text: "Version " + Nova.version + ", native en Rust. Licence MIT. Entretien et réparation de Windows 10 et 11."; }
         Muted { text: Nova.update-info; }
+        HorizontalLayout {
+            spacing: 12px;
+            alignment: start;
+            Muted { text: "Thème"; vertical-alignment: center; }
+            Segments {
+                for choice[i] in ["Comme Windows", "Clair", "Sombre"]: Segment {
+                    text: choice;
+                    pad: 12px;
+                    size: 13px;
+                    on: Theme.scheme == i;
+                    clicked => {
+                        Theme.scheme = i;
+                        Nova.scheme-chosen(i);
+                    }
+                }
+            }
+        }
         AboutSlint { height: 180px; }
         HorizontalLayout {
             alignment: end;
