@@ -678,6 +678,11 @@ fn wire_maj(ui: &App) {
     bind!(ui, MajState, on_history_reload, |ui| history_load(ui));
     bind!(ui, MajState, on_installed_reload, |ui| installed_load(ui));
     bind!(ui, MajState, on_installed_filter, |ui| installed_show(ui));
+    bind!(ui, ReparerState, on_open_tool, |ui, key| {
+        if let Err(error) = nova_engine::open_windows(&key) {
+            toast(ui, &error, true, None);
+        }
+    });
     bind!(ui, MajState, on_open_apps, |ui| {
         if let Err(error) = nova_engine::open_windows("apps") {
             toast(ui, &error, true, None);

@@ -1244,6 +1244,16 @@ export global ReparerState {
     callback create-point();
     callback enable-protection();
     callback restore-reload();
+    out property <[{ key: string, title: string, detail: string }]> links: [
+        { key: "device-manager", title: "Gestionnaire de périphériques", detail: "Matériel, pilotes et appareils en erreur." },
+        { key: "event-viewer", title: "Observateur d'événements", detail: "Le journal détaillé de Windows, pour comprendre un plantage." },
+        { key: "resource-monitor", title: "Moniteur de ressources", detail: "Ce qui utilise le disque, le réseau et la mémoire, seconde par seconde." },
+        { key: "task-manager", title: "Gestionnaire des tâches", detail: "Programmes ouverts, démarrage et performances." },
+        { key: "services", title: "Services", detail: "Les programmes de fond de Windows et des logiciels installés." },
+        { key: "disk-management", title: "Gestion des disques", detail: "Partitions, lettres de lecteur et disques neufs." },
+        { key: "system-info", title: "Informations système", detail: "Modèle, BIOS, composants et pilotes en détail." },
+    ];
+    callback open-tool(string);
 }
 
 export component ReparerPage {
@@ -1303,6 +1313,23 @@ export component ReparerPage {
                     enabled: !ReparerState.busy;
                     text: "Supprimer";
                     clicked => { ReparerState.clean-store(); }
+                }
+            }
+        }
+        SectionHead {
+            title: "Outils de Windows";
+            note: "Les outils intégrés à Windows, ouverts directement.";
+        }
+        Panel {
+            for l[i] in ReparerState.links: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: l.title; }
+                    Muted { text: l.detail; }
+                }
+                Btn {
+                    text: "Ouvrir";
+                    clicked => { ReparerState.open-tool(l.key); }
                 }
             }
         }

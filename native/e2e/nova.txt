@@ -29,7 +29,11 @@ expect Ce qui occupe le PC en ce moment
 
 click Réparer (Ctrl+7)
 expect Vérifications
-expect Points de restauration
+scrollto Outils de Windows|1170,400
+expect Gestionnaire de périphériques
+scrollto Informations système|1170,400
+snap 06-outils-windows
+scrollto Points de restauration|1170,400
 
 click Journal (Ctrl+8)
 expect Journal

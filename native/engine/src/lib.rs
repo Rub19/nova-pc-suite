@@ -368,6 +368,12 @@ pub fn open_windows(target: &str) -> Result<(), String> {
         "security" => "windowsdefender:",
         "device-manager" => "devmgmt.msc",
         "apps" => "ms-settings:appsfeatures",
+        "event-viewer" => "eventvwr.msc",
+        "disk-management" => "diskmgmt.msc",
+        "services" => "services.msc",
+        "task-manager" => "taskmgr.exe",
+        "resource-monitor" => "resmon.exe",
+        "system-info" => "msinfo32.exe",
         _ => return Err("Page Windows inconnue".into()),
     };
     win::shell_open(uri)
@@ -376,6 +382,13 @@ pub fn open_windows(target: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_known_windows_tools_open() {
+        assert!(open_windows("cmd.exe").is_err());
+        assert!(open_windows("../../Windows/regedit.exe").is_err());
+        assert!(open_windows("").is_err());
+    }
 
     #[test]
     fn unknown_actions_are_refused() {

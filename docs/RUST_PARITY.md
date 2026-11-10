@@ -71,16 +71,16 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 
 ## 20 fonctionnalités en plus (demandées le 10 novembre 2026)
 
-`[ ]` à faire, `[x]` fait et vérifié (tests ou parcours e2e), avec la preuve dans « Fait ensuite » ou ici.
+`[ ]` à faire, `[x]` fait et vérifié (tests ou parcours e2e), avec la preuve dans « Fait ensuite » ou ici. Corbeille, cache DNS, temps depuis le redémarrage et santé des disques existaient déjà : remplacés par d'autres.
 
-- [ ] 1. Corbeille : taille et vidage
+- [ ] 1. Pare-feu Windows : état des trois profils (domaine, privé, public)
 - [ ] 2. Doublons dans Téléchargements (même taille et même contenu)
 - [ ] 3. Vieux gros fichiers dans Téléchargements
-- [ ] 4. Vider le cache DNS
+- [ ] 4. Place prise par type de fichier dans le profil (vidéos, images, archives, installeurs)
 - [ ] 5. Réinitialiser la pile réseau (Winsock), en administrateur
 - [ ] 6. Santé de la batterie (capacité d'origine et actuelle)
-- [ ] 7. Santé des disques (état et usure signalés par Windows)
-- [ ] 8. Temps depuis le dernier redémarrage, redémarrage conseillé
+- [ ] 7. BitLocker : état du chiffrement de chaque disque
+- [ ] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows
 - [ ] 9. Services en démarrage automatique arrêtés
 - [ ] 10. Tâches planifiées de logiciels tiers, avec désactivation
 - [ ] 11. Désinstaller un logiciel depuis la liste des logiciels installés
@@ -91,5 +91,5 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [ ] 16. Mode jeu : plan d'alimentation performances et programmes choisis fermés
 - [ ] 17. Test de vitesse du disque
 - [ ] 18. Wi-Fi : force du signal et réseaux enregistrés
-- [ ] 19. Outils Windows en un clic : gestionnaire de périphériques, observateur d'événements, etc.
+- [x] 19. Outils Windows en un clic : section « Outils de Windows » dans Réparer (périphériques, événements, ressources, tâches, services, disques, informations système), liste fermée côté moteur (test `only_known_windows_tools_open`), vue dans le parcours ; boutons « Ouvrir » non cliqués par le parcours pour ne pas ouvrir de vraie fenêtre
 - [ ] 20. Espace libre conseillé avant une grosse mise à jour Windows
