@@ -78,8 +78,8 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [ ] 3. Vieux gros fichiers dans Téléchargements
 - [ ] 4. Place prise par type de fichier dans le profil (vidéos, images, archives, installeurs)
 - [ ] 5. Réinitialiser la pile réseau (Winsock), en administrateur
-- [ ] 6. Santé de la batterie (capacité d'origine et actuelle)
-- [ ] 7. BitLocker : état du chiffrement de chaque disque
+- [~] 6. Santé de la batterie (capacité d'origine et actuelle) : dans le bilan : capacité d'origine et actuelle (WMI), alerte sous 60 % (test battery_bitlocker_and_wifi_show_in_the_report) ; pas encore vu sur ce PC
+- [~] 7. BitLocker : état du chiffrement de chaque disque : ligne « BitLocker » de « Ce PC » (lisible en administrateur) ; pas encore vu sur ce PC
 - [ ] 8. Thème clair ou sombre choisi dans Nova, au lieu de suivre Windows
 - [ ] 9. Services en démarrage automatique arrêtés
 - [ ] 10. Tâches planifiées de logiciels tiers, avec désactivation
@@ -90,6 +90,6 @@ Nouvelle direction « instrument de mesure » : papier chaud en clair (`#f3f1ec`
 - [ ] 15. Point de restauration automatique avant les actions risquées (option)
 - [ ] 16. Mode jeu : plan d'alimentation performances et programmes choisis fermés
 - [ ] 17. Test de vitesse du disque
-- [ ] 18. Wi-Fi : force du signal et réseaux enregistrés
+- [~] 18. Wi-Fi : force du signal et réseaux enregistrés : ligne « Wi-Fi » de « Ce PC » : réseau, signal, réseaux enregistrés, lus par netsh sans fenêtre (test wifi_is_read_from_netsh_in_french_or_english) ; pas encore vu sur ce PC
 - [x] 19. Outils Windows en un clic : section « Outils de Windows » dans Réparer (périphériques, événements, ressources, tâches, services, disques, informations système), liste fermée côté moteur (test `only_known_windows_tools_open`), vue dans le parcours ; boutons « Ouvrir » non cliqués par le parcours pour ne pas ouvrir de vraie fenêtre
 - [ ] 20. Espace libre conseillé avant une grosse mise à jour Windows

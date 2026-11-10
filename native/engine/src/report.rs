@@ -157,6 +157,35 @@ pub struct Scan {
     pub stability: Stability,
     pub last_update: Option<String>,
     pub boots: Boots,
+    pub battery: Option<Battery>,
+    pub bitlocker: Option<Vec<Encryption>>,
+    pub wifi: Option<Wifi>,
+}
+
+#[derive(Deserialize, Default, Clone, Debug)]
+#[serde(default)]
+pub struct Battery {
+    pub designed: f64,
+    pub full: f64,
+}
+
+#[derive(Deserialize, Default, Clone, Debug)]
+#[serde(default)]
+pub struct Encryption {
+    pub drive: String,
+    pub protected: bool,
+}
+
+#[derive(Deserialize, Default, Clone, Debug)]
+#[serde(default)]
+pub struct Wifi {
+    pub ssid: Option<String>,
+    pub signal: Option<u32>,
+    pub saved: u32,
+}
+
+pub fn battery_health(battery: &Battery) -> Option<f64> {
+    (battery.designed > 0.0 && battery.full > 0.0).then(|| (battery.full / battery.designed * 100.0).min(100.0))
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -506,6 +535,19 @@ pub fn findings_at(scan: &Scan, now: DateTime<Utc>) -> Vec<Finding> {
         push("firewall", Level::Warn, "Pare-feu partiellement coupé".into(), format!("Profil désactivé : {}.", off.join(", ")), None);
     }
 
+    if let Some(health) = scan.battery.as_ref().and_then(battery_health) {
+        if health < 60.0 {
+            push("battery", Level::Warn, format!("Batterie usée : {} % de sa capacité d'origine", health.round()), "L'autonomie a nettement baissé. Un remplacement de la batterie la rétablirait.".into(), None);
+        } else {
+            push("battery", Level::Ok, format!("Batterie à {} % de sa capacité d'origine", health.round()), "Usure normale.".into(), None);
+        }
+    }
+    if let Some(open) = scan.bitlocker.as_ref().map(|list| list.iter().filter(|v| !v.protected).map(|v| v.drive.clone()).collect::<Vec<_>>()) {
+        if open.is_empty() {
+            push("bitlocker", Level::Ok, "Disques chiffrés par BitLocker".into(), "En cas de vol, les fichiers restent illisibles.".into(), None);
+        }
+    }
+
     if scan.memory.total_bytes > 0.0 {
         let used = 1.0 - scan.memory.free_bytes / scan.memory.total_bytes;
         if used >= 0.9 {
@@ -575,6 +617,21 @@ pub fn machine_facts(scan: &Scan) -> Vec<(String, String)> {
         facts.push(("Disque".to_string(), format!("{}, {}, {} {}{}", d.name, format_bytes(d.size_bytes), d.bus, d.media, heat)));
     }
     facts.push(("Allumé depuis".to_string(), format_duration(scan.uptime_seconds)));
+    if let Some((battery, health)) = scan.battery.as_ref().and_then(|b| battery_health(b).map(|h| (b, h))) {
+        facts.push(("Batterie".to_string(), format!("{} % de la capacité d'origine ({} sur {} mWh)", health.round(), fr_number(battery.full, 0), fr_number(battery.designed, 0))));
+    }
+    match scan.bitlocker.as_ref() {
+        Some(list) if !list.is_empty() => facts.push(("BitLocker".to_string(), list.iter().map(|v| format!("{} {}", v.drive, if v.protected { "chiffré" } else { "non chiffré" })).collect::<Vec<_>>().join(", "))),
+        _ if !scan.is_admin => facts.push(("BitLocker".to_string(), "lisible en mode administrateur".to_string())),
+        _ => {}
+    }
+    if let Some(wifi) = scan.wifi.as_ref() {
+        let now = match (&wifi.ssid, wifi.signal) {
+            (Some(ssid), Some(signal)) => format!("{ssid}, signal {signal} %"),
+            _ => "pas connecté".to_string(),
+        };
+        facts.push(("Wi-Fi".to_string(), format!("{now}, {}", plural(wifi.saved as u64, "réseau enregistré", "réseaux enregistrés"))));
+    }
     facts
 }
 
@@ -711,6 +768,22 @@ pub fn invert_driver_filter(manufacturer: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn battery_bitlocker_and_wifi_show_in_the_report() {
+        let scan: Scan = serde_json::from_value(serde_json::json!({
+            "isAdmin": false,
+            "battery": {"designed": 50000.0, "full": 26000.0},
+            "wifi": {"ssid": "Maison", "signal": 82, "saved": 3},
+        }))
+        .unwrap();
+        let items = findings(&scan);
+        assert!(items.iter().any(|f| f.id == "battery" && f.level == Level::Warn && f.title.contains("52 %")));
+        let facts = machine_facts(&scan);
+        assert!(facts.iter().any(|(k, v)| k == "Wi-Fi" && v == "Maison, signal 82 %, 3 réseaux enregistrés"));
+        assert!(facts.iter().any(|(k, v)| k == "BitLocker" && v.contains("administrateur")));
+        assert_eq!(battery_health(&Battery { designed: 0.0, full: 10.0 }), None);
+    }
     use serde_json::json;
 
     fn healthy() -> Scan {

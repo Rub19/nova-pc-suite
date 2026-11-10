@@ -204,6 +204,50 @@ fn security() -> Value {
     json!({"defender": defender, "otherAntivirus": others, "firewallOff": off})
 }
 
+fn battery() -> Value {
+    let wmi = win::wmi_at("ROOT\\WMI");
+    let designed = query(&wmi, "SELECT DesignedCapacity FROM BatteryStaticData").first().and_then(|b| number(b, "DesignedCapacity"));
+    let full = query(&wmi, "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity").first().and_then(|b| number(b, "FullChargedCapacity"));
+    match (designed, full) {
+        (Some(designed), Some(full)) if designed > 0.0 && full > 0.0 => json!({"designed": designed, "full": full}),
+        _ => Value::Null,
+    }
+}
+
+fn bitlocker() -> Value {
+    let wmi = win::wmi_at("ROOT\\CIMV2\\Security\\MicrosoftVolumeEncryption");
+    if wmi.is_none() {
+        return Value::Null;
+    }
+    let list = query(&wmi, "SELECT DriveLetter, ProtectionStatus FROM Win32_EncryptableVolume");
+    if list.is_empty() {
+        return Value::Null;
+    }
+    json!(list.iter().filter(|v| !text(v, "DriveLetter").is_empty()).map(|v| json!({"drive": text(v, "DriveLetter"), "protected": number(v, "ProtectionStatus") == Some(1.0)})).collect::<Vec<_>>())
+}
+
+pub fn parse_wifi(interfaces: &str, profiles: &str) -> Value {
+    let field = |name: &str| {
+        interfaces.lines().find_map(|line| {
+            let (key, value) = line.split_once(':')?;
+            (key.trim() == name).then(|| value.trim().to_string())
+        })
+    };
+    let saved = profiles.lines().filter(|line| line.split_once(':').is_some_and(|(key, value)| key.starts_with("    ") && !value.trim().is_empty())).count();
+    let signal = field("Signal").and_then(|value| value.trim_end_matches('%').trim().parse::<u32>().ok());
+    match (field("SSID"), signal) {
+        (Some(ssid), Some(signal)) if !ssid.is_empty() => json!({"ssid": ssid, "signal": signal, "saved": saved}),
+        _ if saved > 0 => json!({"ssid": null, "signal": null, "saved": saved}),
+        _ => Value::Null,
+    }
+}
+
+fn wifi() -> Value {
+    use std::os::windows::process::CommandExt;
+    let run = |args: &[&str]| std::process::Command::new(win::sys32("netsh.exe")).args(args).creation_flags(0x08000000).output().ok().map(|out| String::from_utf8_lossy(&out.stdout).into_owned()).unwrap_or_default();
+    parse_wifi(&run(&["wlan", "show", "interfaces"]), &run(&["wlan", "show", "profiles"]))
+}
+
 fn last_update() -> Value {
     win::com();
     let read = || -> windows::core::Result<Option<String>> {
@@ -294,6 +338,9 @@ pub fn scan() -> Result<Value, String> {
         "disks": disks(),
         "deviceProblems": problems,
         "security": security(),
+        "battery": battery(),
+        "bitlocker": bitlocker(),
+        "wifi": wifi(),
         "stability": stability(),
         "lastUpdate": last_update(),
         "boots": boots(1),
@@ -303,6 +350,15 @@ pub fn scan() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wifi_is_read_from_netsh_in_french_or_english() {
+        let interfaces = "\n    Nom                    : Wi-Fi\n    SSID                   : Livebox-1234\n    BSSID                  : aa:bb:cc:dd:ee:ff\n    Signal                 : 87%\n";
+        let profiles = "Profils sur l'interface Wi-Fi :\n\nProfils utilisateurs\n---------------------\n    Profil Tous les utilisateurs : Livebox-1234\n    Profil Tous les utilisateurs : Bureau\n";
+        assert_eq!(parse_wifi(interfaces, profiles), json!({"ssid": "Livebox-1234", "signal": 87, "saved": 2}));
+        assert_eq!(parse_wifi("There is no wireless interface on the system.", ""), Value::Null);
+        assert_eq!(parse_wifi("", "    All User Profile     : Home\n"), json!({"ssid": null, "signal": null, "saved": 1}));
+    }
 
     #[test]
     fn event_xml_reads_values_in_order_with_empty_ones() {
