@@ -778,6 +778,7 @@ export component Segment {
     in property <bool> enabled: true;
     in property <length> pad: 13px;
     in property <length> size: 13.5px;
+    in property <bool> in-sheet;
     callback clicked;
     accessible-role: button;
     accessible-label: text;
@@ -785,7 +786,7 @@ export component Segment {
     accessible-checkable: true;
     accessible-action-default => { clicked(); }
     forward-focus: scope;
-    property <bool> live: enabled && !Shell.modal;
+    property <bool> live: enabled && (in-sheet || !Shell.modal);
     Rectangle {
         border-radius: 6px;
         background: root.on ? Theme.primary : touch.has-hover && live ? Theme.panel-hover : transparent;

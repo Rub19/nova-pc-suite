@@ -821,7 +821,7 @@ export component NettoyagePage {
             Btn {
                 kind: NettoyageState.files-loaded ? "" : "primary";
                 enabled: !NettoyageState.files-loading;
-                text: NettoyageState.files-loading ? "Analyse…" : NettoyageState.files-loaded ? "Analyser à nouveau" : "Analyser";
+                text: NettoyageState.files-loading ? "Analyse…" : NettoyageState.files-loaded ? "Analyser mes fichiers à nouveau" : "Analyser mes fichiers";
                 clicked => { NettoyageState.analyse-files(); }
             }
         }
@@ -1280,6 +1280,20 @@ export component PerfPage {
             }
         }
         if PerfState.speed-result != "": Note { text: PerfState.speed-result; }
+        if PerfState.has-data: Panel {
+            for v[i] in PerfState.volumes: Row {
+                first: i == 0;
+                Grow {
+                    Strong { text: v.title; }
+                    Muted { text: v.detail; }
+                }
+                AdminBtn {
+                    enabled: PerfState.busy == "";
+                    text: PerfState.busy == v.letter ? "Optimisation…" : "Optimiser";
+                    clicked => { PerfState.optimize(v.letter); }
+                }
+            }
+        }
         if PerfState.services-checked: SectionHead {
             title: "Services arrêtés en erreur";
             note: "Services prévus au démarrage de Windows, arrêtés avec un code d'erreur.";
@@ -1295,20 +1309,6 @@ export component PerfPage {
                 Grow {
                     Strong { text: p.role; }
                     Muted { text: p.result; }
-                }
-            }
-        }
-        if PerfState.has-data: Panel {
-            for v[i] in PerfState.volumes: Row {
-                first: i == 0;
-                Grow {
-                    Strong { text: v.title; }
-                    Muted { text: v.detail; }
-                }
-                AdminBtn {
-                    enabled: PerfState.busy == "";
-                    text: PerfState.busy == v.letter ? "Optimisation…" : "Optimiser";
-                    clicked => { PerfState.optimize(v.letter); }
                 }
             }
         }
