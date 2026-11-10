@@ -1167,6 +1167,10 @@ export global PerfState {
     in-out property <[Probe]> probes;
     in-out property <bool> speed-loading;
     in-out property <bool> fast-startup;
+    in-out property <bool> game-mode;
+    in-out property <string> hags;
+    callback game-mode-set(bool);
+    callback open-graphics();
     callback fast-startup-set(bool);
     in-out property <[Probe]> failed-services;
     in-out property <bool> services-checked;
@@ -1314,6 +1318,34 @@ export component PerfPage {
                     enabled: PerfState.busy == "";
                     text: PerfState.fast-startup ? "Désactiver" : "Activer";
                     clicked => { PerfState.fast-startup-set(!PerfState.fast-startup); }
+                }
+            }
+        }
+        if PerfState.has-data: SectionHead {
+            title: "Jeux";
+            note: "Deux réglages de Windows qui comptent pendant une partie.";
+        }
+        if PerfState.has-data: Panel {
+            Row {
+                first: true;
+                Grow {
+                    Strong { text: "Mode Jeu de Windows " + (PerfState.game-mode ? "activé" : "désactivé"); }
+                    Muted { text: "Pendant une partie, Windows reporte les mises à jour et donne la priorité au jeu."; }
+                }
+                Btn {
+                    enabled: PerfState.busy == "";
+                    text: PerfState.game-mode ? "Désactiver" : "Activer";
+                    clicked => { PerfState.game-mode-set(!PerfState.game-mode); }
+                }
+            }
+            Row {
+                Grow {
+                    Strong { text: "Planification GPU accélérée : " + PerfState.hags; }
+                    Muted { text: "Laisse la carte graphique gérer sa mémoire. Se règle dans Paramètres, puis s'applique au redémarrage."; }
+                }
+                Btn {
+                    text: "Ouvrir le réglage";
+                    clicked => { PerfState.open-graphics(); }
                 }
             }
         }

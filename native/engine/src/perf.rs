@@ -219,6 +219,7 @@ pub fn overview() -> Result<Value, String> {
         "plans": plans(),
         "volumes": volumes(),
         "hibernation": hibernation(),
+        "gaming": gaming(),
         "gpu": gpu(),
         "isAdmin": crate::elevation::is_admin(),
     }))
@@ -379,6 +380,24 @@ fn gateway() -> Option<std::net::Ipv4Addr> {
     (!hop.is_unspecified()).then_some(hop)
 }
 
+pub fn gaming() -> Value {
+    let game_mode = windows_registry::CURRENT_USER.open("Software\\Microsoft\\GameBar").and_then(|k| k.get_u32("AutoGameModeEnabled")).map(|v| v != 0).unwrap_or(true);
+    let hags = windows_registry::LOCAL_MACHINE.open("SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers").and_then(|k| k.get_u32("HwSchMode")).ok().map(|v| v == 2);
+    json!({"gameMode": game_mode, "hags": hags})
+}
+
+pub fn set_game_mode(enabled: bool) -> Result<Value, String> {
+    windows_registry::CURRENT_USER
+        .create("Software\\Microsoft\\GameBar")
+        .and_then(|key| key.set_u32("AutoGameModeEnabled", u32::from(enabled)))
+        .map_err(|_| "Windows a refusé ce réglage.".to_string())?;
+    Ok(json!({
+        "summary": format!("Mode Jeu de Windows {}", if enabled { "activé" } else { "désactivé" }),
+        "measures": [],
+        "undo": {"module": "perf", "action": "game-mode-set", "payload": {"enabled": !enabled}, "label": if enabled { "Désactiver à nouveau" } else { "Réactiver" }},
+    }))
+}
+
 pub fn failed_services() -> Result<Value, String> {
     let cim = win::wmi_at("ROOT\\CIMV2");
     if cim.is_none() {
@@ -460,6 +479,14 @@ pub fn network_test() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gaming_settings_are_read() {
+        let data = gaming();
+        assert!(data["gameMode"].is_boolean());
+        assert!(data["hags"].is_boolean() || data["hags"].is_null());
+        println!("{data}");
+    }
 
     #[test]
     fn failed_services_are_read() {

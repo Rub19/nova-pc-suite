@@ -68,7 +68,7 @@ pub fn policy(module: &str, action: &str) -> Option<bool> {
         ("perf", "overview" | "processes" | "network-test" | "adapters" | "disk-speed" | "failed-services") => Some(false),
         (
             "perf",
-            "process-close" | "power-apply" | "volume-optimize" | "hibernate-set" | "dns-flush" | "fast-startup-set",
+            "process-close" | "power-apply" | "volume-optimize" | "hibernate-set" | "dns-flush" | "fast-startup-set" | "game-mode-set",
         ) => Some(true),
         (
             "repair",
@@ -240,6 +240,7 @@ fn native(module: &str, action: &str, payload: &Value) -> Option<Result<Value, S
         ("perf", "network-test") => perf::network_test(),
         ("perf", "disk-speed") => perf::disk_speed(),
         ("perf", "failed-services") => perf::failed_services(),
+        ("perf", "game-mode-set") => payload["enabled"].as_bool().ok_or_else(|| "Paramètres invalides".to_string()).and_then(perf::set_game_mode),
         ("perf", "adapters") => perf::adapters(),
         ("repair", "open-restore") => win::shell_open(&win::sys32("rstrui.exe"))
             .map(|_| json!({"opened": true})),
@@ -372,6 +373,7 @@ pub fn open_windows(target: &str) -> Result<(), String> {
         "windows-update" => "ms-settings:windowsupdate",
         "security" => "windowsdefender:",
         "device-manager" => "devmgmt.msc",
+        "graphics" => "ms-settings:display-advancedgraphics",
         "apps" => "ms-settings:appsfeatures",
         "event-viewer" => "eventvwr.msc",
         "disk-management" => "diskmgmt.msc",

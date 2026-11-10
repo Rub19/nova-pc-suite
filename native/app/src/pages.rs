@@ -1172,6 +1172,12 @@ pub fn perf_load(ui: &App) {
                 let enabled = data["hibernation"]["enabled"] == true;
                 g.set_hibernation_on(enabled);
     g.set_fast_startup(data["hibernation"]["fastStartup"] == true);
+    g.set_game_mode(data["gaming"]["gameMode"] != false);
+    g.set_hags(ss(match data["gaming"]["hags"].as_bool() {
+        Some(true) => "activée",
+        Some(false) => "désactivée",
+        None => "non prise en charge ou jamais réglée",
+    }));
                 let bytes = format_bytes(data["hibernation"]["fileBytes"].as_f64().unwrap_or(0.0));
                 g.set_hibernation_text(ss(if enabled {
                     format!("Le fichier hiberfil.sys occupe {bytes}.")
@@ -1335,6 +1341,14 @@ fn wire_perf(ui: &App) {
     });
     bind!(ui, PerfState, on_optimize, |ui, letter| {
         perf_action(ui, "volume-optimize", json!({"letter": letter.as_str()}), letter.to_string());
+    });
+    bind!(ui, PerfState, on_game_mode_set, |ui, enabled| {
+        perf_action(ui, "game-mode-set", json!({"enabled": enabled}), "game-mode".into());
+    });
+    bind!(ui, PerfState, on_open_graphics, |ui| {
+        if let Err(error) = nova_engine::open_windows("graphics") {
+            toast(ui, &error, true, None);
+        }
     });
     bind!(ui, PerfState, on_fast_startup_set, |ui, enabled| {
         perf_action(ui, "fast-startup-set", json!({"enabled": enabled}), "fast-startup".into());
