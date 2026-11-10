@@ -16,6 +16,11 @@ expect Logiciels
 
 click Nettoyage (Ctrl+4)
 expect Nettoyage
+scrollto Vos fichiers par type|1170,400
+click Analyser
+waitfor Vieux gros fichiers dans Téléchargements|60000
+expect Vidéos
+snap 07-fichiers
 
 click Démarrage (Ctrl+5)
 wait 2000

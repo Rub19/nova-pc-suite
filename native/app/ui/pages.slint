@@ -651,6 +651,13 @@ export global NettoyageState {
     in-out property <string> largest-error;
     in-out property <[BigFolder]> largest;
     callback measure-largest();
+    in-out property <bool> files-loading;
+    in-out property <bool> files-loaded;
+    in-out property <string> files-error;
+    in-out property <[BigFolder]> file-kinds;
+    in-out property <[BigFolder]> file-old;
+    in-out property <[BigFolder]> file-twins;
+    callback analyse-files();
     callback open-folder(string);
     callback rescan();
     callback clean();
@@ -772,6 +779,102 @@ export component NettoyagePage {
                     font-family: Theme.display;
                     font-weight: 500;
                     vertical-alignment: center;
+                }
+            }
+        }
+        SectionHead {
+            title: "Vos fichiers par type";
+            note: "Bureau, Documents, Images, Vidéos, Musique et Téléchargements. Nova lit seulement : rien n'est supprimé.";
+            Btn {
+                kind: NettoyageState.files-loaded ? "" : "primary";
+                enabled: !NettoyageState.files-loading;
+                text: NettoyageState.files-loading ? "Analyse…" : NettoyageState.files-loaded ? "Analyser à nouveau" : "Analyser";
+                clicked => { NettoyageState.analyse-files(); }
+            }
+        }
+        if NettoyageState.files-loading: Elapsed { label: "Nova lit vos dossiers personnels."; }
+        if NettoyageState.files-error != "": Failure {
+            text: NettoyageState.files-error;
+            retried => { NettoyageState.analyse-files(); }
+        }
+        if NettoyageState.file-kinds.length > 0: Panel {
+            for f[i] in NettoyageState.file-kinds: Row {
+                first: i == 0;
+                Grow {
+                    spacing: 4px;
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Strong { text: f.name; horizontal-stretch: 1; }
+                        Text {
+                            horizontal-stretch: 0;
+                            text: f.size;
+                            color: Theme.muted;
+                            font-family: Theme.display;
+                            font-weight: 500;
+                        }
+                    }
+                    Muted { text: f.path; }
+                    Meter { ratio: f.ratio; index: i; }
+                }
+            }
+        }
+        if NettoyageState.files-loaded: SectionHead {
+            title: "Vieux gros fichiers dans Téléchargements";
+            note: "Plus de 100 Mo, pas modifiés depuis 90 jours.";
+        }
+        if NettoyageState.files-loaded && NettoyageState.file-old.length == 0: Note { text: "Aucun : vos téléchargements sont récents ou petits."; }
+        if NettoyageState.file-old.length > 0: Panel {
+            for f[i] in NettoyageState.file-old: Row {
+                first: i == 0;
+                Grow {
+                    spacing: 4px;
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Strong { text: f.name; horizontal-stretch: 1; }
+                        Text {
+                            horizontal-stretch: 0;
+                            text: f.size;
+                            color: Theme.muted;
+                            font-family: Theme.display;
+                            font-weight: 500;
+                        }
+                    }
+                    Muted { text: f.path; }
+                    Meter { ratio: f.ratio; index: i; }
+                }
+                Btn {
+                    text: "Ouvrir";
+                    clicked => { NettoyageState.open-folder(f.path); }
+                }
+            }
+        }
+        if NettoyageState.files-loaded: SectionHead {
+            title: "Doublons dans Téléchargements";
+            note: "Même taille et même contenu, à partir de 1 Mo.";
+        }
+        if NettoyageState.files-loaded && NettoyageState.file-twins.length == 0: Note { text: "Aucun doublon trouvé."; }
+        if NettoyageState.file-twins.length > 0: Panel {
+            for f[i] in NettoyageState.file-twins: Row {
+                first: i == 0;
+                Grow {
+                    spacing: 4px;
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Strong { text: f.name; horizontal-stretch: 1; }
+                        Text {
+                            horizontal-stretch: 0;
+                            text: f.size;
+                            color: Theme.muted;
+                            font-family: Theme.display;
+                            font-weight: 500;
+                        }
+                    }
+                    Muted { text: f.path; }
+                    Meter { ratio: f.ratio; index: i; }
+                }
+                Btn {
+                    text: "Ouvrir";
+                    clicked => { NettoyageState.open-folder(f.path); }
                 }
             }
         }

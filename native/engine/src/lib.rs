@@ -15,6 +15,7 @@ use std::{
 pub mod cleanup;
 pub mod diag;
 pub mod elevation;
+pub mod files;
 pub mod perf;
 pub mod report;
 pub mod selfupdate;
@@ -60,7 +61,7 @@ pub fn policy(module: &str, action: &str) -> Option<bool> {
             Some(false)
         }
         ("updates", "wu-install" | "winget-upgrade" | "reboot" | "reboot-cancel") => Some(true),
-        ("cleanup", "scan" | "largest") => Some(false),
+        ("cleanup", "scan" | "largest" | "files") => Some(false),
         ("cleanup", "clean") => Some(true),
         ("startup", "list") => Some(false),
         ("startup", "set") => Some(true),
@@ -251,6 +252,7 @@ pub fn execute(module: &str, action: &str, payload: &Value) -> Result<Value, Str
         return match action {
             "scan" => cleanup::scan(),
             "largest" => cleanup::largest().map(|data| json!({"ok": true, "data": data})),
+            "files" => files::analyse().map(|data| json!({"ok": true, "data": data})),
             "clean" => cleanup::clean(
                 serde_json::from_value(payload["ids"].clone()).map_err(|_| "Sélection invalide")?,
             ),

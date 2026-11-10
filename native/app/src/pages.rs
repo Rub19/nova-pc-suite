@@ -847,6 +847,36 @@ fn largest_load(ui: &App) {
     });
 }
 
+fn files_load(ui: &App) {
+    let g = ui.global::<NettoyageState>();
+    g.set_files_loading(true);
+    g.set_files_error(ss(""));
+    work(ui, || call("cleanup", "files", json!({})), |ui, result| {
+        let g = ui.global::<NettoyageState>();
+        g.set_files_loading(false);
+        match result {
+            Ok(data) => {
+                let rows = |items: Vec<Value>, line: &dyn Fn(&Value) -> (String, String, f64)| -> ModelRc<BigFolder> {
+                    let parts: Vec<(String, String, f64)> = items.iter().map(line).collect();
+                    let top = parts.iter().map(|p| p.2).fold(1.0, f64::max);
+                    model(parts.into_iter().map(|(name, path, bytes)| BigFolder { name: ss(name), path: ss(path), size: ss(format_bytes(bytes)), ratio: (bytes / top) as f32 }).collect())
+                };
+                g.set_file_kinds(rows(arr(data["kinds"].clone()), &|k| {
+                    let files = k["files"].as_u64().unwrap_or(0);
+                    (k["label"].as_str().unwrap_or("").to_string(), format!("{files} fichier{}", if files > 1 { "s" } else { "" }), k["bytes"].as_f64().unwrap_or(0.0))
+                }));
+                g.set_file_old(rows(arr(data["old"].clone()), &|o| (format!("{}, il y a {} jours", o["name"].as_str().unwrap_or(""), o["days"].as_u64().unwrap_or(0)), o["path"].as_str().unwrap_or("").to_string(), o["bytes"].as_f64().unwrap_or(0.0))));
+                g.set_file_twins(rows(arr(data["duplicates"].clone()), &|d| {
+                    let paths = arr(d["paths"].clone());
+                    (format!("{} · {} copies", d["name"].as_str().unwrap_or(""), paths.len()), paths.first().and_then(|p| p.as_str()).unwrap_or("").to_string(), d["bytes"].as_f64().unwrap_or(0.0) * paths.len() as f64)
+                }));
+                g.set_files_loaded(true);
+            }
+            Err(error) => g.set_files_error(ss(error)),
+        }
+    });
+}
+
 fn reveal(ui: &App, path: &str) {
     if let Err(error) = nova_engine::win::reveal(path) {
         toast(ui, &error, true, None);
@@ -855,6 +885,7 @@ fn reveal(ui: &App, path: &str) {
 
 fn wire_nettoyage(ui: &App) {
     bind!(ui, NettoyageState, on_measure_largest, |ui| largest_load(ui));
+    bind!(ui, NettoyageState, on_analyse_files, |ui| files_load(ui));
     bind!(ui, NettoyageState, on_open_folder, |ui, path| reveal(ui, &path));
     bind!(ui, NettoyageState, on_rescan, |ui| nettoyage_load(ui));
     bind!(ui, NettoyageState, on_toggle, |ui, id| {
