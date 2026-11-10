@@ -12,6 +12,7 @@ mod headless;
 #[cfg(feature = "e2e")]
 mod e2e;
 mod pages;
+mod selfupdate;
 mod tour;
 
 pub fn ss(text: impl AsRef<str>) -> SharedString {
@@ -391,6 +392,7 @@ fn main() {
         }
     }
     ui.global::<Nova>().set_version(env!("CARGO_PKG_VERSION").into());
+    selfupdate::wire(&ui, tour_dir.is_none() && !e2e && std::env::var_os("NOVA_NO_UPDATE").is_none());
     wire_shell(&ui);
     pages::wire(&ui);
     let start = report::PAGES

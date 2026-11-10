@@ -47,5 +47,7 @@ expect Journal
 
 click À propos
 expect Version 0.4.0, native en Rust
+expect Mises à jour automatiques
+absent Mettre à jour
 snap 05-apropos
 key Escape

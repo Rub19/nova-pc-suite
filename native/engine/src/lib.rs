@@ -17,6 +17,7 @@ pub mod diag;
 pub mod elevation;
 pub mod perf;
 pub mod report;
+pub mod selfupdate;
 pub mod startup;
 pub mod updates;
 pub mod vitals;

@@ -1,5 +1,5 @@
 import { AboutSlint } from "std-widgets.slint";
-import { Theme, Icons, Btn, AdminBtn, Muted, Strong, Shell, Measure } from "kit.slint";
+import { Theme, Icons, Btn, AdminBtn, Muted, Strong, Shell, Measure, Rise } from "kit.slint";
 import {
     BilanPage, BilanState, FindingRow, Fact, DiskUse,
     PilotesPage, PilotesState, Problem, Vendor, DriverRow, WuItem, WuState, WuLine,
@@ -41,6 +41,12 @@ export global Nova {
     in-out property <[string]> ask-lines;
     in-out property <[License]> ask-licenses;
     in-out property <bool> about-open;
+    in-out property <string> update-version;
+    in-out property <string> update-notes;
+    in-out property <string> update-info;
+    in-out property <bool> update-busy;
+    callback update-go();
+    callback update-later();
     callback go(int);
     callback answer(bool);
     callback toast-close(int);
@@ -487,6 +493,46 @@ export component App inherits Window {
                         Trace { label: "Mémoire"; value: Nova.ram-text; path: Nova.ram-path; }
                         Trace { label: "Disque"; value: Nova.disk-text; path: Nova.disk-path; }
                     }
+                    if Nova.update-version != "": Rise {
+                        Rectangle {
+                            border-radius: 8px;
+                            background: #ffffff14;
+                            border-width: 1px;
+                            border-color: #ffffff24;
+                            VerticalLayout {
+                                padding: 10px;
+                                spacing: 6px;
+                                Text {
+                                    text: "Nova " + Nova.update-version + " disponible";
+                                    color: Theme.rail-ink;
+                                    font-size: 12.5px;
+                                    font-weight: 600;
+                                }
+                                if Nova.update-notes != "": Text {
+                                    text: Nova.update-notes;
+                                    color: Theme.rail-muted;
+                                    font-size: 11.5px;
+                                    wrap: word-wrap;
+                                }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    Btn {
+                                        kind: "primary";
+                                        text: Nova.update-busy ? "Téléchargement…" : "Mettre à jour";
+                                        enabled: !Nova.update-busy;
+                                        clicked => { Nova.update-go(); }
+                                    }
+                                    Btn {
+                                        kind: "link";
+                                        tint: Theme.rail-muted;
+                                        text: "Plus tard";
+                                        enabled: !Nova.update-busy;
+                                        clicked => { Nova.update-later(); }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if Shell.is-admin: Text {
                         text: "Mode administrateur";
                         color: Theme.rail-muted;
@@ -574,6 +620,7 @@ export component App inherits Window {
             font-weight: 600;
         }
         Muted { text: "Version " + Nova.version + ", native en Rust. Licence MIT. Entretien et réparation de Windows 10 et 11."; }
+        Muted { text: Nova.update-info; }
         AboutSlint { height: 180px; }
         HorizontalLayout {
             alignment: end;
