@@ -107,7 +107,7 @@ function Invoke-Module([string]$Action) {
                 systemDrive = [string]$env:SystemDrive
                 volumes = @(Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Where-Object { $_.FileSystem -in @('NTFS', 'ReFS') } | ForEach-Object { @{ drive = [string]$_.DeviceID; label = [string]$_.VolumeName; sizeBytes = [double]$_.Size; freeBytes = [double]$_.FreeSpace } })
                 disks = @(Get-Disks)
-                deviceProblems = (Get-DeviceProblems).Count
+                deviceProblems = @(Get-DeviceProblems).Count
                 security = Get-Security
                 stability = Get-Stability
                 lastUpdate = Get-LastUpdate

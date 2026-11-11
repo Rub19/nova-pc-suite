@@ -1,6 +1,7 @@
 param([string]$Script = "nova.txt")
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot)
+if (Get-Process "League of Legends","VALORANT-Win64-Shipping" -ErrorAction SilentlyContinue) { "Un jeu est ouvert : rien n'est lancé."; exit 2 }
 $build = Start-Process cargo -ArgumentList "build","-p","nova-native","--features","e2e","-j","3" -NoNewWindow -PassThru -RedirectStandardError "$env:TEMP\nova-e2e-build.txt"
 $build.PriorityClass = "BelowNormal"
 $build.WaitForExit()

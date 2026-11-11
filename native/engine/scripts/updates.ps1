@@ -63,7 +63,7 @@ function Install-Wu([string]$Kind, [string[]]$Ids, [bool]$AcceptEulas) {
 
     $restore = Ensure-RestorePoint 'Nova PC Suite : avant mises à jour'
     $pendingBefore = $available.Count
-    $problemsBefore = (Get-DeviceProblems).Count
+    $problemsBefore = @(Get-DeviceProblems).Count
     $driversBefore = if ($Kind -eq 'Driver') { Get-DriverMap } else { $null }
 
     $downloader = $session.CreateUpdateDownloader()
@@ -87,7 +87,7 @@ function Install-Wu([string]$Kind, [string[]]$Ids, [bool]$AcceptEulas) {
     $measures = @(@{ label = 'Mises à jour en attente'; before = $pendingBefore; after = $pendingAfter; unit = 'count' })
     $changed = @()
     if ($Kind -eq 'Driver') {
-        $measures += @{ label = 'Appareils en erreur'; before = $problemsBefore; after = (Get-DeviceProblems).Count; unit = 'count' }
+        $measures += @{ label = 'Appareils en erreur'; before = $problemsBefore; after = @(Get-DeviceProblems).Count; unit = 'count' }
         $driversAfter = Get-DriverMap
         foreach ($key in $driversAfter.Keys) {
             if ($driversBefore.ContainsKey($key) -and $driversBefore[$key].version -ne $driversAfter[$key].version) {

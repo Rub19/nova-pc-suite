@@ -1065,9 +1065,33 @@ pub fn demarrage_load(ui: &App) {
     );
 }
 
+pub fn readable_name(raw: &str) -> String {
+    let mut text = raw.trim().to_string();
+    if let Some(at) = text.find("-S-1-5-") {
+        text.truncate(at);
+    }
+    if let Some(at) = text.find('{').filter(|at| text.ends_with('}') && text.len() - at >= 30) {
+        text.truncate(at);
+    }
+    let text = text.trim_end_matches(['_', '-', ' ']).to_string();
+    if text.contains(' ') || text.is_empty() {
+        return if text.is_empty() { raw.to_string() } else { text };
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::new();
+    for (at, c) in chars.iter().enumerate() {
+        let split = at > 0 && c.is_uppercase() && (chars[at - 1].is_lowercase() || chars.get(at + 1).is_some_and(|n| n.is_lowercase()) && chars[at - 1].is_uppercase());
+        if split {
+            out.push(' ');
+        }
+        out.push(if *c == '_' { ' ' } else { *c });
+    }
+    out
+}
+
 fn startup_row(i: &Value) -> StartupRow {
     let name = i["name"].as_str().unwrap_or("");
-    let display = name.rsplit('\\').next().unwrap_or(name);
+    let display = readable_name(name.rsplit('\\').next().unwrap_or(name));
     let mut parts = vec![i["publisher"].as_str().filter(|p| !p.is_empty()).unwrap_or("Éditeur inconnu").to_string()];
     if i["running"] == true {
         parts.push(format!("{} de mémoire en ce moment", format_bytes(i["ramBytes"].as_f64().unwrap_or(0.0))));
@@ -1648,6 +1672,14 @@ fn wire_journal(ui: &App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn task_names_become_readable() {
+        assert_eq!(readable_name("NvDriverUpdateCheckDaily_{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8}"), "Nv Driver Update Check Daily");
+        assert_eq!(readable_name("OneDrive Standalone Update Task-S-1-5-21-111-222-333-1001"), "OneDrive Standalone Update Task");
+        assert_eq!(readable_name("GoogleUpdateTaskMachineUA"), "Google Update Task Machine UA");
+        assert_eq!(readable_name("Discord"), "Discord");
+    }
 
     #[test]
     fn driver_inventory_hides_microsoft_and_duplicates_then_sorts_by_date() {

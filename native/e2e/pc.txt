@@ -1,0 +1,24 @@
+# Relevé de ce que Nova affiche sur ce PC, sans rien modifier
+wait 4000
+waitfor Ce qui va bien|90000
+dump
+scrollto Wi-Fi|600,400
+dump
+scrollto BitLocker|600,400
+dump
+click Nettoyage (Ctrl+4)
+wait 3000
+scrollto Nettoyage automatique chaque dimanche|1170,400
+dump
+click Démarrage (Ctrl+5)
+wait 5000
+scrollto Tâches planifiées des logiciels|1170,400
+dump
+click Performances (Ctrl+6)
+waitfor Disques|30000
+wait 3000
+scrollto Veille prolongée|1170,400
+dump
+click Mises à jour (Ctrl+3)
+wait 8000
+dump

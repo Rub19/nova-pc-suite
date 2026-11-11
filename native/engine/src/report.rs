@@ -698,8 +698,18 @@ pub fn history_line(memory: &ScanMemory) -> String {
     if memory.history.len() < 2 {
         return String::new();
     }
-    let parts: Vec<String> = memory.history.iter().rev().take(6).map(|(stamp, count)| format!("{count} le {}", format_date_no_year(stamp))).collect();
-    format!("Points à traiter au fil des analyses : {}.", parts.join(", "))
+    let mut parts: Vec<String> = Vec::new();
+    for (stamp, count) in memory.history.iter().rev() {
+        let part = format!("{count} le {}", format_date_no_year(stamp));
+        if parts.last() != Some(&part) {
+            parts.push(part);
+        }
+        if parts.len() == 6 {
+            break;
+        }
+    }
+    let line = format!("Points à traiter au fil des analyses : {}", parts.join(", "));
+    if line.ends_with('.') { line } else { line + "." }
 }
 
 pub fn compare_findings(previous: Option<&[String]>, items: &[Finding]) -> (Vec<String>, usize) {
