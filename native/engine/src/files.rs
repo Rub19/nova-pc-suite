@@ -132,6 +132,10 @@ pub fn report_name(stamp: &str) -> String {
 pub fn save_report(text: &str, stamp: &str) -> Result<String, String> {
     use windows::Win32::UI::Shell::FOLDERID_Documents;
     let dir = known(&FOLDERID_Documents).ok_or("Dossier Documents introuvable.")?;
+    save_report_in(&dir, text, stamp)
+}
+
+pub fn save_report_in(dir: &std::path::Path, text: &str, stamp: &str) -> Result<String, String> {
     let path = dir.join(report_name(stamp));
     std::fs::write(&path, format!("\u{feff}{}", text.replace('\n', "\r\n"))).map_err(|error| format!("Bilan non enregistré : {error}"))?;
     Ok(path.to_string_lossy().to_string())

@@ -235,10 +235,20 @@ fn wire_bilan(ui: &App) {
     bind!(ui, BilanState, on_save, |ui| {
         let text = with(|s| s.scan.as_ref().map(|scan| (report::report_text(scan, &s.findings), scan.timestamp.clone())));
         let Some((text, stamp)) = text else { return };
-        match nova_engine::files::save_report(&text, &stamp) {
+        #[cfg(feature = "e2e")]
+        let test_dir = std::env::var_os("NOVA_E2E_EXPORT").map(std::path::PathBuf::from);
+        #[cfg(not(feature = "e2e"))]
+        let test_dir: Option<std::path::PathBuf> = None;
+        let saved = match &test_dir {
+            Some(dir) => nova_engine::files::save_report_in(dir, &text, &stamp),
+            None => nova_engine::files::save_report(&text, &stamp),
+        };
+        match saved {
             Ok(path) => {
                 toast(ui, &format!("Bilan enregistré : {path}"), false, None);
-                let _ = nova_engine::win::reveal(&path);
+                if test_dir.is_none() {
+                    let _ = nova_engine::win::reveal(&path);
+                }
             }
             Err(error) => toast(ui, &error, true, None),
         }

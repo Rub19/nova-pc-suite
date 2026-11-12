@@ -1,0 +1,7 @@
+# Bilan et enregistrement seuls, sans test de disque
+wait 4000
+waitfor Ce qui va bien|90000
+click Enregistrer
+wait 800
+expect Bilan enregistré
+snap 01-bilan-enregistre

@@ -2,6 +2,10 @@
 wait 4000
 expect Nova
 snap 01-bilan
+waitfor Ce qui va bien|90000
+click Enregistrer
+wait 800
+expect Bilan enregistré
 
 click Pilotes (Ctrl+2)
 waitfor Pilotes installés|60000

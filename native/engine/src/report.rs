@@ -452,11 +452,11 @@ pub fn findings_at(scan: &Scan, now: DateTime<Utc>) -> Vec<Finding> {
     };
 
     if let Some(system) = scan.volumes.iter().find(|v| v.drive == scan.system_drive && v.size_bytes > 0.0) {
-        let ratio = system.free_bytes / system.size_bytes;
         let text = format!("{} libres sur {}.", format_bytes(system.free_bytes), format_bytes(system.size_bytes));
-        if ratio < 0.1 {
+        let level = space_level(system.free_bytes, system.size_bytes);
+        if level == 2 {
             push("space", Level::Alert, format!("Le disque {} est presque plein", system.drive), format!("{text} Windows ralentit et les mises à jour peuvent échouer."), Some(("nettoyage", "Nettoyer")));
-        } else if ratio < 0.2 {
+        } else if level == 1 {
             push("space", Level::Warn, format!("Le disque {} se remplit", system.drive), text, Some(("nettoyage", "Nettoyer")));
         } else {
             push("space", Level::Ok, format!("Espace disponible sur {}", system.drive), text, None);
@@ -672,12 +672,10 @@ pub fn volume_usage(volume: &Volume) -> (f64, Level) {
         return (0.0, Level::Ok);
     }
     let used = 1.0 - volume.free_bytes / volume.size_bytes;
-    let level = if used > 0.9 {
-        Level::Alert
-    } else if used > 0.8 {
-        Level::Warn
-    } else {
-        Level::Ok
+    let level = match space_level(volume.free_bytes, volume.size_bytes) {
+        2 => Level::Alert,
+        1 => Level::Warn,
+        _ => Level::Ok
     };
     (used.clamp(0.0, 1.0), level)
 }
@@ -693,6 +691,18 @@ pub struct ScanMemory {
 }
 
 pub const HISTORY: usize = 30;
+
+pub fn space_level(free: f64, size: f64) -> u8 {
+    const GB: f64 = 1024.0 * 1024.0 * 1024.0;
+    let ratio = free / size.max(1.0);
+    if free < 15.0 * GB {
+        2
+    } else if free < 40.0 * GB || (ratio < 0.1 && free < 100.0 * GB) {
+        1
+    } else {
+        0
+    }
+}
 
 pub fn history_line(memory: &ScanMemory) -> String {
     if memory.history.len() < 2 {
@@ -792,6 +802,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn free_space_is_judged_in_gigabytes_not_only_percent() {
+        const GB: f64 = 1024.0 * 1024.0 * 1024.0;
+        assert_eq!(space_level(139.0 * GB, 1800.0 * GB), 0);
+        assert_eq!(space_level(10.0 * GB, 1800.0 * GB), 2);
+        assert_eq!(space_level(30.0 * GB, 1800.0 * GB), 1);
+        assert_eq!(space_level(20.0 * GB, 256.0 * GB), 1);
+        assert_eq!(space_level(25.0 * GB, 256.0 * GB), 1);
+        assert_eq!(space_level(12.0 * GB, 256.0 * GB), 2);
+        assert_eq!(space_level(80.0 * GB, 500.0 * GB), 0);
+    }
+
+    #[test]
     fn the_history_keeps_thirty_scans() {
         let finding = Finding { id: "disk", level: Level::Warn, title: String::new(), detail: String::new(), page: None, cta: None };
         let mut memory = remember(None, "2026-11-01T10:00:00.000Z", &[finding.clone()]);
@@ -834,7 +856,7 @@ mod tests {
             "uptimeSeconds": 3600,
             "pendingReboot": false,
             "systemDrive": "C:",
-            "volumes": [{"drive": "C:", "label": "", "sizeBytes": 1000, "freeBytes": 500}],
+            "volumes": [{"drive": "C:", "label": "", "sizeBytes": 1073741824000u64, "freeBytes": 536870912000u64}],
             "disks": [{"name": "SSD", "media": "SSD", "bus": "NVMe", "sizeBytes": 1000, "health": "Healthy", "temperature": 40, "wear": 2, "errors": 0}],
             "deviceProblems": 0,
             "security": {"defender": {"running": true, "realtime": true, "signatureAgeDays": 0}, "otherAntivirus": [], "firewallOff": []},
@@ -873,10 +895,11 @@ mod tests {
 
     #[test]
     fn volume_usage_follows_the_same_limits_as_the_findings() {
-        let volume = |free: f64| Volume { size_bytes: 100.0, free_bytes: free, ..Default::default() };
-        assert_eq!(volume_usage(&volume(50.0)), (0.5, Level::Ok));
-        assert_eq!(volume_usage(&volume(15.0)).1, Level::Warn);
-        assert_eq!(volume_usage(&volume(5.0)).1, Level::Alert);
+        const GB: f64 = 1024.0 * 1024.0 * 1024.0;
+        let volume = |free: f64| Volume { size_bytes: 1000.0 * GB, free_bytes: free * GB, ..Default::default() };
+        assert_eq!(volume_usage(&volume(500.0)), (0.5, Level::Ok));
+        assert_eq!(volume_usage(&volume(30.0)).1, Level::Warn);
+        assert_eq!(volume_usage(&volume(10.0)).1, Level::Alert);
         assert_eq!(volume_usage(&Volume::default()), (0.0, Level::Ok));
     }
 
@@ -934,10 +957,10 @@ mod tests {
     #[test]
     fn raises_space_alerts_by_remaining_ratio() {
         let mut low = healthy();
-        low.volumes[0].free_bytes = 50.0;
+        low.volumes[0].free_bytes = 10.0 * 1073741824.0;
         let first = &issues(&low)[0];
         assert_eq!((first.id, first.level, first.page), ("space", Level::Alert, Some("nettoyage")));
-        low.volumes[0].free_bytes = 150.0;
+        low.volumes[0].free_bytes = 30.0 * 1073741824.0;
         let first = &issues(&low)[0];
         assert_eq!((first.id, first.level), ("space", Level::Warn));
     }
