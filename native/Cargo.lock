@@ -2897,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "nova-native"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "i-slint-backend-testing",
  "nova-engine",

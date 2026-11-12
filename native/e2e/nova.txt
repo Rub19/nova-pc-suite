@@ -71,7 +71,7 @@ key Ctrl+8
 expect Journal
 
 click À propos
-expect Version 0.4.0, native en Rust
+expect Version 0.4.1, native en Rust
 expect Mises à jour automatiques
 absent Mettre à jour
 click Sombre

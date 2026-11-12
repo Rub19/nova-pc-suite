@@ -1,6 +1,6 @@
 [package]
 name = "nova-native"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 description = "Entretien et réparation de Windows"
 license = "MIT"
