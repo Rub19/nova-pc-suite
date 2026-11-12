@@ -125,7 +125,15 @@ fn known(id: &windows::core::GUID) -> Option<PathBuf> {
 }
 
 pub fn report_name(stamp: &str) -> String {
-    let clean: String = stamp.chars().take(16).map(|c| if c.is_ascii_digit() { c } else { '-' }).collect();
+    report_name_in(stamp, &chrono::Local)
+}
+
+fn report_name_in<Z: chrono::TimeZone>(stamp: &str, zone: &Z) -> String
+where
+    Z::Offset: std::fmt::Display,
+{
+    let local = chrono::DateTime::parse_from_rfc3339(stamp).ok().map(|date| date.with_timezone(zone).format("%Y-%m-%d-%H-%M").to_string());
+    let clean = local.unwrap_or_else(|| stamp.chars().take(16).map(|c| if c.is_ascii_digit() { c } else { '-' }).collect());
     format!("Nova-bilan-{clean}.txt")
 }
 
@@ -198,7 +206,9 @@ mod tests {
 
     #[test]
     fn report_files_are_named_by_date() {
-        assert_eq!(report_name("2026-11-10T19:12:33.000Z"), "Nova-bilan-2026-11-10-19-12.txt");
+        let paris = chrono::FixedOffset::east_opt(3600).unwrap();
+        assert_eq!(report_name_in("2026-11-10T19:12:33.000Z", &paris), "Nova-bilan-2026-11-10-20-12.txt");
+        assert_eq!(report_name_in("pas une date", &paris), "Nova-bilan-pas-une-date.txt".replace("pas-une-date", "------------"));
     }
 
     #[test]
